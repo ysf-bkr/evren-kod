@@ -1,0 +1,560 @@
+/**
+ * Markdown'ı React düğümlerine çeviren saf yardımcılar.
+ *
+ * `dangerouslySetInnerHTML` kullanılmaz; her şey React elemanı olarak üretilir.
+ * Bu modül `Markdown` bileşeninden ayrıdır: çıktı doğrudan test edilebilir.
+ */
+import React from 'react';
+import { Check, Copy, Info, Lightbulb, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { vscode } from '../../utils/vscode';
+import { COPY_FEEDBACK_MS } from '../../utils/uiTiming';
+
+function isSafeLink(url: string): boolean {
+  try {
+    const parsed = new URL(url, 'https://evren-kod.invalid');
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'mailto:';
+  } catch {
+    return false;
+  }
+}
+
+interface CodeBlockProps {
+  code: string;
+  language?: string;
+}
+
+export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard
+      .writeText(code)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+      })
+      .catch(() => {});
+  };
+
+  const isDiff = language?.toLowerCase() === 'diff' || language?.toLowerCase() === 'patch';
+
+  const renderContent = () => {
+    if (!isDiff) {
+      return <code className="whitespace-pre">{code}</code>;
+    }
+
+    const lines = code.split('\n');
+    return (
+      <code className="block whitespace-pre">
+        {lines.map((line, idx) => {
+          let lineClass = 'evren-kod-text-fg';
+          if (line.startsWith('+') && !line.startsWith('+++')) {
+            lineClass =
+              'bg-[var(--vscode-diffEditor-insertedLineBackground,rgba(46,160,67,0.18))] evren-kod-text-success font-medium';
+          } else if (line.startsWith('-') && !line.startsWith('---')) {
+            lineClass =
+              'bg-[var(--vscode-diffEditor-removedLineBackground,rgba(248,81,73,0.18))] evren-kod-text-error font-medium';
+          } else if (line.startsWith('@@')) {
+            lineClass = 'evren-kod-text-info opacity-85 font-semibold';
+          } else if (
+            line.startsWith('diff ') ||
+            line.startsWith('index ') ||
+            line.startsWith('+++') ||
+            line.startsWith('---')
+          ) {
+            lineClass = 'evren-kod-text-muted font-bold';
+          }
+          return (
+            <div key={idx} className={`-mx-3 px-3 py-0.5 ${lineClass}`}>
+              {line || ' '}
+            </div>
+          );
+        })}
+      </code>
+    );
+  };
+
+  return (
+    <div className="my-2 overflow-hidden rounded-md border evren-kod-border-surface evren-kod-bg-code">
+      <div className="flex items-center justify-between border-b evren-kod-border-surface evren-kod-bg-section px-2.5 py-1">
+        <span className="font-mono text-xs uppercase tracking-wider evren-kod-text-muted">
+          {language || 'kod'}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs evren-kod-text-muted transition hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--evren-kod-fg)]"
+          title="Kodu kopyala"
+        >
+          {copied ? (
+            <Check className="evren-kod-icon-xs evren-kod-text-success" />
+          ) : (
+            <Copy className="evren-kod-icon-xs" />
+          )}
+          <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+        </button>
+      </div>
+      <pre className="max-h-[420px] overflow-auto p-3 font-mono text-sm leading-relaxed evren-kod-text-fg">
+        {renderContent()}
+      </pre>
+    </div>
+  );
+};
+
+/** Yalnızca React elemanları üreten güvenli satır içi Markdown ve HTML biçimlendiricisi. */
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  if (!text) return [];
+
+  const tokenRegex =
+    /(`[^`]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|~~[^~\n]+~~|\[[^\]]+\]\([^)]+\)|<kbd>[^<]+<\/kbd>|<mark>[^<]+<\/mark>|<b>[^<]+<\/b>|<i>[^<]+<\/i>|<br\s*\/?>)/g;
+  const parts = text.split(tokenRegex);
+  const nodes: React.ReactNode[] = [];
+
+  parts.forEach((part, index) => {
+    if (!part) return;
+    const key = `${keyPrefix}-${index}`;
+
+    if (part.startsWith('`') && part.endsWith('`')) {
+      nodes.push(
+        <code key={key} className="evren-kod-inline">
+          {part.slice(1, -1)}
+        </code>
+      );
+      return;
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      nodes.push(
+        <strong key={key} className="font-semibold evren-kod-text-fg">
+          {part.slice(2, -2)}
+        </strong>
+      );
+      return;
+    }
+    if (part.startsWith('~~') && part.endsWith('~~')) {
+      nodes.push(
+        <s key={key} className="opacity-70">
+          {part.slice(2, -2)}
+        </s>
+      );
+      return;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      nodes.push(<em key={key}>{part.slice(1, -1)}</em>);
+      return;
+    }
+
+    // Satır içi HTML etiketleri ham metin yerine biçimli VS Code elemanları olarak çizilir.
+    const kbdMatch = part.match(/^<kbd>([^<]+)<\/kbd>$/i);
+    if (kbdMatch) {
+      nodes.push(
+        <kbd
+          key={key}
+          className="rounded border evren-kod-border-surface bg-[var(--vscode-editor-background)] px-1.5 py-0.5 font-mono text-xs evren-kod-text-fg"
+        >
+          {kbdMatch[1]}
+        </kbd>
+      );
+      return;
+    }
+    const markMatch = part.match(/^<mark>([^<]+)<\/mark>$/i);
+    if (markMatch) {
+      nodes.push(
+        <mark key={key} className="rounded evren-kod-bg-warning px-1 py-0.5 evren-kod-text-fg">
+          {markMatch[1]}
+        </mark>
+      );
+      return;
+    }
+    const bMatch = part.match(/^<b>([^<]+)<\/b>$/i);
+    if (bMatch) {
+      nodes.push(
+        <strong key={key} className="font-semibold evren-kod-text-fg">
+          {bMatch[1]}
+        </strong>
+      );
+      return;
+    }
+    const iMatch = part.match(/^<i>([^<]+)<\/i>$/i);
+    if (iMatch) {
+      nodes.push(<em key={key}>{iMatch[1]}</em>);
+      return;
+    }
+    if (/^<br\s*\/?>$/i.test(part)) {
+      nodes.push(<br key={key} />);
+      return;
+    }
+
+    const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (link) {
+      const safe = isSafeLink(link[2]);
+      nodes.push(
+        safe ? (
+          <button
+            key={key}
+            type="button"
+            onClick={() => vscode.postMessage({ type: 'OPEN_EXTERNAL', payload: { url: link[2] } })}
+            className="inline cursor-pointer text-left evren-kod-text-brand underline decoration-[var(--evren-kod-brand-400)] underline-offset-2 hover:text-[var(--evren-kod-brand-400)] transition"
+            title={link[2]}
+          >
+            {link[1]}
+          </button>
+        ) : (
+          <span key={key} title={link[2]} className="evren-kod-text-muted">
+            {link[1]}
+          </span>
+        )
+      );
+      return;
+    }
+    nodes.push(<React.Fragment key={key}>{part}</React.Fragment>);
+  });
+
+  return nodes;
+}
+
+export function renderMarkdownBlocks(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let paragraph: string[] = [];
+  let listItems: string[] = [];
+  let listOrdered = false;
+  let quoteLines: string[] = [];
+  let tableLines: string[] = [];
+  let key = 0;
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    blocks.push(
+      <p
+        key={`p-${key++}`}
+        className="my-1.5 whitespace-pre-wrap break-words leading-relaxed first:mt-0 last:mb-0"
+      >
+        {renderInline(paragraph.join('\n'), `p-${key}`)}
+      </p>
+    );
+    paragraph = [];
+  };
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    const items = listItems.map((item, index) => {
+      const taskMatch = item.match(/^\[([ xX])\]\s+(.*)$/);
+      if (taskMatch) {
+        const isChecked = taskMatch[1].toLowerCase() === 'x';
+        return (
+          <li key={`li-${key}-${index}`} className="my-1 flex items-start gap-2 list-none -ml-4">
+            <input type="checkbox" checked={isChecked} readOnly className="evren-kod-check__box mt-0.5" />
+            <span className={isChecked ? 'line-through opacity-75' : ''}>
+              {renderInline(taskMatch[2], `li-${key}-${index}`)}
+            </span>
+          </li>
+        );
+      }
+      return (
+        <li key={`li-${key}-${index}`} className="my-0.5 pl-0.5">
+          {renderInline(item, `li-${key}-${index}`)}
+        </li>
+      );
+    });
+    blocks.push(
+      listOrdered ? (
+        <ol key={`ol-${key++}`} className="my-1.5 list-decimal space-y-0.5 pl-5">
+          {items}
+        </ol>
+      ) : (
+        <ul key={`ul-${key++}`} className="my-1.5 list-disc space-y-0.5 pl-5">
+          {items}
+        </ul>
+      )
+    );
+    listItems = [];
+  };
+
+  const flushQuote = () => {
+    if (quoteLines.length === 0) return;
+    const firstLine = quoteLines[0].trim();
+    const alertMatch = firstLine.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i);
+    if (alertMatch) {
+      const type = alertMatch[1].toUpperCase();
+      const firstLineContent = firstLine.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/i, '');
+      const restLines = [...(firstLineContent ? [firstLineContent] : []), ...quoteLines.slice(1)].filter(
+        Boolean
+      );
+
+      const alertConfigs: Record<
+        string,
+        { border: string; bg: string; title: string; color: string; icon: React.ReactNode }
+      > = {
+        NOTE: {
+          border: 'evren-kod-border-brand',
+          bg: 'evren-kod-bg-brand-soft',
+          title: 'Not',
+          color: 'evren-kod-text-brand',
+          icon: <Info className="evren-kod-icon-sm shrink-0" />
+        },
+        TIP: {
+          border: 'evren-kod-border-success',
+          bg: 'evren-kod-bg-success',
+          title: 'Tip',
+          color: 'evren-kod-text-success',
+          icon: <Lightbulb className="evren-kod-icon-sm shrink-0" />
+        },
+        IMPORTANT: {
+          border: 'evren-kod-border-info',
+          bg: 'evren-kod-bg-info',
+          title: 'Important',
+          color: 'evren-kod-text-info',
+          icon: <AlertCircle className="evren-kod-icon-sm shrink-0" />
+        },
+        WARNING: {
+          border: 'evren-kod-border-warning',
+          bg: 'evren-kod-bg-warning',
+          title: 'Warning',
+          color: 'evren-kod-text-warning',
+          icon: <AlertTriangle className="evren-kod-icon-sm shrink-0" />
+        },
+        CAUTION: {
+          border: 'evren-kod-border-error',
+          bg: 'evren-kod-bg-error',
+          title: 'Dikkat',
+          color: 'evren-kod-text-error',
+          icon: <ShieldAlert className="evren-kod-icon-sm shrink-0" />
+        }
+      };
+
+      const cfg = alertConfigs[type] || alertConfigs.NOTE;
+      blocks.push(
+        <div
+          key={`alert-${key++}`}
+          className={`my-2 rounded-md border-l-4 ${cfg.border} ${cfg.bg} p-2.5 text-sm`}
+        >
+          <div className={`mb-1 flex items-center gap-1.5 font-semibold ${cfg.color}`}>
+            {cfg.icon}
+            <span>{cfg.title}</span>
+          </div>
+          <div className="space-y-1 evren-kod-text-fg leading-relaxed">
+            {renderInline(restLines.join('\n'), `alert-${key}`)}
+          </div>
+        </div>
+      );
+      quoteLines = [];
+      return;
+    }
+
+    blocks.push(
+      <blockquote
+        key={`q-${key++}`}
+        className="my-2 border-l-2 evren-kod-border-brand bg-[var(--vscode-textBlockQuote-background,transparent)] px-2.5 py-1 evren-kod-text-muted"
+      >
+        {renderInline(quoteLines.join('\n'), `q-${key}`)}
+      </blockquote>
+    );
+    quoteLines = [];
+  };
+
+  const flushTable = () => {
+    if (tableLines.length < 2) {
+      if (tableLines.length === 1) {
+        paragraph.push(tableLines[0]);
+      }
+      tableLines = [];
+      return;
+    }
+
+    const parseRow = (line: string): string[] => {
+      const trimmed = line.trim();
+      const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+      return inner.split('|').map((s) => s.trim());
+    };
+
+    const headerRow = parseRow(tableLines[0]);
+    const delimiterRow = parseRow(tableLines[1]);
+
+    const isDelimiter = delimiterRow.length > 0 && delimiterRow.every((c) => /^:?-+:?$/.test(c));
+    if (!isDelimiter) {
+      paragraph.push(...tableLines);
+      tableLines = [];
+      return;
+    }
+
+    const alignments = delimiterRow.map((cell) => {
+      if (cell.startsWith(':') && cell.endsWith(':')) return 'center';
+      if (cell.endsWith(':')) return 'right';
+      return 'left';
+    });
+
+    const dataRows = tableLines.slice(2).map(parseRow);
+
+    const getAlignClass = (align?: string) =>
+      align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+
+    blocks.push(
+      <div
+        key={`table-wrapper-${key++}`}
+        className="my-2 overflow-x-auto rounded border evren-kod-border-surface"
+      >
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="border-b evren-kod-border-surface evren-kod-bg-section">
+            <tr>
+              {headerRow.map((col, idx) => (
+                <th
+                  key={`th-${idx}`}
+                  className={`px-2.5 py-1.5 font-semibold evren-kod-text-fg ${getAlignClass(alignments[idx])}`}
+                >
+                  {renderInline(col, `th-${key}-${idx}`)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--vscode-editorWidget-border)]">
+            {dataRows.map((row, rIdx) => (
+              <tr
+                key={`tr-${rIdx}`}
+                className="hover:bg-[var(--vscode-list-hoverBackground,transparent)] transition"
+              >
+                {headerRow.map((_, cIdx) => (
+                  <td
+                    key={`td-${rIdx}-${cIdx}`}
+                    className={`px-2.5 py-1 evren-kod-text-fg ${getAlignClass(alignments[cIdx])}`}
+                  >
+                    {renderInline(row[cIdx] || '', `td-${key}-${rIdx}-${cIdx}`)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableLines = [];
+  };
+
+  const flushAll = () => {
+    flushParagraph();
+    flushList();
+    flushQuote();
+    flushTable();
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Katlanabilir details/summary bloklarını algıla.
+    if (/^\s*<details>/i.test(line)) {
+      flushAll();
+      let summaryText = 'Detaylar';
+      const bodyLines: string[] = [];
+      i++;
+      while (i < lines.length && !/<\/details>/i.test(lines[i])) {
+        const sumMatch = lines[i].match(/<summary>(.*?)<\/summary>/i);
+        if (sumMatch) {
+          summaryText = sumMatch[1];
+        } else {
+          bodyLines.push(lines[i]);
+        }
+        i++;
+      }
+      blocks.push(
+        <details
+          key={`details-${key++}`}
+          className="my-2 rounded-md border evren-kod-border-surface evren-kod-bg-base p-2 group"
+        >
+          <summary className="cursor-pointer font-medium evren-kod-text-fg select-none text-sm flex items-center gap-1.5 transition hover:text-[var(--evren-kod-brand-400)]">
+            <ChevronDown className="evren-kod-icon-xs shrink-0 transition-transform group-open:rotate-180" />
+            <span>{renderInline(summaryText, `summary-${key}`)}</span>
+          </summary>
+          <div className="mt-2 border-t evren-kod-border-surface pt-2 space-y-1">
+            {renderMarkdownBlocks(bodyLines.join('\n'))}
+          </div>
+        </details>
+      );
+      i++;
+      continue;
+    }
+
+    // Markdown tablo satırlarını algıla (| ile başlayan veya içeren satırlar).
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      tableLines.push(line);
+      i++;
+      continue;
+    } else if (tableLines.length > 0) {
+      flushTable();
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushAll();
+      const level = Math.min(6, Math.max(1, heading[1].length));
+      // Görsel ağırlık derinlikle azalır; anlamsal seviyeyle uyumlu.
+      const sizeClass =
+        level === 1
+          ? 'evren-kod-md-h1'
+          : level === 2
+            ? 'evren-kod-md-h2'
+            : level === 3
+              ? 'evren-kod-md-h3'
+              : level === 4
+                ? 'evren-kod-md-h4'
+                : level === 5
+                  ? 'evren-kod-md-h5'
+                  : 'evren-kod-md-h6';
+      const HeadingTag = `h${level}` as keyof React.JSX.IntrinsicElements;
+      blocks.push(
+        <HeadingTag key={`h-${key++}`} className={sizeClass}>
+          {renderInline(heading[2], `h-${key}`)}
+        </HeadingTag>
+      );
+      i++;
+      continue;
+    }
+
+    if (/^\s*([-*_])\1{2,}\s*$/.test(line)) {
+      flushAll();
+      blocks.push(<hr key={`hr-${key++}`} className="my-2.5 evren-kod-border-surface" />);
+      i++;
+      continue;
+    }
+
+    const unordered = line.match(/^\s*[-*+]\s+(.*)$/);
+    const ordered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (unordered || ordered) {
+      flushParagraph();
+      flushQuote();
+      const isOrdered = Boolean(ordered);
+      if (listItems.length > 0 && listOrdered !== isOrdered) {
+        flushList();
+      }
+      listOrdered = isOrdered;
+      listItems.push((unordered || ordered)![1]);
+      i++;
+      continue;
+    }
+
+    if (/^\s*>\s?/.test(line)) {
+      flushParagraph();
+      flushList();
+      quoteLines.push(line.replace(/^\s*>\s?/, ''));
+      i++;
+      continue;
+    }
+
+    if (!line.trim()) {
+      flushAll();
+      i++;
+      continue;
+    }
+
+    flushList();
+    flushQuote();
+    paragraph.push(line);
+    i++;
+  }
+
+  flushAll();
+  return blocks;
+}

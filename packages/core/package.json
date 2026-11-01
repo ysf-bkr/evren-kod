@@ -1,0 +1,11 @@
+{
+  "name": "@evren-kod/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evren motoru: sağlayıcılar, araçlar, izinler, bağlam, bilgi tabanı — VS Code'dan bağımsız.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

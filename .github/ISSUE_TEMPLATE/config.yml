@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Güvenlik Açığı Bildirimi
+    url: https://github.com/ysf-bkr/evren-kod/security/advisories/new
+    about: Lütfen güvenlik açıklarını herkese açık sorun yerine özel kanaldan bildirin.
+  - name: Soru veya Tartışma
+    url: https://github.com/ysf-bkr/evren-kod/discussions
+    about: Kullanım soruları sorun ve fikirlerinizi paylaşın.

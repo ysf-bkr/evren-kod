@@ -1,0 +1,14 @@
+{
+  "name": "@evren-kod/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evren terminal ajanı: tek dosyalık `evren-kod` komutu (ağırlıksız ReAct döngüsü).",
+  "main": "./src/index.ts",
+  "bin": {
+    "evren-kod": "./dist/cli.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "node ../../scripts/build-cli.mjs"
+  }
+}

@@ -1,0 +1,1871 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+ * Evren webview — tek stil dosyası.
+ * Tüm renk, boyut, aralık ve bileşen biçimleri yalnızca burada tanımlanır.
+ * Bileşenler (components/ui/*) bu sınıfları birleştirir; JSX içinde ham renk,
+ * px değeri veya tekrar eden uzun yardımcı sınıf dizisi bulunmamalıdır.
+ *
+ * Bölümler: 1) Jetonlar  2) Taban  3) Tipografi  4) Yerleşim  5) Yüzeyler
+ *           6) Formlar  7) Düğmeler  8) Gezinme  9) Başlık  10) Sohbet
+ *           11) Katmanlar  12) Duyarlılık (responsive)
+ * ========================================================================== */
+
+/* ---- 1) Jetonlar ---------------------------------------------------------- */
+:root {
+  color-scheme: light dark;
+  font-size: var(--vscode-font-size, 13px);
+
+  /*
+   * rem, em değil: webview kök yazı boyutu kullanıcının VS Code yazı boyutudur;
+   * iç içe `em` değerleri çarpılıp metni editör boyutundan uzaklaştırırdı.
+   */
+  --evren-kod-text-2xs: 0.82rem;
+  --evren-kod-text-xs: 0.88rem;
+  --evren-kod-text-sm: 0.96rem;
+  --evren-kod-text-md: 1rem;
+  --evren-kod-text-lg: 1.18rem;
+  --evren-kod-text-xl: 1.35rem;
+
+  --evren-kod-radius-sm: 3px;
+  --evren-kod-radius-md: 5px;
+  --evren-kod-radius-lg: 8px;
+  --evren-kod-radius-full: 999px;
+
+  /* Aralık ölçeği (4px tabanlı) */
+  --evren-kod-space-1: 4px;
+  --evren-kod-space-2: 6px;
+  --evren-kod-space-3: 8px;
+  --evren-kod-space-4: 12px;
+  --evren-kod-space-5: 16px;
+  --evren-kod-space-6: 24px;
+
+  --evren-kod-control-height: 26px;
+  --evren-kod-control-height-lg: 30px;
+  --evren-kod-icon-size: 26px;
+  --evren-kod-icon-size-sm: 22px;
+
+  /* Avatar ölçeği: sohbet, başlık ve tanıtım yuvarlakları aynı basamakları kullanır */
+  --evren-kod-avatar-xs: 20px;
+  --evren-kod-avatar-sm: 24px;
+  --evren-kod-avatar-md: 32px;
+  --evren-kod-avatar-lg: 40px;
+  --evren-kod-avatar-xl: 56px;
+
+  /*
+   * Simge ölçeği. Tüm lucide simgeleri bu beş boyuttan birini kullanır;
+   * böylece satır içi, düğme ve başlık simgeleri ekranlar arasında aynı kalır.
+   */
+  --evren-kod-icon-xs: 12px;
+  --evren-kod-icon-sm: 14px;
+  --evren-kod-icon-md: 16px;
+  --evren-kod-icon-lg: 20px;
+  --evren-kod-icon-xl: 24px;
+  --evren-kod-icon-2xl: 32px;
+
+  /* 4px ızgara: VS Code kabuk ölçüleri (bölüm başlığı 35px, Activity Bar 48px). */
+  --evren-kod-card-padding: 12px;
+  --evren-kod-section-gap: 16px;
+  --evren-kod-header-height: 35px;
+
+  /* Sayfa kenar boşluğu: VS Code kenar çubuğu ritmi (8px taban), geniş panelde 20px'e akar. */
+  --evren-kod-gutter: clamp(8px, 2.5vw, 20px);
+  /*
+   * Tek yatay boşluk ölçüsü: tüm ekran donatıları (başlıklar, mesaj listesi,
+   * besteci, ekran gövdeleri) bu tek token'ı kullanır. Ölçü VS Code kenar
+   * çubuğu aralık standardındadır (8–20px) ve panel genişliğiyle akışkan büyür;
+   * sabit içerik sütunu yoktur. Sol kenar her ekranda aynı çizgidedir.
+   */
+  --evren-kod-pad-inline: clamp(8px, 2.5vw, 20px);
+
+  --evren-kod-nav-rail: 48px;
+  --evren-kod-nav-wide: 12.5rem;
+
+  --evren-kod-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --evren-kod-fast: 0.14s;
+  --evren-kod-base: 0.2s;
+
+  --evren-kod-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --evren-kod-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.22);
+  --evren-kod-shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.38);
+
+  --evren-kod-surface: var(--vscode-editorWidget-background, rgba(128, 128, 128, 0.08));
+  --evren-kod-surface-border: var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.18));
+  --evren-kod-surface-subtle: color-mix(
+    in srgb,
+    var(--vscode-editorWidget-background, #2a2d2e) 60%,
+    transparent
+  );
+  --evren-kod-input-bg: var(--vscode-input-background, rgba(0, 0, 0, 0.2));
+  --evren-kod-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.28));
+  --evren-kod-input-fg: var(--vscode-input-foreground, inherit);
+  --evren-kod-muted-fg: var(--vscode-descriptionForeground, rgba(128, 128, 128, 0.9));
+  --evren-kod-fg: var(--vscode-foreground, #cccccc);
+  --evren-kod-border: var(--vscode-sideBar-border, rgba(128, 128, 128, 0.2));
+
+  /*
+   * Evren logo ve marka renk paleti:
+   * --primary: #0051F1 (Ana elektrik mavisi)
+   * --secondary: #0092FA (Canlı açık mavi)
+   * --accent: #0073F9 (Vurgu mavisi)
+   * --navy: #05123D (Derin gece laciverti)
+   * --background: #FFFFFF (Açık arka plan)
+   * --dark-background: #000000 (Koyu arka plan)
+   * --text-light: #E6EDF3 (Açık metin)
+   * --brand-gradient: linear-gradient(110deg, #0092FA, #0073F9, #0051F1, #003CCD)
+   *
+   * Marka renkleri yalnızca logo ve tanıtım yüzeylerinde kullanılır. Gezinti,
+   * bağlantı, odak ve birincil düğme renkleri kullanıcının VS Code temasından
+   * gelir; böylece kırmızı, yeşil ya da yüksek karşıtlıklı bir tema seçildiğinde
+   * arayüz maviye zorlanmaz.
+   */
+  --primary: #0051f1;
+  --secondary: #0092fa;
+  --accent: #0073f9;
+  --navy: #05123d;
+  --background: #ffffff;
+  --dark-background: #000000;
+  --text-light: #e6edf3;
+  --brand-gradient: linear-gradient(110deg, #0092fa, #0073f9, #0051f1, #003ccd);
+
+  --evren-kod-primary: var(--primary);
+  --evren-kod-secondary: var(--secondary);
+  --evren-kod-accent: var(--accent);
+  --evren-kod-navy: var(--navy);
+  --evren-kod-brand-gradient: var(--brand-gradient);
+  --evren-kod-gold: #f59e0b;
+  --evren-kod-gold-soft: rgba(245, 158, 11, 0.15);
+  --evren-kod-copper: #fb923c;
+  --evren-kod-surface-accent: rgba(0, 115, 249, 0.1);
+
+  --evren-kod-brand-700: var(--vscode-textLink-activeForeground, #003ccd);
+  --evren-kod-brand-600: var(--vscode-textLink-foreground, var(--primary));
+  --evren-kod-brand-500: var(--vscode-button-background, var(--accent));
+  --evren-kod-brand-400: var(--vscode-textLink-foreground, var(--secondary));
+  --evren-kod-brand-300: var(--vscode-textLink-activeForeground, #67bdfa);
+  --evren-kod-brand-soft: color-mix(in srgb, var(--evren-kod-brand-400) 14%, transparent);
+
+  --evren-kod-accent-bg: var(--vscode-button-background, var(--primary));
+  --evren-kod-accent-fg: var(--vscode-button-foreground, #ffffff);
+  --evren-kod-accent-hover: var(--vscode-button-hoverBackground, var(--evren-kod-brand-700));
+  --evren-kod-focus: var(--vscode-focusBorder, var(--secondary));
+  --evren-kod-hover-bg: var(--vscode-list-hoverBackground, rgba(0, 115, 249, 0.12));
+
+  /* Durum jetonları: VS Code tema değişkenlerine bağlı dinamik renkler */
+  --status-info-bg: color-mix(in srgb, var(--vscode-editorInfo-foreground, #38bdf8) 12%, transparent);
+  --status-info-fg: var(--vscode-editorInfo-foreground, #38bdf8);
+  --status-info-border: color-mix(in srgb, var(--vscode-editorInfo-foreground, #38bdf8) 25%, transparent);
+
+  --status-success-bg: color-mix(in srgb, var(--vscode-testing-iconPassed, #22c55e) 12%, transparent);
+  --status-success-fg: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen, #22c55e));
+  --status-success-border: color-mix(in srgb, var(--vscode-testing-iconPassed, #22c55e) 25%, transparent);
+
+  --status-warning-bg: color-mix(in srgb, var(--vscode-editorWarning-foreground, #f59e0b) 12%, transparent);
+  --status-warning-fg: var(--vscode-editorWarning-foreground, var(--vscode-terminal-ansiYellow, #f59e0b));
+  --status-warning-border: color-mix(
+    in srgb,
+    var(--vscode-editorWarning-foreground, #f59e0b) 25%,
+    transparent
+  );
+
+  --status-error-bg: color-mix(in srgb, var(--vscode-errorForeground, #ef4444) 12%, transparent);
+  --status-error-fg: var(--vscode-errorForeground, var(--vscode-terminal-ansiRed, #ef4444));
+  --status-error-border: color-mix(in srgb, var(--vscode-errorForeground, #ef4444) 25%, transparent);
+}
+
+/* Açık tema: yalnızca gerçekten farklılaşan jetonlar yeniden tanımlanır.
+   Marka ve durum renkleri tema değişkenlerine bağlı olduğu için burada tekrarlanmaz. */
+body.vscode-light,
+.vscode-light {
+  --evren-kod-gold: #d97706;
+  --evren-kod-copper: #ea580c;
+
+  --evren-kod-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --evren-kod-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
+  --evren-kod-shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.2);
+
+  --status-info-bg: color-mix(in srgb, var(--vscode-editorInfo-foreground, #0284c7) 12%, transparent);
+  --status-info-fg: var(--vscode-editorInfo-foreground, #0284c7);
+  --status-info-border: color-mix(in srgb, var(--vscode-editorInfo-foreground, #0284c7) 25%, transparent);
+
+  --status-success-bg: color-mix(in srgb, var(--vscode-testing-iconPassed, #16a34a) 12%, transparent);
+  --status-success-fg: var(--vscode-testing-iconPassed, #16a34a);
+  --status-success-border: color-mix(in srgb, var(--vscode-testing-iconPassed, #16a34a) 25%, transparent);
+
+  --status-warning-bg: color-mix(in srgb, var(--vscode-editorWarning-foreground, #d97706) 12%, transparent);
+  --status-warning-fg: var(--vscode-editorWarning-foreground, #d97706);
+  --status-warning-border: color-mix(
+    in srgb,
+    var(--vscode-editorWarning-foreground, #d97706) 25%,
+    transparent
+  );
+
+  --status-error-bg: color-mix(in srgb, var(--vscode-errorForeground, #dc2626) 12%, transparent);
+  --status-error-fg: var(--vscode-errorForeground, #dc2626);
+  --status-error-border: color-mix(in srgb, var(--vscode-errorForeground, #dc2626) 25%, transparent);
+}
+
+/* Yüksek karşıtlık temaları: VS Code kontrast kurallarına tam uyum */
+body.vscode-high-contrast,
+.vscode-high-contrast,
+body.vscode-high-contrast-light,
+.vscode-high-contrast-light {
+  --evren-kod-surface-border: var(--vscode-contrastBorder, #ffffff);
+  --evren-kod-input-border: var(--vscode-contrastBorder, #ffffff);
+  --status-info-border: var(--vscode-contrastBorder, #ffffff);
+  --status-success-border: var(--vscode-contrastBorder, #ffffff);
+  --status-warning-border: var(--vscode-contrastBorder, #ffffff);
+  --status-error-border: var(--vscode-contrastBorder, #ffffff);
+}
+
+/* ---- 2) Taban ------------------------------------------------------------- */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(
+    --vscode-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  );
+  font-size: var(--vscode-font-size, 13px);
+  font-weight: var(--vscode-font-weight, 400);
+  line-height: 1.5;
+  background-color: var(--vscode-sideBar-background, var(--vscode-editor-background, #1e1e1e));
+  color: var(--vscode-sideBar-foreground, var(--vscode-foreground, #cccccc));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Form denetimleri kullanıcının VS Code yazı tipini devralır */
+input,
+textarea,
+select,
+button {
+  font-family: var(--vscode-font-family, inherit);
+  font-size: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Kod, terminal ve tek aralıklı öğeler editör yazı ayarlarına uyar */
+code,
+pre,
+kbd,
+samp,
+.font-mono {
+  font-family: var(
+    --vscode-user-editor-font-family,
+    var(--vscode-editor-font-family, 'SF Mono', Monaco, Menlo, Consolas, 'Courier New', monospace)
+  ) !important;
+}
+
+/* Satır içi kod parçaları kapsayıcı metnin boyutuna orantılı (0.9em) ölçeklenir */
+code:not(pre code) {
+  font-size: 0.9em;
+}
+
+/* Kod blokları ve terminal çıktıları editör yazı tipi boyutuna uyar */
+pre,
+pre code {
+  font-family: var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace)) !important;
+  font-size: var(--vscode-user-editor-font-size, var(--vscode-editor-font-size, 0.92em));
+  font-weight: var(--vscode-user-editor-font-weight, var(--vscode-editor-font-weight, normal));
+}
+
+pre,
+.terminal-output {
+  font-family: var(
+    --vscode-user-terminal-font-family,
+    var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace))
+  ) !important;
+  font-size: var(--vscode-user-terminal-font-size, var(--vscode-editor-font-size, 0.9em));
+}
+
+::selection {
+  background: var(--vscode-editor-selectionBackground, rgba(56, 189, 248, 0.3));
+}
+
+/* Klavye odağı her etkileşimli öğede aynı, görünür halka ile gösterilir */
+:focus-visible {
+  outline: 2px solid var(--evren-kod-focus);
+  outline-offset: 1px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: -1px;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.25));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.4));
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground, rgba(128, 128, 128, 0.6));
+}
+
+/* Hareket azaltma tercihi olan kullanıcılar için animasyonlar kapatılır */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Uzun sohbetlerde görünüm dışındaki mesajların çizim maliyetini azaltır */
+.evren-kod-message {
+  content-visibility: auto;
+  contain-intrinsic-size: 96px;
+}
+
+@keyframes evren-kod-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.evren-kod-animate-in {
+  animation: evren-kod-fade-in 0.18s ease-out;
+}
+
+/* Sohbet balonu: kullanıcı ve asistan aynı yarıçap, dolgu ve metin ölçeğini paylaşır */
+.evren-kod-bubble {
+  max-width: 94%;
+  padding: var(--evren-kod-space-2) var(--evren-kod-space-4);
+  border: 1px solid var(--evren-kod-surface-border);
+  border-radius: var(--evren-kod-radius-lg);
+  border-top-left-radius: var(--evren-kod-radius-sm);
+  background-color: var(--vscode-editorWidget-background, var(--evren-kod-surface));
+  font-size: var(--evren-kod-text-md);
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.evren-kod-bubble--user {
+  /* Balon geniş ekranda (yardımcı panel) tüm genişliğe yayılmasın: okuma
+   * sütunu kadar kalır ve sağa yaslanır. */
+  margin-left: auto;
+  max-width: min(94%, 42rem);
+  border-top-left-radius: var(--evren-kod-radius-lg);
+  border-top-right-radius: var(--evren-kod-radius-sm);
+  /* Kullanıcı balonu temanın vurgu rengini tonlar; sabit marka mavisi kullanmaz. */
+  background-color: color-mix(in srgb, var(--evren-kod-accent-bg) 16%, transparent);
+  border-color: color-mix(in srgb, var(--evren-kod-accent-bg) 34%, transparent);
+  box-shadow: var(--evren-kod-shadow-sm);
+}
+
+/*
+ * Asistan içeriği tur kartının AKINDA akar: kart zaten çerçeve ve zemin
+ * verdiğinden iç balon tekrar kutulanmaz; çift çerçeveli, sıkışık görünüm
+ * böylece ortadan kalkar.
+ */
+.evren-kod-bubble--flush {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* Yanıt turu kartı: solundaki ince marka şeridi "bu yanıt Evren'dan" der. */
+.evren-kod-turn-card {
+  overflow: hidden;
+  border-left: 2px solid color-mix(in srgb, var(--evren-kod-brand-400) 60%, transparent);
+  box-shadow: var(--evren-kod-shadow-sm);
+}
+
+.evren-kod-turn-card__header {
+  transition: background-color 0.12s ease;
+}
+
+.evren-kod-turn-card__header:hover {
+  background-color: var(--evren-kod-hover-bg);
+}
+
+/* Aynı turdaki art arda asistan mesajlarının sınırı ince kesikli çizgiyle
+ * seçilir; kutulamadan ayrışır. */
+.evren-kod-turn-msg + .evren-kod-turn-msg {
+  border-top: 1px dashed var(--evren-kod-surface-border);
+  padding-top: var(--evren-kod-space-2);
+}
+
+/* Asistan/logo yuvarlağı; eskiden tanımsız kaldığı için çerçevesiz görünüyordu. */
+.evren-kod-avatar-soft {
+  border-color: color-mix(in srgb, var(--evren-kod-brand-400) 38%, transparent);
+  background-color: var(--evren-kod-brand-soft);
+}
+
+/* Yuvarlak simge/logo kabı: boyut yalnızca bu ölçekten seçilir. */
+.evren-kod-avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--evren-kod-surface-border);
+  border-radius: var(--evren-kod-radius-full);
+}
+
+.evren-kod-avatar--xs {
+  width: var(--evren-kod-avatar-xs);
+  height: var(--evren-kod-avatar-xs);
+}
+
+.evren-kod-avatar--sm {
+  width: var(--evren-kod-avatar-sm);
+  height: var(--evren-kod-avatar-sm);
+}
+
+.evren-kod-avatar--lg {
+  width: var(--evren-kod-avatar-lg);
+  height: var(--evren-kod-avatar-lg);
+}
+
+.evren-kod-avatar--xl {
+  width: var(--evren-kod-avatar-xl);
+  height: var(--evren-kod-avatar-xl);
+  border-radius: var(--evren-kod-radius-lg);
+}
+
+.evren-kod-question-card {
+  border-color: color-mix(in srgb, var(--evren-kod-brand-400) 45%, transparent);
+}
+
+.evren-kod-badge-soft {
+  background-color: color-mix(in srgb, var(--evren-kod-brand-500) 18%, transparent);
+}
+
+.evren-kod-soft-card {
+  background-color: var(--evren-kod-surface-subtle);
+}
+
+/* ==========================================================================
+ * Bileşen katmanı
+ * ========================================================================== */
+@layer components {
+  /* ---- 3a) Simge ve renk yardımcıları ----------------------------------
+   * Bileşenler ham `var(--...)` dizileri yerine bu anlamsal sınıfları kullanır.
+   * Simge boyutu böylece tek ölçekten (--evren-kod-icon-*) yönetilir.
+   */
+  .evren-kod-icon-xs,
+  .evren-kod-icon-sm,
+  .evren-kod-icon-md,
+  .evren-kod-icon-lg,
+  .evren-kod-icon-2xl {
+    flex-shrink: 0;
+  }
+
+  .evren-kod-icon-xs {
+    width: var(--evren-kod-icon-xs);
+    height: var(--evren-kod-icon-xs);
+  }
+
+  .evren-kod-icon-sm {
+    width: var(--evren-kod-icon-sm);
+    height: var(--evren-kod-icon-sm);
+  }
+
+  .evren-kod-icon-md {
+    width: var(--evren-kod-icon-md);
+    height: var(--evren-kod-icon-md);
+  }
+
+  .evren-kod-icon-lg {
+    width: var(--evren-kod-icon-lg);
+    height: var(--evren-kod-icon-lg);
+  }
+
+  .evren-kod-icon-2xl {
+    width: var(--evren-kod-icon-2xl);
+    height: var(--evren-kod-icon-2xl);
+  }
+
+  .evren-kod-text-fg {
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-text-muted {
+    color: var(--evren-kod-muted-fg);
+  }
+
+  .evren-kod-text-brand {
+    color: var(--evren-kod-brand-400);
+  }
+
+  .evren-kod-text-info {
+    color: var(--status-info-fg);
+  }
+
+  .evren-kod-text-success {
+    color: var(--status-success-fg);
+  }
+
+  .evren-kod-text-warning {
+    color: var(--status-warning-fg);
+  }
+
+  .evren-kod-text-error {
+    color: var(--status-error-fg);
+  }
+
+  .evren-kod-text-on-accent {
+    color: var(--evren-kod-accent-fg);
+  }
+
+  .evren-kod-bg-base {
+    background-color: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  }
+
+  .evren-kod-bg-raised {
+    background-color: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+  }
+
+  .evren-kod-bg-section {
+    background-color: var(--vscode-sideBarSectionHeader-background, var(--vscode-sideBar-background));
+  }
+
+  .evren-kod-bg-surface {
+    background-color: var(--evren-kod-surface);
+  }
+
+  .evren-kod-bg-input {
+    background-color: var(--evren-kod-input-bg);
+  }
+
+  .evren-kod-bg-brand-soft {
+    background-color: var(--evren-kod-brand-soft);
+  }
+
+  .evren-kod-bg-muted {
+    background-color: var(--vscode-disabledForeground, var(--evren-kod-muted-fg));
+  }
+
+  .evren-kod-bg-hover {
+    background-color: var(--evren-kod-hover-bg);
+  }
+
+  .evren-kod-bg-code {
+    background-color: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.3));
+  }
+
+  .evren-kod-bg-focus {
+    background-color: var(--evren-kod-focus);
+  }
+
+  .evren-kod-bg-brand {
+    background-color: var(--evren-kod-brand-400);
+  }
+
+  .evren-kod-bg-track {
+    background-color: var(--evren-kod-surface-border);
+  }
+
+  .evren-kod-bg-badge {
+    background-color: var(--vscode-badge-background, var(--evren-kod-brand-soft));
+    color: var(--vscode-badge-foreground, var(--evren-kod-fg));
+  }
+
+  .evren-kod-shadow-sm {
+    box-shadow: var(--evren-kod-shadow-sm);
+  }
+
+  .evren-kod-shadow-lg {
+    box-shadow: var(--evren-kod-shadow-lg);
+  }
+
+  .evren-kod-border-base {
+    border-color: var(--evren-kod-border);
+  }
+
+  .evren-kod-border-surface {
+    border-color: var(--evren-kod-surface-border);
+  }
+
+  .evren-kod-border-brand {
+    border-color: var(--evren-kod-brand-400);
+  }
+
+  .evren-kod-bg-info {
+    background-color: var(--status-info-bg);
+  }
+
+  .evren-kod-bg-success {
+    background-color: var(--status-success-bg);
+  }
+
+  .evren-kod-bg-warning {
+    background-color: var(--status-warning-bg);
+  }
+
+  .evren-kod-bg-error {
+    background-color: var(--status-error-bg);
+  }
+
+  .evren-kod-bg-error-solid {
+    background-color: var(--status-error-fg);
+  }
+
+  .evren-kod-bg-success-solid {
+    background-color: var(--status-success-fg);
+  }
+
+  .evren-kod-bg-accent {
+    background-color: var(--evren-kod-accent-bg);
+  }
+
+  .evren-kod-border-info {
+    border-color: var(--status-info-border);
+  }
+
+  .evren-kod-border-success {
+    border-color: var(--status-success-border);
+  }
+
+  .evren-kod-border-warning {
+    border-color: var(--status-warning-border);
+  }
+
+  .evren-kod-border-error {
+    border-color: var(--status-error-border);
+  }
+
+  /* İnce ayırıcı: yatay bölüm çizgisi ya da dikey araç çubuğu çizgisi */
+  .evren-kod-divider {
+    width: 100%;
+    height: 1px;
+    border: 0;
+    background-color: var(--evren-kod-border);
+  }
+
+  .evren-kod-divider--vertical {
+    width: 1px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  /* ---- 3) Tipografi ---- */
+  .evren-kod-heading {
+    font-size: var(--evren-kod-text-md);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-title {
+    font-size: var(--evren-kod-text-sm);
+    font-weight: 600;
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-label {
+    display: block;
+    font-size: var(--evren-kod-text-xs);
+    font-weight: 500;
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-caption,
+  .evren-kod-hint {
+    font-size: var(--evren-kod-text-2xs);
+    line-height: 1.5;
+    color: var(--evren-kod-muted-fg);
+  }
+
+  .evren-kod-error-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: var(--evren-kod-text-2xs);
+    line-height: 1.5;
+    color: var(--status-error-fg);
+  }
+
+  .evren-kod-overline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--evren-kod-text-2xs);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--evren-kod-muted-fg);
+  }
+
+  .evren-kod-inline {
+    font-family: var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace));
+    font-size: 0.9em;
+    padding: 1px var(--evren-kod-space-1);
+    border-radius: var(--evren-kod-radius-sm);
+    background-color: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.3));
+  }
+
+  /* Sohbet gövdesi: birincil okuma metni tek bir ölçekten gelir */
+  .evren-kod-prose {
+    font-size: var(--evren-kod-text-md);
+    line-height: 1.6;
+    color: var(--evren-kod-fg);
+    overflow-wrap: break-word;
+  }
+
+  /* Markdown başlıkları: seviye arttıkça ağırlık ve boyut kademeli azalır */
+  .evren-kod-md-h1,
+  .evren-kod-md-h2,
+  .evren-kod-md-h3,
+  .evren-kod-md-h4,
+  .evren-kod-md-h5,
+  .evren-kod-md-h6 {
+    color: var(--evren-kod-fg);
+    line-height: 1.3;
+  }
+
+  .evren-kod-md-h1 {
+    margin: var(--evren-kod-space-5) 0 var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-lg);
+    font-weight: 700;
+  }
+
+  .evren-kod-md-h2 {
+    margin: var(--evren-kod-space-4) 0 var(--evren-kod-space-2);
+    font-size: var(--evren-kod-text-md);
+    font-weight: 600;
+  }
+
+  .evren-kod-md-h3,
+  .evren-kod-md-h4,
+  .evren-kod-md-h5,
+  .evren-kod-md-h6 {
+    margin: var(--evren-kod-space-4) 0 var(--evren-kod-space-1);
+    font-size: var(--evren-kod-text-sm);
+  }
+
+  .evren-kod-md-h3 {
+    font-weight: 600;
+  }
+
+  .evren-kod-md-h4,
+  .evren-kod-md-h5,
+  .evren-kod-md-h6 {
+    font-weight: 600;
+  }
+
+  /* ---- 4) Yerleşim ---- */
+  .evren-kod-app {
+    position: relative;
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--vscode-sideBar-background);
+    color: var(--vscode-sideBar-foreground);
+  }
+
+  .evren-kod-app__body {
+    display: flex;
+    min-height: 0;
+    width: 100%;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .evren-kod-main {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .evren-kod-screen {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    background-color: var(--vscode-sideBar-background);
+    color: var(--vscode-sideBar-foreground);
+  }
+
+  /*
+   * Geniş ekranda içerik okunabilir bir sütunda ortalanır: kenar boşluğu
+   * max(gutter, (genişlik - azami genişlik) / 2) ile hesaplanır, ek kapsayıcı gerekmez.
+   */
+  .evren-kod-screen-body {
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow-y: auto;
+    padding: var(--evren-kod-space-3) var(--evren-kod-pad-inline) 28px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--evren-kod-section-gap);
+  }
+
+  .evren-kod-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--evren-kod-space-3);
+  }
+
+  .evren-kod-row {
+    display: flex;
+    align-items: center;
+    gap: var(--evren-kod-space-3);
+    min-width: 0;
+  }
+
+  .evren-kod-row--between {
+    justify-content: space-between;
+  }
+
+  .evren-kod-row--wrap {
+    flex-wrap: wrap;
+  }
+
+  .evren-kod-fill {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .evren-kod-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .evren-kod-screen-header {
+    width: 100%;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--evren-kod-space-3);
+    min-height: var(--evren-kod-header-height);
+    padding: var(--evren-kod-space-2) var(--evren-kod-pad-inline);
+    border-bottom: 1px solid var(--evren-kod-border);
+    background-color: var(--vscode-sideBarSectionHeader-background, var(--vscode-sideBar-background));
+  }
+
+  .evren-kod-screen-header__text {
+    min-width: 0;
+  }
+
+  .evren-kod-screen-header__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--evren-kod-space-1);
+  }
+
+  /* ---- 5) Yüzeyler ---- */
+  .evren-kod-card {
+    border: 1px solid var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-lg);
+    background-color: var(--evren-kod-surface);
+    padding: var(--evren-kod-card-padding);
+  }
+
+  .evren-kod-card--muted {
+    background-color: var(--evren-kod-surface-subtle);
+  }
+
+  .evren-kod-card--interactive {
+    text-align: left;
+    width: 100%;
+    transition:
+      border-color var(--evren-kod-fast) ease,
+      background-color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-card--interactive:hover {
+    border-color: var(--evren-kod-focus);
+  }
+
+  .evren-kod-card--active {
+    border-color: var(--evren-kod-focus);
+    background-color: var(--vscode-list-activeSelectionBackground, var(--evren-kod-surface));
+  }
+
+  /* Liste satırı kartı; anahtar satırıyla (toggle-row) aynı temel görünüm. */
+  .evren-kod-list-item,
+  .evren-kod-toggle-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--evren-kod-space-3);
+    padding: var(--evren-kod-space-3) var(--evren-kod-card-padding);
+    border: 1px solid var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-md);
+    background-color: var(--evren-kod-surface);
+    text-align: left;
+    transition:
+      border-color var(--evren-kod-fast) ease,
+      background-color var(--evren-kod-fast) ease,
+      transform var(--evren-kod-fast) ease;
+  }
+
+  button.evren-kod-list-item:hover {
+    border-color: var(--evren-kod-focus);
+    background-color: var(--evren-kod-hover-bg);
+  }
+
+  button.evren-kod-list-item:active {
+    transform: scale(0.995);
+  }
+
+  .evren-kod-list-item--active {
+    border-color: var(--evren-kod-focus);
+    background-color: var(--vscode-list-activeSelectionBackground, var(--evren-kod-surface));
+  }
+
+  /* Çerçevesiz satır: akordeon başlıkları ve açılır liste girdileri */
+  .evren-kod-list-item--flat {
+    border-color: transparent;
+    border-radius: var(--evren-kod-radius-sm);
+    background-color: transparent;
+    padding: var(--evren-kod-space-2) var(--evren-kod-space-3);
+  }
+
+  button.evren-kod-list-item--flat:hover {
+    border-color: transparent;
+    background-color: var(--evren-kod-hover-bg);
+  }
+
+  .evren-kod-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--evren-kod-space-3);
+    padding: var(--evren-kod-space-6) var(--evren-kod-space-5);
+    text-align: center;
+    border: 1px dashed var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-lg);
+  }
+
+  /* ---- Açılır bölüm (details/summary) ---- */
+  .evren-kod-disclosure {
+    border-radius: var(--evren-kod-radius-md);
+  }
+
+  .evren-kod-disclosure--card {
+    border: 1px solid var(--evren-kod-surface-border);
+    background-color: var(--evren-kod-surface-subtle);
+    padding: 0 var(--evren-kod-space-4);
+  }
+
+  .evren-kod-disclosure--dashed {
+    border: 1px dashed var(--evren-kod-surface-border);
+    background-color: var(--evren-kod-surface-subtle);
+    padding: 0 var(--evren-kod-space-4);
+  }
+
+  .evren-kod-disclosure__summary {
+    display: flex;
+    cursor: pointer;
+    list-style: none;
+    align-items: center;
+    gap: var(--evren-kod-space-2);
+    padding: var(--evren-kod-space-3) 0;
+    font-size: var(--evren-kod-text-xs);
+    font-weight: 500;
+    color: var(--evren-kod-muted-fg);
+    user-select: none;
+    transition: color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-disclosure__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .evren-kod-disclosure__summary:hover {
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-disclosure__chevron {
+    flex-shrink: 0;
+    transition: transform var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-disclosure[open] > .evren-kod-disclosure__summary .evren-kod-disclosure__chevron {
+    transform: rotate(90deg);
+  }
+
+  .evren-kod-disclosure__body {
+    padding-bottom: var(--evren-kod-space-3);
+  }
+
+  /* ---- 6) Formlar ---- */
+  .evren-kod-input,
+  .evren-kod-select,
+  .evren-kod-textarea {
+    width: 100%;
+    border: 1px solid var(--evren-kod-input-border);
+    border-radius: var(--evren-kod-radius-md);
+    background-color: var(--evren-kod-input-bg);
+    color: var(--evren-kod-input-fg);
+    padding: var(--evren-kod-space-2) var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-xs);
+    line-height: 1.45;
+    outline: none;
+    transition:
+      border-color var(--evren-kod-fast) ease,
+      box-shadow var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-input,
+  .evren-kod-select {
+    min-height: var(--evren-kod-control-height-lg);
+  }
+
+  .evren-kod-input:hover,
+  .evren-kod-select:hover,
+  .evren-kod-textarea:hover {
+    border-color: color-mix(in srgb, var(--evren-kod-focus) 45%, var(--evren-kod-input-border));
+  }
+
+  .evren-kod-input:focus,
+  .evren-kod-select:focus,
+  .evren-kod-textarea:focus {
+    border-color: var(--evren-kod-focus);
+    box-shadow: 0 0 0 1px var(--evren-kod-focus);
+  }
+
+  .evren-kod-input::placeholder,
+  .evren-kod-textarea::placeholder {
+    color: var(--vscode-input-placeholderForeground, rgba(128, 128, 128, 0.6));
+  }
+
+  .evren-kod-input:disabled,
+  .evren-kod-select:disabled,
+  .evren-kod-textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .evren-kod-input[aria-invalid='true'],
+  .evren-kod-select[aria-invalid='true'],
+  .evren-kod-textarea[aria-invalid='true'] {
+    border-color: var(--status-error-fg);
+  }
+
+  .evren-kod-input--mono,
+  .evren-kod-select--mono,
+  .evren-kod-textarea--mono {
+    font-family: var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace));
+    font-size: var(--evren-kod-text-xs);
+  }
+
+  .evren-kod-textarea {
+    resize: vertical;
+    min-height: 56px;
+  }
+
+  .evren-kod-textarea--fixed {
+    resize: none;
+  }
+
+  /* Mesaj kutusu: çerçeve kapsayıcıda olduğu için alanın kendisi çıplaktır */
+  .evren-kod-textarea--composer {
+    display: block;
+    max-height: 180px;
+    min-height: 56px;
+    resize: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: var(--evren-kod-space-4) var(--evren-kod-space-4) var(--evren-kod-space-2);
+    font-size: var(--evren-kod-text-sm);
+    line-height: 1.55;
+    box-shadow: none;
+  }
+
+  .evren-kod-textarea--composer:hover,
+  .evren-kod-textarea--composer:focus {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .evren-kod-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--evren-kod-space-1);
+  }
+
+  .evren-kod-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .evren-kod-input-group .evren-kod-input {
+    padding-right: 34px;
+  }
+
+  .evren-kod-input-group:has(.evren-kod-input-group__action > div) .evren-kod-input {
+    padding-right: 110px;
+  }
+
+  .evren-kod-input-group--leading .evren-kod-input {
+    padding-left: 30px;
+  }
+
+  .evren-kod-input-group__action {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .evren-kod-input-group__icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    display: flex;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--evren-kod-muted-fg);
+  }
+
+  /* Arama alanındaki tarayıcı çarpısı kendi temizleme düğmemizle çakışmasın */
+  .evren-kod-input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  /* Onay kutusu */
+  .evren-kod-check {
+    display: inline-flex;
+    cursor: pointer;
+    align-items: flex-start;
+    gap: var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-xs);
+    line-height: 1.45;
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-check--disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .evren-kod-check__box {
+    appearance: none;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin: 1px 0 0;
+    border: 1px solid var(--evren-kod-input-border);
+    border-radius: var(--evren-kod-radius-sm);
+    background-color: var(--evren-kod-input-bg);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 12px;
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      border-color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-check__box:hover:not(:disabled) {
+    border-color: var(--evren-kod-focus);
+  }
+
+  .evren-kod-check__box:checked {
+    border-color: var(--evren-kod-accent-bg);
+    background-color: var(--evren-kod-accent-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  }
+
+  /* ---- 7) Düğmeler ---- */
+  .evren-kod-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--evren-kod-control-height);
+    border: 1px solid transparent;
+    border-radius: var(--evren-kod-radius-md);
+    font-size: var(--evren-kod-text-xs);
+    font-weight: 500;
+    line-height: 1;
+    padding: var(--evren-kod-space-2) var(--evren-kod-space-4);
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      border-color var(--evren-kod-fast) ease,
+      color var(--evren-kod-fast) ease,
+      transform var(--evren-kod-fast) ease;
+    white-space: nowrap;
+  }
+
+  .evren-kod-btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .evren-kod-btn:disabled {
+    opacity: 0.4;
+  }
+
+  .evren-kod-btn--primary {
+    background-color: var(--evren-kod-accent-bg);
+    color: var(--evren-kod-accent-fg);
+    box-shadow: var(--evren-kod-shadow-sm);
+  }
+
+  .evren-kod-btn--primary:hover:not(:disabled) {
+    background-color: var(--evren-kod-accent-hover);
+  }
+
+  .evren-kod-btn--secondary {
+    border-color: var(--evren-kod-input-border);
+    color: var(--evren-kod-fg);
+    background-color: transparent;
+  }
+
+  .evren-kod-btn--secondary:hover:not(:disabled) {
+    background-color: var(--evren-kod-hover-bg);
+    border-color: var(--evren-kod-muted-fg);
+  }
+
+  .evren-kod-btn--ghost {
+    color: var(--evren-kod-muted-fg);
+    background-color: transparent;
+  }
+
+  .evren-kod-btn--ghost:hover:not(:disabled) {
+    background-color: var(--evren-kod-hover-bg);
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-btn--danger {
+    color: var(--status-error-fg);
+    border-color: var(--evren-kod-input-border);
+    background-color: transparent;
+  }
+
+  .evren-kod-btn--danger:hover:not(:disabled) {
+    background-color: var(--status-error-bg);
+    border-color: var(--status-error-border);
+  }
+
+  .evren-kod-btn--xs {
+    min-height: 22px;
+    padding: var(--evren-kod-space-1) var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-2xs);
+  }
+
+  .evren-kod-btn--block {
+    width: 100%;
+  }
+
+  .evren-kod-btn--start {
+    justify-content: flex-start;
+  }
+
+  .evren-kod-btn--square {
+    height: var(--evren-kod-control-height-lg);
+    width: var(--evren-kod-control-height-lg);
+    padding: 0;
+  }
+
+  .evren-kod-btn--square-sm {
+    height: var(--evren-kod-icon-size);
+    width: var(--evren-kod-icon-size);
+    min-height: 0;
+    padding: 0;
+    border-radius: var(--evren-kod-radius-md);
+  }
+
+  .evren-kod-btn--stop {
+    background-color: var(--status-error-fg);
+    color: #ffffff;
+  }
+
+  .evren-kod-btn--stop:hover:not(:disabled) {
+    opacity: 0.9;
+    background-color: var(--status-error-fg);
+  }
+
+  .evren-kod-icon-btn {
+    display: inline-flex;
+    height: var(--evren-kod-icon-size);
+    width: var(--evren-kod-icon-size);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--evren-kod-radius-md);
+    color: var(--evren-kod-muted-fg);
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-icon-btn:hover:not(:disabled) {
+    background-color: var(--vscode-toolbar-hoverBackground, var(--evren-kod-hover-bg));
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-icon-btn:disabled {
+    opacity: 0.4;
+  }
+
+  .evren-kod-icon-btn--sm {
+    height: var(--evren-kod-icon-size-sm);
+    width: var(--evren-kod-icon-size-sm);
+  }
+
+  .evren-kod-icon-btn--active {
+    background-color: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.2));
+    color: var(--evren-kod-fg);
+  }
+
+  /* Metin gibi görünen düğme (e-posta, dosya yolu) */
+  .evren-kod-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--evren-kod-brand-400);
+    text-underline-offset: 3px;
+  }
+
+  .evren-kod-link:hover {
+    text-decoration: underline;
+  }
+
+  .evren-kod-link--plain {
+    color: inherit;
+  }
+
+  /* Seçilebilir hap: filtre ve sıralama */
+  .evren-kod-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    padding: var(--evren-kod-space-1) var(--evren-kod-space-3);
+    border: 1px solid var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-full);
+    background-color: var(--evren-kod-surface);
+    font-size: var(--evren-kod-text-2xs);
+    font-weight: 500;
+    line-height: 1;
+    color: var(--evren-kod-muted-fg);
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      border-color var(--evren-kod-fast) ease,
+      color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-chip:hover {
+    border-color: var(--evren-kod-brand-400);
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-chip--active {
+    border-color: var(--evren-kod-accent-bg);
+    background-color: var(--evren-kod-accent-bg);
+    color: var(--evren-kod-accent-fg);
+  }
+
+  .evren-kod-chip--active:hover {
+    color: var(--evren-kod-accent-fg);
+  }
+
+  .evren-kod-chip__count {
+    font-family: var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace));
+    font-size: var(--evren-kod-text-2xs);
+    opacity: 0.75;
+  }
+
+  /* Bölümlü denetim */
+  .evren-kod-segmented {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-md);
+    background-color: var(--evren-kod-surface);
+    padding: 2px;
+  }
+
+  .evren-kod-segmented__item {
+    display: flex;
+    align-items: center;
+    gap: var(--evren-kod-space-1);
+    border-radius: 6px;
+    padding: var(--evren-kod-space-1) var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-xs);
+    font-weight: 500;
+    color: var(--evren-kod-muted-fg);
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-segmented__item:hover:not(:disabled) {
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-segmented__item--active,
+  .evren-kod-segmented__item--active:hover:not(:disabled) {
+    background-color: var(--evren-kod-accent-bg);
+    color: var(--evren-kod-accent-fg);
+  }
+
+  .evren-kod-segmented__item:disabled {
+    opacity: 0.4;
+  }
+
+  /* Anahtar satırı temel görünümü .evren-kod-list-item ile paylaşır; yalnız hover'ı özeldir. */
+  .evren-kod-toggle-row:hover {
+    border-color: var(--evren-kod-focus);
+  }
+
+  .evren-kod-toggle-row__icon {
+    display: flex;
+    height: 26px;
+    width: 26px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--evren-kod-radius-md);
+    background-color: var(--vscode-sideBar-background);
+  }
+
+  .evren-kod-switch {
+    position: relative;
+    height: 18px;
+    width: 32px;
+    flex-shrink: 0;
+    border-radius: var(--evren-kod-radius-full);
+    background-color: var(--vscode-disabledForeground, #6b7280);
+    transition: background-color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-switch--on {
+    background-color: var(--evren-kod-accent-bg);
+  }
+
+  .evren-kod-switch__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: 14px;
+    width: 14px;
+    border-radius: var(--evren-kod-radius-full);
+    background-color: #fff;
+    box-shadow: var(--evren-kod-shadow-sm);
+    transition: left var(--evren-kod-fast) var(--evren-kod-ease);
+  }
+
+  .evren-kod-switch--on .evren-kod-switch__thumb {
+    left: 16px;
+  }
+
+  /* Rozet */
+  .evren-kod-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: var(--evren-kod-radius-full);
+    padding: 1px var(--evren-kod-space-3);
+    font-size: var(--evren-kod-text-2xs);
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .evren-kod-badge--neutral {
+    border-color: var(--evren-kod-surface-border);
+    background-color: var(--evren-kod-surface);
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-badge--muted {
+    background-color: var(--evren-kod-surface-subtle);
+    color: var(--evren-kod-muted-fg);
+  }
+
+  .evren-kod-badge--brand {
+    background-color: var(--evren-kod-accent-bg);
+    color: var(--evren-kod-accent-fg);
+  }
+
+  .evren-kod-badge--info {
+    border-color: var(--status-info-border);
+    background-color: var(--status-info-bg);
+    color: var(--status-info-fg);
+  }
+
+  .evren-kod-badge--success {
+    border-color: var(--status-success-border);
+    background-color: var(--status-success-bg);
+    color: var(--status-success-fg);
+  }
+
+  .evren-kod-badge--warning {
+    border-color: var(--status-warning-border);
+    background-color: var(--status-warning-bg);
+    color: var(--status-warning-fg);
+  }
+
+  .evren-kod-badge--error {
+    border-color: var(--status-error-border);
+    background-color: var(--status-error-bg);
+    color: var(--status-error-fg);
+  }
+
+  .evren-kod-badge--mono {
+    font-family: var(--vscode-user-editor-font-family, var(--vscode-editor-font-family, monospace));
+    font-weight: 450;
+  }
+
+  .evren-kod-badge--truncate {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- 8) Gezinme (sabit, daralıp genişleyen yan menü) ---- */
+  .evren-kod-nav {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--evren-kod-nav-rail);
+    border-left: 1px solid var(--evren-kod-border);
+    background-color: var(--vscode-sideBar-background);
+    transition: width var(--evren-kod-base) var(--evren-kod-ease);
+  }
+
+  .evren-kod-nav--open {
+    width: var(--evren-kod-nav-wide);
+  }
+
+  .evren-kod-nav__panel {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    background-color: var(--vscode-sideBar-background);
+  }
+
+  .evren-kod-nav__list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--evren-kod-space-2);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .evren-kod-nav__footer {
+    display: flex;
+    padding: var(--evren-kod-space-2);
+    border-top: 1px solid var(--evren-kod-border);
+  }
+
+  .evren-kod-nav__item {
+    position: relative;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: var(--evren-kod-space-3);
+    min-height: 34px;
+    padding: var(--evren-kod-space-2);
+    border-radius: var(--evren-kod-radius-md);
+    font-size: var(--evren-kod-text-xs);
+    color: var(--evren-kod-muted-fg);
+    transition:
+      background-color var(--evren-kod-fast) ease,
+      color var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-nav--open .evren-kod-nav__item {
+    justify-content: flex-start;
+    padding-inline: var(--evren-kod-space-3);
+  }
+
+  .evren-kod-nav__item:hover {
+    background-color: var(--evren-kod-hover-bg);
+    color: var(--evren-kod-fg);
+  }
+
+  .evren-kod-nav__item--active,
+  .evren-kod-nav__item--active:hover {
+    background-color: var(--evren-kod-brand-soft);
+    color: var(--evren-kod-brand-300);
+    font-weight: 600;
+  }
+
+  /* Etkin ekran, içeriğe bakan kenarda ince bir çizgiyle işaretlenir */
+  .evren-kod-nav__item--active::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--evren-kod-brand-400);
+  }
+
+  .evren-kod-nav__icon {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .evren-kod-nav__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .evren-kod-nav__badge {
+    position: absolute;
+    top: -5px;
+    right: -7px;
+    display: flex;
+    height: 14px;
+    min-width: 14px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    border-radius: var(--evren-kod-radius-full);
+    background-color: var(--status-warning-fg);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000000;
+  }
+
+  /* ---- 9) Başlık ---- */
+  .evren-kod-header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    border-bottom: 1px solid var(--evren-kod-border);
+    background-color: var(--vscode-sideBar-background);
+    color: var(--vscode-sideBar-foreground);
+    user-select: none;
+  }
+
+  .evren-kod-header__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--evren-kod-space-3);
+    min-height: var(--evren-kod-header-height);
+    padding: 6px var(--evren-kod-pad-inline);
+  }
+
+  .evren-kod-header__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--evren-kod-space-1);
+  }
+
+  /* ---- 10) Sohbet ---- */
+  .evren-kod-composer {
+    width: 100%;
+    flex-shrink: 0;
+    background-color: transparent;
+    /* Yan boşluk sohbet içeriği ve başlıkla aynı akan gutter'dan gelir; */
+    /* sabit değer girintiler arasında kaymaya yol açıyordu. */
+    padding: var(--evren-kod-space-1) var(--evren-kod-pad-inline) var(--evren-kod-space-4);
+  }
+
+  .evren-kod-composer__box {
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--evren-kod-input-border);
+    border-radius: var(--evren-kod-radius-lg);
+    background-color: var(--evren-kod-input-bg);
+    box-shadow: var(--evren-kod-shadow-sm);
+    transition:
+      border-color var(--evren-kod-fast) ease,
+      box-shadow var(--evren-kod-fast) ease;
+  }
+
+  .evren-kod-composer__box:focus-within {
+    border-color: var(--evren-kod-focus);
+    box-shadow: 0 0 0 1px var(--evren-kod-focus);
+  }
+
+  .evren-kod-composer__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--evren-kod-space-3);
+    border-top: 1px solid var(--evren-kod-surface-border);
+    padding: var(--evren-kod-space-2) var(--evren-kod-space-3);
+  }
+
+  .evren-kod-composer__hint {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--evren-kod-text-2xs);
+    color: var(--evren-kod-muted-fg);
+  }
+
+  /* ---- 11) Katmanlar ---- */
+  .evren-kod-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(1px);
+  }
+
+  .evren-kod-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    width: 18rem;
+    max-width: 88vw;
+    flex-direction: column;
+    border-left: 1px solid var(--evren-kod-border);
+    background-color: var(--vscode-sideBar-background);
+    box-shadow: var(--evren-kod-shadow-lg);
+    animation: evren-kod-fade-in 0.16s ease-out;
+  }
+
+  /* Başlığın altında açılan küçük panel (görev başlığı menüsü). */
+  .evren-kod-popover {
+    position: absolute;
+    right: var(--evren-kod-gutter);
+    top: 100%;
+    z-index: 30;
+    margin-top: var(--evren-kod-space-1);
+    width: min(18rem, calc(100vw - 2 * var(--evren-kod-gutter)));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--evren-kod-space-2);
+    border: 1px solid var(--evren-kod-surface-border);
+    border-radius: var(--evren-kod-radius-lg);
+    background-color: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+    box-shadow: var(--evren-kod-shadow-md);
+    animation: evren-kod-fade-in 0.14s ease-out;
+  }
+
+  .evren-kod-popover__title {
+    padding: var(--evren-kod-space-1) var(--evren-kod-space-2) var(--evren-kod-space-2);
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--evren-kod-border);
+    font-size: var(--evren-kod-text-2xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--evren-kod-muted-fg);
+  }
+
+  /* ---- 12) Duyarlılık ----
+   * Webview genişliği yan panelde ~200px ile editör alanında 900px+ arasında
+   * değişir. Eşikler: 360px (dar), 480px (yan menü yer değiştirir), 720px (geniş).
+   */
+  @media (min-width: 480px) {
+    .evren-kod-composer__hint {
+      display: flex;
+    }
+  }
+
+  /* Çok dar: mod etiketleri yalnızca simge olur */
+  @media (max-width: 319px) {
+    .evren-kod-segmented__label {
+      display: none;
+    }
+
+    .evren-kod-segmented__item {
+      padding-inline: var(--evren-kod-space-3);
+    }
+  }
+
+  /* Dar: açılan yan menü içeriği daraltmak yerine üstüne biner */
+  @media (max-width: 479px) {
+    .evren-kod-nav--open {
+      width: var(--evren-kod-nav-rail);
+    }
+
+    .evren-kod-nav--open .evren-kod-nav__panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 45;
+      width: var(--evren-kod-nav-wide);
+      border-left: 1px solid var(--evren-kod-border);
+      box-shadow: var(--evren-kod-shadow-lg);
+    }
+  }
+
+  /* Geniş: daha ferah aralık ve kartlar için daha büyük dolgu */
+  @media (min-width: 720px) {
+    :root {
+      --evren-kod-card-padding: 14px;
+      --evren-kod-section-gap: 22px;
+    }
+  }
+}

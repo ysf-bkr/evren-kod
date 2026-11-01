@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 921" width="1560" height="921">
+  <g transform="translate(48,240) scale(0.85)">
+  <!-- Evren Vector Brand Icon (Full Color): mavi marka gradyanı + �örgü düğümü (altın) + grafi düğümleri -->
+  <defs>
+    <linearGradient id="logoBrand" x1="88" y1="88" x2="408" y2="424" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0092fa" />
+      <stop offset="0.55" stop-color="#0051f1" />
+      <stop offset="1" stop-color="#003ccd" />
+    </linearGradient>
+    <linearGradient id="logoKnot" x1="148" y1="192" x2="276" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f59e0b" />
+      <stop offset="1" stop-color="#ea580c" />
+    </linearGradient>
+  </defs>
+  <!-- E gövdesi; ortadaki elmas boşluk �örgü düğümünün örgüsüdür -->
+  <path fill="url(#logoBrand)" fill-rule="evenodd" d="M 88 88 L 408 88 L 408 168 L 168 168 L 168 216 L 352 216 L 352 296 L 168 296 L 168 344 L 408 344 L 408 424 L 88 424 Z M 212 192 L 276 256 L 212 320 L 148 256 Z" />
+  <!-- �örgü düğümü: boşluğun içine oturan altın elmas (örgü hissi) -->
+  <path fill="url(#logoKnot)" d="M 212 212 L 256 256 L 212 300 L 168 256 Z" />
+  <!-- Çağrı grafiği düğümleri -->
+  <rect x="408" y="121" width="24" height="14" fill="#0073f9" />
+  <circle cx="456" cy="128" r="24" fill="#0092fa" />
+  <rect x="352" y="249" width="24" height="14" fill="#d97706" />
+  <circle cx="400" cy="256" r="24" fill="#f59e0b" />
+  <rect x="408" y="377" width="24" height="14" fill="#003ccd" />
+  <circle cx="456" cy="384" r="24" fill="#0051f1" />
+</g>
+  <text x="560" y="560" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="190" font-weight="700" letter-spacing="-6" fill="#f8fafc">Evren Kod</text>
+  <text x="568" y="664" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#67bdfa">Zanaat disipliniyle kodlayan,</text>
+  <text x="568" y="720" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#67bdfa">kanıtla doğrulayan otonom VS Code ajanı.</text>
+</svg>

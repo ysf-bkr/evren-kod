@@ -1,0 +1,87 @@
+name: Hata Bildirimi
+description: Evren eklentisinde karşılaştığınız tekrarlanabilir bir hatayı bildirin.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bildiriminiz için teşekkürler. Lütfen güvenlik açıklarını bu form üzerinden bildirmeyin;
+        [SECURITY.md](../../SECURITY.md) belgesindeki özel kanalı kullanın.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Ne Oldu?
+      description: Karşılaştığınız hatanın net bir açıklaması.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Beklenen Davranış
+      description: Ne olmasını bekliyordunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Tekrarlama Adımları
+      placeholder: |
+        1. Çalışma alanını açın...
+        2. "..." komutunu gönderin
+        3. Spec onaylayın
+        4. Hatayı görün
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: Evren Sürümü
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code Sürümü
+      placeholder: 1.106.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: İşletim Sistemi
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Uzak / Docker / Codespaces
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Model Sağlayıcısı
+      options:
+        - Ollama (yerel)
+        - EVREN LLM
+        - OpenRouter
+        - OpenAI Uyumlu Uç Nokta
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Çıktı Kanalı Günlüğü (Log)
+      description: |
+        **Çıktı (Output) → Evren** kanalındaki ilgili satırları yapıştırın.
+        Yapıştırmadan önce API anahtarlarını, özel belirteçleri ve gizli kodları temizleyin.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Ön Kontroller
+      options:
+        - label: Bunun bir güvenlik açığı olmadığını doğruladım (güvenlik açıkları SECURITY.md'ye bildirilir).
+          required: true
+        - label: Günlüklerden (log) gizli anahtarları ve özel kodları temizledim.
+          required: true

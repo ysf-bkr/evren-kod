@@ -1,0 +1,51 @@
+name: Özellik İsteği
+description: Evren için yeni bir yetenek veya davranış değişikliği önerin.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Evren bilinçli olarak yönlendirilmiş bir iş akışı izler: kod yazılmadan önce bir spec ve plan onaylanır.
+        Bu güvenlik ve onay kapılarını atlayan öneriler kabul edilmeyebilir.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Şu an neyi yapamıyorsunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Önerilen Çözüm
+      description: Nasıl çalışmasını önerirsiniz?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Değerlendirilen Alternatifler
+      description: Düşündüğünüz diğer çözüm yolları nelerdir?
+  - type: dropdown
+    id: area
+    attributes:
+      label: İlgili Alan
+      options:
+        - Yönlendirilmiş iş akışı (spec / plan)
+        - Bilgi tabanı (knowledge base)
+        - Ajan döngüsü ve araçlar
+        - Güvenlik ve izinler
+        - Editör entegrasyonu
+        - MCP
+        - CLI / konsol arayüzü
+        - Kullanıcı arayüzü (webview)
+        - Dokümantasyon
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Ön Kontroller
+      options:
+        - label: Benzer bir konunun daha önce açılıp açılmadığını kontrol ettim.
+          required: true

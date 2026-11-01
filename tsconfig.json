@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@evren-kod/core": ["packages/core/src/index.ts"],
+      "@evren-kod/core/*": ["packages/core/src/*"],
+      "@evren-kod/cli": ["packages/cli/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "packages/**/src/**/*"],
+  "exclude": ["node_modules", ".vscode-test", "webview-ui"]
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="currentColor">
+  <!-- Evren Monochrome: Activity Bar Icon (tema duyarlı, kenar boşluksuz) -->
+  <!-- E gövdesi + �örgü düğümü boşluğu (diamond, evenodd) -->
+  <path fill-rule="evenodd" d="M 88 88 L 408 88 L 408 168 L 168 168 L 168 216 L 352 216 L 352 296 L 168 296 L 168 344 L 408 344 L 408 424 L 88 424 Z M 212 192 L 276 256 L 212 320 L 148 256 Z" />
+  <!-- Çağrı grafiği düğümleri: çubuk uçlarından çıkan bağlantılar -->
+  <rect x="408" y="121" width="24" height="14" />
+  <circle cx="456" cy="128" r="24" />
+  <rect x="352" y="249" width="24" height="14" />
+  <circle cx="400" cy="256" r="24" />
+  <rect x="408" y="377" width="24" height="14" />
+  <circle cx="456" cy="384" r="24" />
+</svg>
