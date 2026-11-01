@@ -272,7 +272,7 @@
     "prettier": "3.6.2",
     "tsx": "^4.23.15",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.1"
   },
   "//overridesComment": "@vscode/vsce bağımlılığı olan @azure/identity'nin güvenlik açıklı msal-node 6.x sürümünü düzeltmek içindir.",
   "overrides": {
