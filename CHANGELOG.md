@@ -9,7 +9,7 @@ Proje sürümlemesi 0.1.0 ile burada başlar.
 
 ### Eklendi
 
-- **Üç çalışma modu:** Kodlama (dosya ve komut yetkili), Planlama (salt okunur mimari analiz ve yol haritası) ve Eğitim (yeni başlayanlara kod ile algoritma öğreten sabırlı mentor: sade analoji, sözde kod, adım adım örnek çizelgesi, tipik hata açıklaması, alıştırma ve "Ne öğrendik?" özeti). Planlama ve Eğitimde dosya yazma ile komut çalıştırma teknik olarak kilitlidir.
+- **Üç çalışma modu:** Kodlama (dosya ve komut yetkili), Planlama (salt okunur mimari analiz ve yol haritası) ve Eğitim (yeni başlayanlara sohbette rehberlik: sistem isteminin dayattığı ders biçimi sözleşmesi — sade analoji, sözde kod, adım adım örnek çizelgesi, tipik hata açıklaması, alıştırma ve "Ne öğrendik?" özeti). Planlama ve Eğitimde dosya yazma ile komut çalıştırma teknik olarak kilitlidir.
 - **Yönlendirilmiş geliştirme akışı:** Anlama → İstek → Spec Onayı → Modül Haritası ve Plan Onayı → Uygulama → İnceleme → Doğrulama aşamaları; her geçişin kapısı vardır, son söz her zaman kullanıcıdadır.
 - **Otonom ReAct döngüsü:** Hedefe ulaşana kadar dosyaları inceler, komutları çalıştırır, testleri koşturur ve hataları düzeltir; görev sonunda tüm değişiklikler tek tıkla diff ekranında toplanır.
 - **Endüstriyel modül akışı:** İş katmanlı modüllere ayrılır (shared → domain → infrastructure → application → interface), her modüle sahip uzman atanır; katman ihlalleri ve döngüler reddedilir.
@@ -29,3 +29,4 @@ Proje sürümlemesi 0.1.0 ile burada başlar.
 
 - Varsayılan sağlayıcı Ollama'dır; bulut sağlayıcıları isteğe bağlıdır ve anahtarlar yalnızca cihazınızda saklanır.
 - Yol hapsi symlink kaçışını engeller; doğrulama sonrası yol değişikliği (TOCTOU) ve alan içi hardlink senaryoları kabul edilmiş sınır olarak belgelenmiştir.
+- Eğitim modunda kilitler ve ders biçimi sözleşmesi güvence altındadır; anlatımın kalitesi seçilen modele bağlıdır. Ayrı bir müfredat motoru veya öğrenci ilerleme takibi yoktur; rehberlik sohbet içinde yaşar.

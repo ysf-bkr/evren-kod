@@ -1,7 +1,7 @@
 {
   "name": "evren-kod",
   "displayName": "Evren Kod",
-  "description": "Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, planlama ve eğitim modlarıyla mimari analiz, kanıtlı kod değişikliği, test desteği ve yeni başlayanlar için adım adım mentorluk.",
+  "description": "Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, planlama ve eğitim modlarıyla mimari analiz, kanıtsız değişikliği reddeden doğrulama, test desteği ve yeni başlayanlara sohbette adım adım rehberlik.",
   "version": "0.1.0",
   "publisher": "ysf-bkr",
   "author": {

@@ -44,7 +44,7 @@ const FEATURES = [
   {
     icon: <Compass className="evren-kod-icon-sm evren-kod-text-brand" />,
     title: 'Planlama / Kodlama / Eğitim modları',
-    desc: 'Planlama ve eğitimde salt okunur korumalar; eğitimde adım adım ders.'
+    desc: 'Planlama ve eğitimde salt okunur korumalar; eğitimde sohbette ders sözleşmesi.'
   },
   {
     icon: <Plug className="evren-kod-icon-sm evren-kod-text-info" />,

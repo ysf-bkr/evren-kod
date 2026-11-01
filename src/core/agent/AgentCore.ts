@@ -351,7 +351,7 @@ export class AgentCore implements AgentHost {
         mode === 'plan'
           ? 'Planlama modu etkin: yalnızca analiz ve plan; dosya değişikliği ve komut çalıştırma devre dışı.'
           : mode === 'education'
-            ? 'Eğitim modu etkin: mentor anlatır, örnekleri sohbette gösterir; dosya değişikliği ve komut çalıştırma devre dışı.'
+            ? 'Eğitim modu etkin: rehber anlatır, örnekleri sohbette gösterir; dosya değişikliği ve komut çalıştırma devre dışı.'
             : 'Kodlama modu etkin: ajan dosya ve komut araçlarını kullanabilir.'
     });
   }

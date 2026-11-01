@@ -10,7 +10,7 @@ Bu projede temel bilgiler tanımlıdır:
 
 | Bilgi | Değer / kaynak |
 | --- | --- |
-| Uzantı kimliği | `ysf-bkr.evren` (`publisher` + `name`) |
+| Uzantı kimliği | `ysf-bkr.evren-kod` (`publisher` + `name`) |
 | Görünen ad ve kısa açıklama | `package.json` içindeki `displayName` ve `description` |
 | Yayıncı | `ysf-bkr` |
 | Simge | `resources/icon.png` |
@@ -105,9 +105,9 @@ Aynı VSIX paketini Open VSX'e yayınlamak için:
 
 İlk yayın tamamlandıktan sonra kullanıcılar:
 
-1. VS Code'da **Extensions** görünümünü açıp `Evren Kod` veya `ysf-bkr.evren` aratabilir.
+1. VS Code'da **Extensions** görünümünü açıp `Evren Kod` veya `ysf-bkr.evren-kod` aratabilir.
 2. Yayıncının `ysf-bkr` olduğunu doğrulayıp **Install**'a tıklayabilir.
-3. Terminalden `code --install-extension ysf-bkr.evren` komutunu çalıştırabilir.
+3. Terminalden `code --install-extension ysf-bkr.evren-kod` komutunu çalıştırabilir.
 
 Uzantı Marketplace'te yayımlanmadan önce bu arama ve komut çalışmaz. O zamana kadar VSIX kurulumu
 için README'deki yerel paketleme adımlarını kullanın.
