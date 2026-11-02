@@ -8,7 +8,8 @@ import * as path from 'path';
 import { EVREN_KOD_DIR, EVREN_KOD_SUBDIRS } from '../../shared/constants';
 
 export const KNOWLEDGE_DIR = path.join(EVREN_KOD_DIR, EVREN_KOD_SUBDIRS.knowledge);
-export const KNOWLEDGE_VERSION = 1;
+/** Sınıf metotları eklendiği için 3: eski indeksler okunurken atılıp yeniden kurulur. */
+export const KNOWLEDGE_VERSION = 3;
 
 export const MAP_FILE = 'map.jsonl';
 export const SYMBOLS_FILE = 'symbols.jsonl';

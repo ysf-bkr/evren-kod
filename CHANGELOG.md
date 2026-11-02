@@ -3,6 +3,16 @@
 Bu dosya kullanıcıları etkileyen önemli değişiklikleri kaydeder.
 Proje sürümlemesi 0.1.0 ile burada başlar.
 
+## [Yayınlanmamış]
+
+### Değiştirildi
+
+- **Bilgi Grafiği (Knowledge Graph):** Çağrı haritası ile bilgi tabanı tek bir graf katmanında birleşti. Ajan bir görev için projeyi baştan okumak yerine `knowledge_graph` ile hazır bağıntıları okur: sembol kartı tanımları kesin `dosya:satır-aralığı` ve imzalarla, çağıranları, import bağımlılarını, ilgili testleri ve kayıtlı mimari kararları birlikte döner; `mode: "architecture"` proje katmanlarını, merkez (hub) dosyaları, bağımlılık yönlerini, döngüleri ve kararları özetler. Yeni araçlar: `knowledge_graph`, `graph_callers`, `graph_callees`, `graph_impact`, `graph_search`, `graph_status`; her çıktı sabit bir token bütçesiyle döner. Eski adlar (`get_callers`, `get_callees`, `call_graph_impact`, `find_related_code`, `call_graph_status`) yürütme uyumluluğu için alias olarak çalışmaya devam eder, modele şema olarak sunulmaz.
+- **Sembol imzaları ve sınıf metotları:** Bilgi tabanı indeksi her sembolün bildirim satırını (imzasını) ve bitiş satırını bir kez indekleme sırasında hesaplar; sınıf metotları da indekslenir. Ajan gövdeyi okumadan arayüzü görür, `read_file`'ı yalnızca değişdireceği aralık için çağırır.
+- **"Bilgi Grafiği" ekranı:** Eski "Çağrı Grafiği" paneli iki kaynağı birlikte anlatır: çağrı haritası sayılarına ek olarak bilgi tabanının dosya/sembol/karar sayaçları da gösterilir.
+- **README logosu:** Başlık logosu artık tek bir mutlak `raw.githubusercontent.com` adresi. VS Code Marketplacesi `<picture>` etiketini silip göreli yolları çözümleyemediği için Marketplace'te görünmeyen logo bu değişiklikle kalıcı olarak düzeltildi.
+- **Mimari özet hubs sıralaması:** Ham çağrı sayısı yerine import bağımlısı birincil ölçü; test dosyaları tüketici olduğu için merkez listesinden çıkarıldı.
+
 ## [0.1.0] - 2026-11-01
 
 İlk yayın: **Evren Kod** — zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı.

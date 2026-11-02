@@ -79,6 +79,8 @@ const toolStepIcon = (name: ToolName): React.ReactElement => {
   if (
     name.startsWith('get_') ||
     name.startsWith('call_graph') ||
+    name.startsWith('graph_') ||
+    name === 'knowledge_graph' ||
     [
       'search_files',
       'web_search',

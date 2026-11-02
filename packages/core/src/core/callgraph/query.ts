@@ -5,7 +5,13 @@
  * Sonuçlar her zaman güven etiketi (exact/estimated) taşır ve hiçbir zaman
  * "kesinlikle etkilenmez" demez; en fazla "haritaya göre etkilenmiyor" der.
  */
-import { CallGraphDocument, CallGraphImpactResult, CallGraphNeighbor, CallGraphNode } from './types';
+import {
+  CallGraphEdge,
+  CallGraphDocument,
+  CallGraphImpactResult,
+  CallGraphNeighbor,
+  CallGraphNode
+} from './types';
 
 /** Derinlik varsayılanı. Üst sınır yoktur; gezinme iterative olduğu için derinlik yığın taşması yapmaz. */
 const DEFAULT_DEPTH = 1;
@@ -14,7 +20,7 @@ const DEFAULT_DEPTH = 1;
 const WIDE_IMPACT_THRESHOLD = 50;
 
 /** Sorgu için düğüm çözümleme: kimlik, ad ya da `dosya#ad`. */
-export function resolveNodes(document: CallGraphDocument, query: string): CallGraphNode[] {
+export function resolveNodes(document: Pick<CallGraphDocument, 'nodes'>, query: string): CallGraphNode[] {
   const value = query.trim();
   if (!value) return [];
 
@@ -36,15 +42,14 @@ export function resolveNodes(document: CallGraphDocument, query: string): CallGr
 }
 
 /** Adı sorguyla eşleşen düğümler (kısmi eşleşme; öneri için). */
-export function suggestNodes(document: CallGraphDocument, query: string, limit = 10): CallGraphNode[] {
+export function suggestNodes(
+  document: Pick<CallGraphDocument, 'nodes'>,
+  query: string,
+  limit = 10
+): CallGraphNode[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [];
   return document.nodes.filter((node) => node.name.toLowerCase().includes(needle)).slice(0, limit);
-}
-
-/** Haritada dışa aktarılan ve hiç çağıranı olmayan düğümler dış kullanım olabilir. */
-function hasCallers(document: CallGraphDocument, nodeId: string): boolean {
-  return document.edges.some((edge) => edge.to === nodeId);
 }
 
 /**
@@ -66,7 +71,7 @@ export function clampDepth(depth: number | undefined): number {
  * Döngüler (A→B→A) bir kez gezilir; sonsuz döngü oluşmaz.
  */
 export function findCallers(
-  document: CallGraphDocument,
+  document: Pick<CallGraphDocument, 'nodes' | 'edges'>,
   nodeIds: string[],
   depth: number
 ): CallGraphNeighbor[] {
@@ -75,21 +80,35 @@ export function findCallers(
 
 /** Bir düğümün çağırdıklarını gezer. */
 export function findCallees(
-  document: CallGraphDocument,
+  document: Pick<CallGraphDocument, 'nodes' | 'edges'>,
   nodeIds: string[],
   depth: number
 ): CallGraphNeighbor[] {
   return traverse(document, nodeIds, depth, 'callees');
 }
 
-/** Ortak gezinme: yön 'callers' ise gelen kenarlar, 'callees' ise giden kenarlar. */
+/**
+ * Ortak gezinme: yön 'callers' ise gelen kenarlar, 'callees' ise giden kenarlar.
+ *
+ * Kenarlar bir kez komşuluk dizinine çevrilir: büyük haritalarda (on binlerce
+ * kenar) her sınır düğümü için tüm kenar listesini taramak görevi saniyelerce
+ * süründürüyordu.
+ */
 function traverse(
-  document: CallGraphDocument,
+  document: Pick<CallGraphDocument, 'nodes' | 'edges'>,
   startIds: string[],
   depth: number,
   direction: 'callers' | 'callees'
 ): CallGraphNeighbor[] {
   const byId = new Map(document.nodes.map((node) => [node.id, node]));
+  const adjacency = new Map<string, CallGraphEdge[]>();
+  for (const edge of document.edges) {
+    const key = direction === 'callers' ? edge.to : edge.from;
+    const list = adjacency.get(key);
+    if (list) list.push(edge);
+    else adjacency.set(key, [edge]);
+  }
+
   const visited = new Set(startIds);
   const results: CallGraphNeighbor[] = [];
   let frontier = [...startIds];
@@ -97,10 +116,8 @@ function traverse(
   for (let level = 1; level <= depth; level++) {
     const next: string[] = [];
     for (const current of frontier) {
-      const edges =
-        direction === 'callers'
-          ? document.edges.filter((edge) => edge.to === current)
-          : document.edges.filter((edge) => edge.from === current);
+      const edges = adjacency.get(current);
+      if (!edges) continue;
 
       for (const edge of edges) {
         const neighborId = direction === 'callers' ? edge.from : edge.to;
@@ -133,7 +150,7 @@ function traverse(
  * (derinlik > 1) ve etkilenen testler.
  */
 export function analyzeCallGraphImpact(
-  document: CallGraphDocument,
+  document: Pick<CallGraphDocument, 'nodes' | 'edges' | 'meta'>,
   nodeIds: string[],
   depth: number
 ): CallGraphImpactResult {
@@ -152,7 +169,8 @@ export function analyzeCallGraphImpact(
 
   // Dışa aktarılan ve haritada çağıranı olmayan bir sembol başka paketlerden
   // kullanılıyor olabilir; harita bunu göremez.
-  const exportedChange = startNodes.some((node) => node.exported && !hasCallers(document, node.id));
+  const calledIds = new Set(document.edges.map((edge) => edge.to));
+  const exportedChange = startNodes.some((node) => node.exported && !calledIds.has(node.id));
 
   const warnings: string[] = [];
   if (document.meta.incompleteFiles > 0) {
@@ -191,9 +209,4 @@ export function limitNeighbors(
 /** Haritada test olarak işaretli düğümler. */
 export function testNodes(document: CallGraphDocument): CallGraphNode[] {
   return document.nodes.filter((node) => node.isTest);
-}
-
-/** Düğümü `dosya:satır` biçiminde kısa etiketler. */
-export function nodeLabel(node: CallGraphNode): string {
-  return `${node.file}:${node.startLine} ${node.name}`;
 }

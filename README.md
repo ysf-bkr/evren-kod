@@ -1,22 +1,22 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="./resources/logo.png" />
-  <source media="(prefers-color-scheme: dark)" srcset="./resources/logo-dark.png" />
-  <img src="./resources/logo-safe.png" width="420" alt="Evren Kod — Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı." />
-</picture>
+<img
+  src="https://raw.githubusercontent.com/ysf-bkr/evren-kod/HEAD/resources/logo-safe.png"
+  width="420"
+  alt="Evren Kod — Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı."
+/>
 
 # Evren Kod
 
 **Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı.**
 
-> **Zanaat:** Çağrı grafiğiyle mimariyi okur; hiçbir düzenlemeyi kanıtsız "başarılı" saymaz. · **Kalkan:** İzin kalkanı, dizin hapsi ve komut politikası — izin sizden alınmadan tek satır yazılmaz. · **Dürüstlük:** Yanlışını gizlemez: tekrarlayan yanıt kesilir, çıkmaz sokakta üçüncü denemede durur, "testler geçti" yalnızca testler gerçekten geçince söylenir.
+> **Zanaat:** Bilgi grafiğiyle mimariyi okur; hiçbir düzenlemeyi kanıtsız "başarılı" saymaz. · **Kalkan:** İzin kalkanı, dizin hapsi ve komut politikası — izin sizden alınmadan tek satır yazılmaz. · **Dürüstlük:** Yanlışını gizlemez: tekrarlayan yanıt kesilir, çıkmaz sokakta üçüncü denemede durur, "testler geçti" yalnızca testler gerçekten geçince söylenir.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.106-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml/badge.svg)](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-831%20passing-2ea44f)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/tests-852%20passing-2ea44f)](./docs/DEVELOPMENT.md)
 
 **Geliştirici:** Yusuf BEKAR · **E-posta:** [ybekar@msn.com](mailto:ybekar@msn.com)
 
@@ -47,7 +47,7 @@
 | **EVREN Kotası ve Model Çubuğu**            | Sohbet altındaki çubuk, EVREN günlük token kotasını (kullanılan / sınır / kalan) canlı gösterir ve sohbetten ayrılmadan model değiştirmeyi sağlar.                                                                                                                                                                                                           |
 | **Arka Planda Çalışan Sohbetler**           | Her sohbet kendi ajan çekirdeğinde çalışır: sohbet değiştirmek veya yeni sohbet açmak önceki görevi (ve alt ajanlarını) durdurmaz. Paylaşılan servisler sayesinde ikinci sohbet ucuzdur.                                                                                                                                                                     |
 | **Türkçe Belgeler ve Türkçe Arayüz**        | Proje belgeleri, rehberler ve arayüzdeki tüm hata mesajları, bildirimler ve plan adımları eksiksiz Türkçe.                                                                                                                                                                                                                                                   |
-| **Çağrı Grafiği Ekranı**                    | Dil sunucusundan çıkarılan sembol haritası arayüzde gezilebilir: bir fonksiyonu kimler çağırıyor, kendisi neyi çağırıyor, etki alanı ne?                                                                                                                                                                                                                     |
+| **Bilgi Grafiği (Knowledge Graph)**         | Çağrı haritası, dosya import'ları, sembol imzaları ve kayıtlı mimari kararlar tek grafında: ajan bir görev için projeyi baştan okumak yerine hazır bağıntıları okur; her çıktı sabit token bütçesiyle döner. Arayüzde "Bilgi Grafiği" ekranında gezilebilir. |
 | **Akıl Sağlığı Korumaları**                 | Model bir satıra kilitlenip aynı metni sonsuza dek tekrarladığında akış otomatik kesilir; aynı araç aynı argümanla üçüncü kez patlarsa tur duraklatılır. Uzun görevler sessizce kontrolden çıkamaz.                                                                                                                                                          |
 | **Bağlam Penceresi Ayarı**                  | Modelinin bağlam pencereyi ayarlardan bildir; sohbet geçmişi ve araç çıktıları gerçek sınıra göre budanır, istekler taşmaz.                                                                                                                                                                                                                                  |
 | **Terminal Arayüzü (`evren-kod`)**          | Aynı çekirdek terminalde: tek istemlik çalıştırma ya da `evren-kod` ile etkileşimli sohbet; onaylar, plan ve korumalar VS Code ile aynı.                                                                                                                                                                                                                     |

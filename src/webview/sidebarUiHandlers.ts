@@ -460,7 +460,12 @@ export function createUiHandlers(ctx: SidebarHandlerContext): Pick<WebviewMessag
         return;
       }
       try {
-        const result = await resolveCallGraphPanelRequest(manager, workspaceRoot, message.payload);
+        const result = await resolveCallGraphPanelRequest(
+          manager,
+          workspaceRoot,
+          message.payload,
+          agentCore?.knowledgeStore
+        );
         ctx.postMessage({ type: 'CALLGRAPH_RESULT', payload: result });
       } catch (err) {
         ctx.postMessage({

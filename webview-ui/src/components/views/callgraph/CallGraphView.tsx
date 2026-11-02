@@ -250,7 +250,7 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
   return (
     <div className="flex h-full flex-col">
       <ScreenHeader
-        title="Çağrı Grafiği"
+        title="Bilgi Grafiği"
         onSelectMenu={onSelectMenu}
         activeDestination="callgraph"
         changedFileCount={changedFileCount}
@@ -277,6 +277,12 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
                 {status.stats.nodes} sembol · {status.stats.edges} kenar · {status.stats.files} dosya
               </span>
             )}
+            {status?.stats?.knowledge && (
+              <Badge tone="info">
+                bilgi tabanı: {status.stats.knowledge.files} dosya · {status.stats.knowledge.symbols} sembol
+                {status.stats.knowledge.decisions > 0 ? ` · ${status.stats.knowledge.decisions} karar` : ''}
+              </Badge>
+            )}
             {status?.stats && status.stats.incompleteFiles > 0 && (
               <Badge tone="warning">{status.stats.incompleteFiles} dosya eksik tarandı</Badge>
             )}
@@ -286,8 +292,9 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
           )}
           {!status?.ready && !status?.building && (
             <p className="text-2xs evren-kod-text-muted">
-              Harita dil sunucusundan arka planda üretilir; bir dosyayı kaydettiğinde o dosya kendiliğinden
-              yeniden taranır.
+              Bilgi grafiği iki kaynaktan beslenir: dil sunucusundan çıkarılan çağrı haritası (bir dosyayı
+              kaydettiğinde o dosya kendiliğinden yeniden taranır) ve `.evren-kod/knowledge` altındaki bilgi
+              tabanı. Ajan araçlarında `knowledge_graph` aynı iki kaynağı birlikte kullanır.
             </p>
           )}
         </Card>

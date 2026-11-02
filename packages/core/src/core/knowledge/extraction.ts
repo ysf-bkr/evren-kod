@@ -42,6 +42,39 @@ const SYMBOL_PATTERNS: RegExp[] = [
   /^\s*(?:public|private|protected|static|final|abstract|override|suspend|open|internal)\s+(?:class|interface|enum|record|fun|void|int|long|double|float|boolean|string)\s+([A-Za-z_]\w*)/
 ];
 
+/** Gövde anahtar kelimeleri: metot deseni bunları asla sembol saymaz. */
+const CONTROL_WORDS = new Set([
+  'if',
+  'for',
+  'while',
+  'switch',
+  'catch',
+  'return',
+  'typeof',
+  'await',
+  'yield',
+  'new',
+  'else',
+  'do',
+  'try',
+  'finally',
+  'case',
+  'delete',
+  'void',
+  'super',
+  'import',
+  'export'
+]);
+
+/**
+ * Sınıf metotları: girintili ve görünen bir gövde bloğu açan bildirimler.
+ * Çağrı satırları noktalı virgülle bittiği için desen onları yakalamaz; bitiş
+ * süslü parantezi bu yüzden zorunludur. Desen öncesi sınıf üyeleri indekste hiç
+ * görünmüyor, ajan bir metot için `find_symbol`'dan aralık alamıyordu.
+ */
+const METHOD_PATTERN =
+  /^[ \t]+(?:(?:public|private|protected|internal|static|async|readonly|abstract|override|final|get|set)\s+)*([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*(?::\s*[^{;]+)?\{[ \t]*$/;
+
 const IMPORT_PATTERNS: RegExp[] = [
   /import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g,
   /require\(\s*['"]([^'"]+)['"]\s*\)/g,
@@ -50,6 +83,23 @@ const IMPORT_PATTERNS: RegExp[] = [
   /^\s*use\s+([A-Za-z0-9_:]+)/gm,
   /^\s*#include\s+[<"]([^>"]+)[>"]/gm
 ];
+
+/** İmza olarak saklanacak en uzun bildirim satırı. */
+export const MAX_SIGNATURE_CHARS = 200;
+
+/**
+ * Bir bildirimin imzası: boşluklar tek boşluğa iner, atama ve gövde açılışı
+ * kesilir, tür bildirimleri korunur. Ajan bu tek satırdan adı ve imzayı görür;
+ * çağrı yerini düzeltmek için gövdeyi okuması gerekmez.
+ */
+export function extractSignature(line: string): string {
+  const compact = line.trim().replace(/\s+/g, ' ');
+  // Atama işaretini ok işaretiyle (=>) karıştırma: ok, atamanın parçasıdır.
+  const assignment = compact.search(/(?<!=)=(?!=)/);
+  const head = assignment > 0 ? compact.slice(0, assignment) : compact;
+  const closed = head.replace(/[,{\s]+$/, '');
+  return closed.length > MAX_SIGNATURE_CHARS ? `${closed.slice(0, MAX_SIGNATURE_CHARS - 1)}…` : closed;
+}
 
 export function extractSymbols(relativePath: string, content: string): KnowledgeSymbolRecord[] {
   const symbols: KnowledgeSymbolRecord[] = [];
@@ -62,9 +112,26 @@ export function extractSymbols(relativePath: string, content: string): Knowledge
           name: match[1],
           kind: symbolKindFor(line),
           file: relativePath,
-          line: index + 1
+          line: index + 1,
+          signature: extractSignature(line)
         });
-        break;
+        return;
+      }
+    }
+    // Sınıf metotları: girintili, bloğu açan bildirim. Desen çağrı satırlarını
+    // (noktalı virgülle biter) ve zincirli çağrıları (nokta içerir) dışarıda
+    // bırakır; kontrol anahtarları ayrıca elenir.
+    if (/^[ \t]/.test(line)) {
+      const method = line.match(METHOD_PATTERN);
+      const name = method?.[1];
+      if (name && !CONTROL_WORDS.has(name)) {
+        symbols.push({
+          name,
+          kind: name === 'constructor' ? 'constructor' : 'method',
+          file: relativePath,
+          line: index + 1,
+          signature: extractSignature(line)
+        });
       }
     }
   });
@@ -112,6 +179,68 @@ export function normalizeImport(fromFile: string, specifier: string): string {
   }
   // "src/b", "src/b.ts"yi kastediyor olabilir; çıplak yolu koru, sonekle eşleştir.
   return resolved;
+}
+
+/**
+ * Bir import belirticisinin hedef dosyayı adresleyip adreslemediği. Import'lar
+ * soneksiz çözümlendiği için eşleştirme toleranslıdır; bilgi tabanındaki tüm
+ * dosya-dosya bağıntıları bu tek kuralı kullanır.
+ */
+export function importMatches(imported: string, target: string): boolean {
+  const extensions = [...SOURCE_EXTENSIONS].join('|');
+  const targetNoExt = target.replace(new RegExp(`(?:${extensions})$`), '');
+  return (
+    imported === target ||
+    imported === targetNoExt ||
+    target.startsWith(`${imported}/`) ||
+    targetNoExt.endsWith(`/${imported}`)
+  );
+}
+
+/** Bir markdown satırının madde çizgisi içeriği; değilse undefined. */
+function bulletText(line: string): string | undefined {
+  const match = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/);
+  const text = match?.[1]?.trim();
+  return text && text.length > 0 ? text : undefined;
+}
+
+export interface KnowledgeNoteMatch {
+  /** Kaynak dosyanın kök adı (ör. `decisions.md`). */
+  source: string;
+  /** Eşleşen madde satırı. */
+  text: string;
+  /** Anahtar sözcüklerden kaçının geçtiği. */
+  hits: number;
+}
+
+/**
+ * İnsan bakımındaki bilgi dosyalarında (kararlar, notlar, kurallar) anahtar
+ * sözcüklerle eşleşen maddeler. Ajan bir sembolü düzenlerken ilgili mimari
+ * kararı kendisi aramak zorunda kalmasın diye grafik çıktısına iliştirilir.
+ */
+export function matchKnowledgeNotes(
+  sources: Array<{ name: string; content: string }>,
+  terms: string[],
+  limit = 6
+): KnowledgeNoteMatch[] {
+  const needles = [
+    ...new Set(terms.map((term) => term.trim().toLowerCase()).filter((term) => term.length >= 3))
+  ];
+  if (needles.length === 0) return [];
+
+  const matches: KnowledgeNoteMatch[] = [];
+  for (const source of sources) {
+    const content = (source.content || '').trim();
+    if (!content) continue;
+    for (const line of content.split('\n')) {
+      const text = bulletText(line) || line.match(/^#{2,4}\s+(.*)$/)?.[1]?.trim();
+      if (!text) continue;
+      const lower = text.toLowerCase();
+      const hits = needles.filter((needle) => lower.includes(needle)).length;
+      if (hits > 0) matches.push({ source: source.name, text: text.slice(0, 300), hits });
+    }
+  }
+  return matches.sort((a, b) => b.hits - a.hits || a.source.localeCompare(b.source)).slice(0, limit);
 }
 
 /** Yalnızca adlandırılmış export'lar; modülü gövdesini göndermeden tanımlamak için. */

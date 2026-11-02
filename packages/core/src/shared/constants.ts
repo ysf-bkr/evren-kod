@@ -61,6 +61,33 @@ export const CALLGRAPH_MAX_DEPS_PER_FILE = 200;
 /** Tek dosya için panelin döndüreceği en fazla sembol satırı. */
 export const CALLGRAPH_MAX_FILE_SYMBOLS = 300;
 
+/**
+ * Bilgi grafı çıktı sınırları. Amaç tek bir araç çağrısının, ajanın dosyaları
+ * baştan okumasına gerek bırakmayacak kadar bağlamı, ödenebilir bir token
+ * bütçesi içinde vermesidir.
+ */
+
+/** Bir kartta listelenecek en fazla komşu düğüm. */
+export const GRAPH_MAX_LISTED = 24;
+
+/** Bir kartta işlenecek en fazla odak dosyası. */
+export const GRAPH_MAX_FILES = 6;
+
+/** Karta iliştirilecek en fazla karar/kural maddesi. */
+export const GRAPH_MAX_NOTES = 6;
+
+/** Bulunamayan sorguda gösterilecek aday sayısı. */
+export const GRAPH_MAX_SUGGESTIONS = 8;
+
+/** Varsayılan çıktı bütçesi (karakter). `budget` argümanıyla yükseltilebilir. */
+export const GRAPH_DEFAULT_BUDGET_CHARS = 7_000;
+
+/** İzin verilen en yüksek çıktı bütçesi (karakter); bağlam penceresini korur. */
+export const GRAPH_MAX_BUDGET_CHARS = 12_000;
+
+/** Mimari özetin işleyeceği en fazla dizin. */
+export const GRAPH_MAX_GROUPS = 24;
+
 /** Çalışma alanı komutu için varsayılan zaman aşımı. */
 export const COMMAND_TIMEOUT_MS = 120_000;
 

@@ -20,8 +20,8 @@ export const database: AgentDefinition = {
     'execute_command',
     'search_memory',
     'read_skill',
-    'get_callers',
-    'get_callees',
+    'graph_callers',
+    'graph_callees',
     'find_symbol'
   ],
   instructions: {

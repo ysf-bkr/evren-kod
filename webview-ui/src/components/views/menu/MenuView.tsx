@@ -62,8 +62,8 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'callgraph',
-    title: 'Çağrı grafiği',
-    description: 'Sembollerin kimlerce çağrıldığını incele',
+    title: 'Bilgi grafiği',
+    description: 'Çağrı ve bağıntı haritası, kayıtlı mimari kararlarla birlikte',
     icon: <Network className="evren-kod-icon-md evren-kod-text-brand" />,
     category: 'ai'
   },

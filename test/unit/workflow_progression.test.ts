@@ -209,10 +209,17 @@ describe('AgentCore: aşama ilerlemesi', () => {
   });
 });
 
-describe('modeTools: çağrı haritası her aşamada açık', () => {
-  it('plan modu salt-okunur harita araçlarını içerir', async () => {
+describe('modeTools: bilgi grafı her aşamada açık', () => {
+  it('plan modu salt-okunur grafik araçlarını içerir', async () => {
     const { PLAN_MODE_TOOLS, INTAKE_MODE_TOOLS } = await import('@evren-kod/core/core/agent/modeTools');
     const tools = [
+      'knowledge_graph',
+      'graph_callers',
+      'graph_callees',
+      'graph_impact',
+      'graph_search',
+      'graph_status',
+      // Eski adlar alias olarak da açık kalmalı.
       'get_callers',
       'get_callees',
       'call_graph_impact',

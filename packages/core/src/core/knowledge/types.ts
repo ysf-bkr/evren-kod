@@ -31,6 +31,12 @@ export interface KnowledgeSymbolRecord {
   line: number;
   /** Sembol gövdesinin kapsayıcı bitiş satırı; aralıklı read_file çağrılarını sağlar. */
   endLine?: number;
+  /**
+   * Bildirim satırının kısaltılmış hâli (imza). Ajan çağrı yerlerini düzeltmek
+   * için gövdeyi okumak zorunda kalmasın diye indeksleme sırasında bir kez
+   * çıkarılır; model maliyeti yoktur.
+   */
+  signature?: string;
 }
 
 export interface KnowledgeIndexState {

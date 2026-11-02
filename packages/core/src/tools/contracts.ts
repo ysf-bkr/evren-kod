@@ -68,6 +68,17 @@ export type KnowledgePort = Pick<
   | 'ensureFresh'
   | 'appendNote'
   | 'writeHumanFile'
+  // Bilgi grafının ihtiyaç duyduğu dar sorgular.
+  | 'symbolsOf'
+  | 'findFiles'
+  | 'filesUnder'
+  | 'dependentsOf'
+  | 'importsOf'
+  | 'fileIndex'
+  | 'getFile'
+  | 'knowledgeNotes'
+  | 'knowledgeBullets'
+  | 'knowledgeStats'
 >;
 
 /** Yerel anlamsal sıralama. */

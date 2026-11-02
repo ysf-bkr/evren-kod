@@ -51,14 +51,16 @@ import {
 } from './agent';
 import { webFetchTool, webSearchTool } from './web';
 import {
-  callGraphStatusTool,
-  callGraphImpactTool,
-  findRelatedTool,
-  getCalleesTool,
-  getCallersTool
-} from './callgraph';
+  LEGACY_GRAPH_TOOLS,
+  graphCalleesTool,
+  graphCallersTool,
+  graphImpactTool,
+  graphSearchTool,
+  graphStatusTool,
+  knowledgeGraphTool
+} from './graph';
 import { ToolDefinition } from './base';
-import { ToolName } from '../shared/types';
+import { ToolName, isModelVisibleTool } from '../shared/types';
 
 export { argString, argBoolean, toPositiveInt } from './args';
 export { readFileTool, writeFileTool, editFileTool, listDirectoryTool, searchFilesTool } from './file';
@@ -106,11 +108,23 @@ const ALL_TOOL_OBJECTS: Record<ToolName, ToolDefinition> = {
   web_fetch: webFetchTool,
   web_search: webSearchTool,
   undo_change: undoChangeTool,
-  get_callers: getCallersTool,
-  get_callees: getCalleesTool,
-  call_graph_impact: callGraphImpactTool,
-  find_related_code: findRelatedTool,
-  call_graph_status: callGraphStatusTool
+  knowledge_graph: knowledgeGraphTool,
+  graph_callers: graphCallersTool,
+  graph_callees: graphCalleesTool,
+  graph_impact: graphImpactTool,
+  graph_search: graphSearchTool,
+  graph_status: graphStatusTool,
+  // Eski çağrı haritası adları yürütme uyumluluğu için kayıtlı kalır: eski bir
+  // oturum ya da model bu adları çağırırsa aynı araç çalışır.
+  ...LEGACY_GRAPH_TOOLS
 };
 
 export const ALL_TOOLS = ALL_TOOL_OBJECTS;
+
+/**
+ * Modele sunulacak araçlar: eski adlar şemada listelenmez, böylece her istemin
+ * başındaki araç tanımı yükü gereksiz yere büyümez.
+ */
+export const MODEL_TOOLS: ToolDefinition[] = Object.values(ALL_TOOLS).filter((tool) =>
+  isModelVisibleTool(tool.name)
+);

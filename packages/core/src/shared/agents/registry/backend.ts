@@ -24,8 +24,8 @@ export const backend: AgentDefinition = {
     'get_definition',
     'get_references',
     'read_skill',
-    'get_callers',
-    'get_callees'
+    'graph_callers',
+    'graph_callees'
   ],
   instructions: {
     identity: 'Backend Domain Engineer and Database Management Owner',

@@ -51,6 +51,12 @@ export const TOOL_TITLES: Record<ToolName, string> = {
   write_knowledge_file: 'Bilgi dosyası yazılıyor',
   get_project_knowledge: 'Proje bilgisi sorgulanıyor',
   add_knowledge_note: 'Bilgi notu ekleniyor',
+  knowledge_graph: 'Bilgi grafiği sorgulanıyor',
+  graph_callers: 'Çağıranlar grafi okunuyor',
+  graph_callees: 'Çağrılanlar grafi okunuyor',
+  graph_impact: 'Etki alanı grafiyle çıkarılıyor',
+  graph_search: 'Bilgi grafiğinde aranıyor',
+  graph_status: 'Bilgi grafiği durumu okunuyor',
   get_callers: 'Çağıran fonksiyonlar bulunuyor',
   get_callees: 'Çağrılan fonksiyonlar bulunuyor',
   call_graph_impact: 'Çağrı grafiği etkisi çıkarılıyor',
@@ -74,6 +80,7 @@ const SHORT_KEYS = [
   'file',
   'url',
   'query',
+  'focus',
   'symbol',
   'note',
   'goal',
@@ -107,6 +114,7 @@ export function toolStepDetail(toolCall: ToolCall): string {
       return shorten(str('path') || 'Tüm proje');
     case 'invoke_subagent':
       return shorten(str('task'));
+    case 'graph_impact':
     case 'call_graph_impact': {
       const symbols = args.symbols;
       if (Array.isArray(symbols))

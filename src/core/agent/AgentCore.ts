@@ -27,7 +27,7 @@ import { SnapshotManager } from '@evren-kod/core/core/snapshot/SnapshotManager';
 import { HookManager } from '@evren-kod/core/core/hooks/HookManager';
 import { CheckpointManager } from '@evren-kod/core/core/checkpoint/CheckpointManager';
 import { ContextManager } from '@evren-kod/core/core/context/ContextManager';
-import { ALL_TOOLS } from '@evren-kod/core/tools';
+import { MODEL_TOOLS } from '@evren-kod/core/tools';
 import { ReadDeduper } from '@evren-kod/core/core/agent/readDeduper';
 import { ProjectMemoryManager, ProjectMemoryStatus } from '@evren-kod/core/core/memory/ProjectMemoryManager';
 import { VectorMemory } from '@evren-kod/core/core/memory/VectorMemory';
@@ -219,7 +219,7 @@ export class AgentCore implements AgentHost {
     );
     this.contextManager = new ContextManager({
       contextWindowTokens: this.settings.contextWindowTokens,
-      tools: Object.values(ALL_TOOLS),
+      tools: MODEL_TOOLS,
       digestFor: (relativePath) => this.knowledgeStore.digestFor(relativePath)
     });
     this.callGraphManager =
@@ -283,7 +283,7 @@ export class AgentCore implements AgentHost {
     // Durumsuz olduğu için güvenle yeniden kurulur; yeni pencere hemen etkili olur.
     this.contextManager = new ContextManager({
       contextWindowTokens: newSettings.contextWindowTokens,
-      tools: Object.values(ALL_TOOLS),
+      tools: MODEL_TOOLS,
       digestFor: (relativePath) => this.knowledgeStore.digestFor(relativePath)
     });
     this.refreshEmbeddingIndex();

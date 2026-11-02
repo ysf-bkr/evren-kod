@@ -75,8 +75,15 @@ const TOOL_OUTPUT_LIMITS: Record<string, number> = {
   web_search: 3_000,
   invoke_subagent: 6_000,
   run_parallel_tasks: 8_000,
-  // Çağrı grafiği çıktıları büyük projelerde satır satır şişer; liste özeti
-  // yeter, tam graf zaten call_graph araçlarıyla yeniden çıkarılabilir.
+  // Bilgi grafı çıktıları kendi bütçesiyle gelir; buradaki sınır, bütçenin
+  // üstünü koruyan ikinci bir emniyet kemeri olarak daha geniş tutulur.
+  knowledge_graph: 9_000,
+  graph_callers: 4_000,
+  graph_callees: 4_000,
+  graph_impact: 6_000,
+  graph_search: 5_000,
+  graph_status: 1_500,
+  // Eski adlar alias olarak çalışmaya devam eder.
   get_callers: 2_500,
   get_callees: 2_500,
   call_graph_impact: 3_000,

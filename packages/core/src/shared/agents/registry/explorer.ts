@@ -22,11 +22,12 @@ export const explorer: AgentDefinition = {
     'find_symbol',
     'get_definition',
     'get_references',
-    'get_callers',
-    'get_callees',
-    'call_graph_impact',
-    'find_related_code',
-    'call_graph_status',
+    'knowledge_graph',
+    'graph_callers',
+    'graph_callees',
+    'graph_impact',
+    'graph_search',
+    'graph_status',
     'read_skill'
   ],
   instructions: {
@@ -42,9 +43,10 @@ export const explorer: AgentDefinition = {
     rules: [
       'READ ONLY: Strictly operate in read-only mode — never suggest, write, or modify any codebase file.',
       'ADP EXECUTION: Follow the Architecture Discovery Protocol — identify entry points, scan domain structures.',
-      'GRAPH FIRST: Before raw grep, use call_graph_status, get_workspace_symbols, find_symbol, get_callers, get_callees and find_related_code to map real code relationships; fall back to search_files only when the call graph is unavailable.',
-      'KNOWLEDGE FIRST: Consult get_project_knowledge and search_memory before reading raw files; the curated map is cheaper than re-reading the repository.',
-      'IMPACT ANALYSIS: For every area the task will touch, run call_graph_impact and report the blast radius (callers, dependents) in the final report.',
+      'GRAPH FIRST: Open every discovery with knowledge_graph — mode "architecture" for an unfamiliar repository, then focus on the symbols and directories the task touches. Use graph_status, graph_search, find_symbol and graph_callers/graph_callees before raw grep; fall back to search_files only when the graph cannot answer.',
+      'KNOWLEDGE FIRST: Consult get_project_knowledge and search_memory before reading raw files; recorded decisions and conventions are cheaper than re-reading the repository.',
+      'NO WHOLE-FILE READING: The graph already returns exact file:line ranges and signatures. Read a file only for the range you are about to change — reading a whole file to "understand the project" is waste, not diligence.',
+      'IMPACT ANALYSIS: For every area the task will touch, run graph_impact and report the blast radius (callers, import dependents, affected tests) in the final report.',
       'DEPENDENCY MAP: Map all file dependencies and surface them in a structured report.',
       'RECON FIRST: No specialist should act on an unexplored codebase — flag absence of discovery as a phase blocker.'
     ],

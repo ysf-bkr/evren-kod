@@ -163,7 +163,13 @@ export type ToolName =
   | 'get_callees'
   | 'call_graph_impact'
   | 'find_related_code'
-  | 'call_graph_status';
+  | 'call_graph_status'
+  | 'knowledge_graph'
+  | 'graph_callers'
+  | 'graph_callees'
+  | 'graph_impact'
+  | 'graph_search'
+  | 'graph_status';
 
 /** Birleşimle aynı listede tutulan çalışma zamanı tablosu (arayüz tamlık testleri için). */
 export const TOOL_NAMES: readonly ToolName[] = [
@@ -210,8 +216,35 @@ export const TOOL_NAMES: readonly ToolName[] = [
   'get_callees',
   'call_graph_impact',
   'find_related_code',
+  'call_graph_status',
+  'knowledge_graph',
+  'graph_callers',
+  'graph_callees',
+  'graph_impact',
+  'graph_search',
+  'graph_status'
+];
+
+/**
+ * Modele şema olarak sunulan araçlar. Eski çağrı haritası adları yürütme
+ * uyumluluğu için kayıt defterinde kalır ama bağlam penceresini şişirmesin
+ * diye listelenmez.
+ */
+export const DEPRECATED_TOOL_NAMES: readonly ToolName[] = [
+  'get_callers',
+  'get_callees',
+  'call_graph_impact',
+  'find_related_code',
   'call_graph_status'
 ];
+
+/** Yürütme ve arayüz için tüm adlar; liste tamamlık denetimini kolaylaştırır. */
+const TOOL_NAME_SET: Set<string> = new Set(TOOL_NAMES);
+
+/** Bir aracın modele gösterilip gösterilmeyeceği. */
+export function isModelVisibleTool(name: ToolName | string): boolean {
+  return TOOL_NAME_SET.has(name) && !DEPRECATED_TOOL_NAMES.includes(name as ToolName);
+}
 
 export interface ToolCall {
   id: string;
@@ -573,7 +606,18 @@ export interface CallGraphPanelResult {
   building: boolean;
   progress?: number;
   message: string;
-  stats?: { files: number; nodes: number; edges: number; updatedAt?: number; incompleteFiles: number };
+  stats?: {
+    files: number;
+    nodes: number;
+    edges: number;
+    updatedAt?: number;
+    incompleteFiles: number;
+    /**
+     * Bilgi tabanının eşlik eden sayıları: ekran "Bilgi Grafiği" başlığıyla
+     * çağrı haritası ve bilgi tabanını birlikte anlattığı için buradadır.
+     */
+    knowledge?: { files: number; symbols: number; summaries: number; decisions: number; notes: number };
+  };
   matches?: CallGraphPanelNode[];
   callers?: CallGraphPanelNeighbor[];
   callees?: CallGraphPanelNeighbor[];

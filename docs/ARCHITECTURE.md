@@ -38,7 +38,8 @@ evren-kod/                                 npm workspaces monorepo
 │   │       │                             shell, git, knowledge, web)
 │   │       ├── feedback/                 Opt-in GitHub hata bildiricisi
 │   │       └── core/                     Motor servisleri: toolRunner, prompts, permission,
-│   │                                     context, knowledge, memory, callgraph, multiagent,
+│   │                                     context, knowledge, memory, callgraph, graph
+│   │                                     (birleşik bilgi grafı), multiagent,
 │   │                                     plan, verification, routing, audit, snapshot,
 │   │                                     checkpoint, worktree, rules, skills, workflow,
 │   │                                     hooks, git, spec, mcp istemcisi

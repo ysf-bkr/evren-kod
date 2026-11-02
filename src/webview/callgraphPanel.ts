@@ -7,6 +7,7 @@
  * tüm mantık burada ve vscode bağımlılığı olmadan sınanabilir.
  */
 import { CallGraphManager } from '@evren-kod/core/core/callgraph/CallGraphManager';
+import type { KnowledgeStore } from '@evren-kod/core/core/knowledge/KnowledgeStore';
 import { clampDepth, findCallers, findCallees, suggestNodes } from '@evren-kod/core/core/callgraph/query';
 import type {
   CallGraphDocument,
@@ -28,6 +29,12 @@ import {
 /** Çözücünün ihtiyaç duyduğu dar yüzey; testler sahte yöneticiyle beslenir. */
 export type CallGraphPanelSource = Pick<CallGraphManager, 'ensureReady' | 'getDocument' | 'rebuild'>;
 
+/**
+ * Bilgi tabanının panele eşlik eden sayıları. Ekran "Bilgi Grafiği" başlığıyla
+ * iki kaynağı birden anlattığı için başlık ile içerik birbirini tutar.
+ */
+export type CallGraphPanelKnowledge = Pick<KnowledgeStore, 'knowledgeStats'>;
+
 function toPanelNode(node: CallGraphNode): CallGraphPanelNode {
   return {
     id: node.id,
@@ -45,22 +52,51 @@ function toPanelNeighbor(neighbor: CallGraphNeighbor): CallGraphPanelNeighbor {
   return { ...toPanelNode(neighbor.node), depth: neighbor.depth, lines: neighbor.lines };
 }
 
-function statsOf(document: CallGraphDocument | undefined) {
-  if (!document) return undefined;
+function statsOf(document: CallGraphDocument | undefined, knowledge?: CallGraphPanelKnowledge) {
+  const stats = knowledge?.knowledgeStats();
+  if (!document) {
+    return stats
+      ? {
+          files: 0,
+          nodes: 0,
+          edges: 0,
+          incompleteFiles: 0,
+          knowledge: {
+            files: stats.files,
+            symbols: stats.symbols,
+            summaries: stats.summaries,
+            decisions: stats.decisions,
+            notes: stats.notes
+          }
+        }
+      : undefined;
+  }
   const files = Object.values(document.files);
   return {
     files: files.length,
     nodes: document.meta.nodeCount,
     edges: document.meta.edgeCount,
     updatedAt: document.meta.updatedAt,
-    incompleteFiles: files.filter((file) => file.status !== 'complete').length
+    incompleteFiles: files.filter((file) => file.status !== 'complete').length,
+    ...(stats
+      ? {
+          knowledge: {
+            files: stats.files,
+            symbols: stats.symbols,
+            summaries: stats.summaries,
+            decisions: stats.decisions,
+            notes: stats.notes
+          }
+        }
+      : {})
   };
 }
 
 export async function resolveCallGraphPanelRequest(
   manager: CallGraphPanelSource,
   workspaceRoot: string | undefined,
-  request: CallGraphPanelRequest
+  request: CallGraphPanelRequest,
+  knowledge?: CallGraphPanelKnowledge
 ): Promise<CallGraphPanelResult> {
   const base: CallGraphPanelResult = {
     action: request.action,
@@ -80,7 +116,7 @@ export async function resolveCallGraphPanelRequest(
       building: status.building,
       progress: status.progress,
       message: status.message,
-      stats: statsOf(manager.getDocument(workspaceRoot))
+      stats: statsOf(manager.getDocument(workspaceRoot), knowledge)
     };
   }
 
@@ -93,7 +129,7 @@ export async function resolveCallGraphPanelRequest(
       building: status.building,
       progress: status.progress,
       message: status.message,
-      stats: statsOf(document)
+      stats: statsOf(document, knowledge)
     };
   }
 
@@ -112,7 +148,7 @@ export async function resolveCallGraphPanelRequest(
       ...base,
       ready: true,
       message: status.message,
-      stats: statsOf(document),
+      stats: statsOf(document, knowledge),
       matches: suggestNodes(document, request.query || '', CALLGRAPH_MAX_LISTED).map(toPanelNode)
     };
   }
@@ -135,7 +171,7 @@ export async function resolveCallGraphPanelRequest(
       ...base,
       ready: true,
       message: status.message,
-      stats: statsOf(document),
+      stats: statsOf(document, knowledge),
       files: rows
     };
   }
@@ -152,7 +188,7 @@ export async function resolveCallGraphPanelRequest(
       ...base,
       ready: true,
       message: status.message,
-      stats: statsOf(document),
+      stats: statsOf(document, knowledge),
       path: target,
       fileSymbols: symbols
     };
@@ -184,7 +220,7 @@ export async function resolveCallGraphPanelRequest(
       ...base,
       ready: true,
       message: status.message,
-      stats: statsOf(document),
+      stats: statsOf(document, knowledge),
       path: target,
       deps: rows
     };
@@ -193,14 +229,19 @@ export async function resolveCallGraphPanelRequest(
   // neighbors: seçili düğümün çağıranları ve çağrılanları.
   const node = document.nodes.find((candidate) => candidate.id === request.nodeId);
   if (!node) {
-    return { ...base, ready: true, message: 'Düğüm haritada bulunamadı.', stats: statsOf(document) };
+    return {
+      ...base,
+      ready: true,
+      message: 'Düğüm haritada bulunamadı.',
+      stats: statsOf(document, knowledge)
+    };
   }
   const depth = clampDepth(request.depth ?? 2);
   return {
     ...base,
     ready: true,
     message: status.message,
-    stats: statsOf(document),
+    stats: statsOf(document, knowledge),
     callers: findCallers(document, [node.id], depth).map(toPanelNeighbor),
     callees: findCallees(document, [node.id], depth).map(toPanelNeighbor)
   };

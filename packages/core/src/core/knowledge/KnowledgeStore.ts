@@ -29,13 +29,16 @@ import {
   extractExports,
   extractImports,
   extractSymbols,
+  importMatches,
   isSensitivePath,
+  matchKnowledgeNotes,
   normalizeImport,
   parseJsonl,
   sha256Content,
   toJsonl,
   toRelativePath
 } from './extraction';
+import type { KnowledgeNoteMatch } from './extraction';
 
 const execFileAsync = promisify(execFile);
 
@@ -45,8 +48,11 @@ export { KNOWLEDGE_DIR, KNOWLEDGE_VERSION, HumanKnowledgeFile } from './paths';
 export {
   extractExports,
   extractImports,
+  extractSignature,
   extractSymbols,
+  importMatches,
   isSensitivePath,
+  matchKnowledgeNotes,
   normalizeImport
 } from './extraction';
 
@@ -165,8 +171,9 @@ export class KnowledgeStore {
       }
       this.symbols = parseJsonl<KnowledgeSymbolRecord>(symbolRaw);
       this.state = JSON.parse(stateRaw) as KnowledgeIndexState;
-      if (this.state.root !== workspaceRoot) {
-        // İndeks başka bir checkout'a ait; yeniden oluşturmaya zorla.
+      if (this.state.root !== workspaceRoot || this.state.version !== KNOWLEDGE_VERSION) {
+        // İndeks yabancı bir checkout'a ya da eski bir biçime ait: imza gibi
+        // sonradan eklenen alanlar eksik kalmasın diye baştan kurulur.
         this.files.clear();
         this.symbols = [];
         this.state = undefined;
@@ -315,9 +322,13 @@ export class KnowledgeStore {
    */
   public mergeSymbols(
     relativePath: string,
-    symbols: Array<{ name: string; kind: string; line: number; endLine?: number }>
+    symbols: Array<{ name: string; kind: string; line: number; endLine?: number; signature?: string }>
   ): void {
     const key = relativePath.replace(/\\/g, '/');
+    // LSP aralıkları kesindir ama imza vermez; aynı adlı eski imza korunur.
+    const previousSignatures = new Map(
+      this.symbols.filter((symbol) => symbol.file === key).map((symbol) => [symbol.name, symbol.signature])
+    );
     const incoming = symbols
       .filter((symbol) => symbol.name && symbol.line > 0)
       .slice(0, 300)
@@ -326,7 +337,8 @@ export class KnowledgeStore {
         kind: symbol.kind,
         file: key,
         line: symbol.line,
-        endLine: symbol.endLine && symbol.endLine >= symbol.line ? symbol.endLine : undefined
+        endLine: symbol.endLine && symbol.endLine >= symbol.line ? symbol.endLine : undefined,
+        signature: symbol.signature || previousSignatures.get(symbol.name)
       }));
     this.symbols = [...this.symbols.filter((symbol) => symbol.file !== key), ...incoming].sort(
       (a, b) => a.file.localeCompare(b.file) || a.line - b.line
@@ -393,7 +405,8 @@ export class KnowledgeStore {
           symbol.endLine && symbol.endLine > symbol.line
             ? `${symbol.line}-${symbol.endLine}`
             : `${symbol.line}`;
-        return `- [${symbol.kind}] ${symbol.name} (${range})`;
+        // İmza dahil: gövde sıkıştırmada düşse de çağrı sözleşmesi görünür kalır.
+        return `- [${symbol.kind}] ${symbol.name} (${range})${symbol.signature ? ` ${symbol.signature}` : ''}`;
       });
     const body = [head, ...lines].join('\n');
     return body.length > 1_500 ? `${body.slice(0, 1_500)}\n… [digest truncated]` : body;
@@ -715,15 +728,7 @@ export class KnowledgeStore {
       for (const file of this.files.values()) {
         if (impacted.has(file.path)) continue;
         const depends = file.imports.some((imported) =>
-          frontier.some((target) => {
-            const targetNoExt = target.replace(/\.(ts|tsx|js|jsx|py|go|rs|java|cs)$/, '');
-            return (
-              imported === target ||
-              imported === targetNoExt ||
-              target.startsWith(`${imported}/`) ||
-              targetNoExt.endsWith(`/${imported}`)
-            );
-          })
+          frontier.some((target) => importMatches(imported, target))
         );
         if (depends) {
           impacted.add(file.path);
@@ -737,6 +742,140 @@ export class KnowledgeStore {
     return {
       definitionFiles,
       impactedFiles: [...impacted].filter((file) => !definitionFiles.includes(file))
+    };
+  }
+
+  /** Bir dosyanın sembolleri, tanım satırı sırasıyla. */
+  public symbolsOf(relativePath: string, limit = 200): KnowledgeSymbolRecord[] {
+    const key = relativePath.replace(/\\/g, '/');
+    return this.symbols
+      .filter((symbol) => symbol.file === key)
+      .sort((a, b) => a.line - b.line)
+      .slice(0, limit);
+  }
+
+  /**
+   * Bu dosyayı adresleyen import'ların sahipleri (ters bağımlılık kenarları).
+   * Çağrı haritasının görmediği "beni kim kullanıyor" sorusunun dosya
+   * düzeyindeki cevabıdır; model maliyeti yoktur.
+   */
+  public dependentsOf(relativePath: string, limit = 100): string[] {
+    const key = relativePath.replace(/\\/g, '/');
+    const dependents: string[] = [];
+    for (const file of this.files.values()) {
+      if (file.path === key) continue;
+      if (file.imports.some((imported) => importMatches(imported, key))) {
+        dependents.push(file.path);
+        if (dependents.length >= limit) break;
+      }
+    }
+    return dependents.sort((a, b) => a.localeCompare(b));
+  }
+
+  /** Dosyanın bilgi tabanında çözümlenen yerel import hedefleri. */
+  public importsOf(relativePath: string, limit = 100): string[] {
+    const record = this.files.get(relativePath.replace(/\\/g, '/'));
+    if (!record) return [];
+    const targets = new Set<string>();
+    for (const candidate of this.files.values()) {
+      if (candidate.path === record.path) continue;
+      if (record.imports.some((imported) => importMatches(imported, candidate.path))) {
+        targets.add(candidate.path);
+        if (targets.size >= limit) break;
+      }
+    }
+    return [...targets].sort((a, b) => a.localeCompare(b));
+  }
+
+  /** İndekslenmiş dosya kayıtları (yol sıralı); mimari çıkarmanın girdisi. */
+  public fileIndex(limit = 5_000): KnowledgeFileRecord[] {
+    return [...this.files.values()].sort((a, b) => a.path.localeCompare(b.path)).slice(0, limit);
+  }
+
+  /** Ada göre dosya arama (alt dize); yol çözümleme ve öneri listeleri için. */
+  public findFiles(needle: string, limit = 20): string[] {
+    const key = needle.trim().toLowerCase();
+    if (!key) return [];
+    const matches: string[] = [];
+    for (const file of this.files.values()) {
+      if (file.path.toLowerCase().includes(key)) {
+        matches.push(file.path);
+        if (matches.length >= limit) break;
+      }
+    }
+    return matches.sort((a, b) => a.localeCompare(b));
+  }
+
+  /** Bir dizinin altındaki indekslenmiş dosyalar (yol sıralı). */
+  public filesUnder(directory: string, limit = 400): KnowledgeFileRecord[] {
+    const prefix = directory.replace(/\\/g, '/').replace(/\/+$/, '');
+    const needle = prefix ? `${prefix}/` : '';
+    const matches: KnowledgeFileRecord[] = [];
+    for (const file of this.files.values()) {
+      if (needle && !file.path.startsWith(needle)) continue;
+      matches.push(file);
+    }
+    return matches.sort((a, b) => a.path.localeCompare(b.path)).slice(0, limit);
+  }
+
+  /** Karar, kural ve not maddelerinde anahtar sözcük eşleşmesi. */
+  public knowledgeNotes(terms: string[], limit = 6): KnowledgeNoteMatch[] {
+    return matchKnowledgeNotes(
+      [
+        { name: HUMAN_FILES.decisions, content: this.human.decisions || '' },
+        { name: HUMAN_FILES.conventions, content: this.human.conventions || '' },
+        { name: HUMAN_FILES.notes, content: this.human.notes || '' },
+        { name: HUMAN_FILES.project, content: this.human.project || '' }
+      ],
+      terms,
+      limit
+    );
+  }
+
+  /**
+   * Karar ve kural dosyalarından madde listesi: projenin kabul edilmiş
+   * mimari kararları, grafik özetine iliştirilir ki ajan kararları yeniden
+   * keşfetmek için dosya taramasın.
+   */
+  public knowledgeBullets(limit = 20): KnowledgeNoteMatch[] {
+    const bullets: KnowledgeNoteMatch[] = [];
+    const order: HumanKnowledgeFile[] = ['decisions', 'conventions', 'project'];
+    for (const name of order) {
+      const content = this.human[name] || '';
+      for (const line of content.split('\n')) {
+        const bullet = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/)?.[1]?.trim();
+        const heading = line.match(/^#{2,4}\s+(.*)$/)?.[1]?.trim();
+        const text = bullet || heading;
+        if (!text) continue;
+        bullets.push({ source: HUMAN_FILES[name], text: text.slice(0, 300), hits: bullet ? 1 : 0 });
+        if (bullets.length >= limit) return bullets;
+      }
+    }
+    return bullets;
+  }
+
+  /** Bilgi tabanının sayısal özeti; grafik durum satırı ve arayüz şeritleri kullanır. */
+  public knowledgeStats(): {
+    files: number;
+    symbols: number;
+    summaries: number;
+    decisions: number;
+    conventions: number;
+    notes: number;
+    indexedAt?: number;
+    lastCommit?: string;
+  } {
+    const bullets = (name: HumanKnowledgeFile) =>
+      (this.human[name] || '').split('\n').filter((line) => /^\s*(?:[-*+]|\d+[.)])\s+\S/.test(line)).length;
+    return {
+      files: this.files.size,
+      symbols: this.symbols.length,
+      summaries: [...this.files.values()].filter((file) => Boolean(file.summary)).length,
+      decisions: bullets('decisions'),
+      conventions: bullets('conventions'),
+      notes: bullets('notes'),
+      indexedAt: this.state?.indexedAt,
+      lastCommit: this.state?.lastCommit
     };
   }
 

@@ -279,6 +279,15 @@ export class PermissionManager {
       'index_workspace',
       'find_symbol',
       'analyze_impact',
+      'knowledge_graph',
+      'graph_callers',
+      'graph_callees',
+      'graph_impact',
+      'graph_search',
+      'get_callers',
+      'get_callees',
+      'call_graph_impact',
+      'find_related_code',
       'prepare_pr',
       'search_memory',
       'read_notebook',
@@ -601,6 +610,22 @@ export class PermissionManager {
         return `Search for symbol "${args.query || ''}".`;
       case 'analyze_impact':
         return `Analyze files affected by symbol "${args.symbol || ''}".`;
+      case 'knowledge_graph':
+        return `Query the knowledge graph for "${args.focus || args.mode || 'architecture'}".`;
+      case 'graph_callers':
+      case 'graph_callees':
+      case 'get_callers':
+      case 'get_callees':
+        return `Read call relations for "${args.symbol || ''}".`;
+      case 'graph_impact':
+      case 'call_graph_impact':
+        return `Analyze the blast radius of "${(args.symbols as string[] | undefined)?.join(', ') || ''}".`;
+      case 'graph_search':
+      case 'find_related_code':
+        return `Search the knowledge graph for "${args.query || ''}".`;
+      case 'graph_status':
+      case 'call_graph_status':
+        return 'Read knowledge graph readiness.';
       case 'git_create_branch':
         return `Create a new Git branch named "${args.name || ''}".`;
       case 'git_commit':

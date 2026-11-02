@@ -44,7 +44,14 @@ const POLICIES: Partial<Record<ToolName, ToolPolicyKind>> = {
   read_notebook: 'read',
   // Yalnızca `.evren-kod/knowledge/` altındaki türev önbelleği yazar, kullanıcı kodunu değil.
   index_workspace: 'read',
-  // Çağrı haritası araçları tamamen salt-okunur; plan modunda da açıktır.
+  // Bilgi grafı araçları tamamen salt-okunur; plan modunda da açıktır.
+  knowledge_graph: 'read',
+  graph_callers: 'read',
+  graph_callees: 'read',
+  graph_impact: 'read',
+  graph_search: 'read',
+  graph_status: 'read',
+  // Eski adlar (alias) aynı politikayı paylaşır.
   get_callers: 'read',
   get_callees: 'read',
   call_graph_impact: 'read',

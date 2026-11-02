@@ -136,20 +136,23 @@ describe('Brand assets', () => {
     assert.doesNotMatch(svg, /#[0-9a-fA-F]{6}/, 'Activity bar icon must not have color coding');
   });
 
-  it('README logo variants referenced in both themes exist', () => {
+  it('README logo is Marketplace-safe and theme variants exist', () => {
     const readme = read('README.md');
-    // Tema duyarlı başlık: açık/koyu tema kaynakları ayrıca verilir; medya
-    // sorgusunu desteklemeyen görüntüleyiciler <img> yedeğini görür, o yüzden
-    // yedek tema-nötr olmalı (koyu lacivert yazı koyutemada kaybolurdu).
-    const referenced = [...readme.matchAll(/\.\/resources\/(logo[\w-]*\.(?:png|svg))/g)]
-      .map((match) => match[1])
-      .filter((name): name is string => Boolean(name));
-    assert.ok(referenced.includes('logo.png'), 'README açık tema logosuna başvurmalı');
-    assert.ok(referenced.includes('logo-dark.png'), 'README koyu tema logosuna başvurmalı');
-    assert.match(readme, /<img src="\.\/resources\/logo-safe\.png"/, '<img> yedeği tema-nötr logo olmalı');
-    for (const file of new Set(referenced)) {
-      assert.ok(fs.existsSync(path.join(root, 'resources', file)), `Eksik marka varlığı: ${file}`);
+    // VS Code Marketplacesi <picture>/<source> etiketlerini siler ve göreli
+    // yolları çözümlemez; bu yüzden başlık logosu tek bir MUTLAK https adresi
+    // olmalı ve adres, hem açık hem koyu zeminde okunan tema-nötr logoyu göstermeli.
+    const logo = readme.match(/<img\s+[^>]*src="(https:\/\/raw\.githubusercontent\.com\/[^"]+)"/);
+    assert.ok(logo, 'README logosu mutlak https adresi olmalı (Marketplace göreli yolu çözemez)');
+    assert.ok(/logo-safe/.test(logo[1]!), 'Marketplace yedek logosu tema-nötr olmalı');
+    // Adres deposundaki gerçek bir varlığa işaret etmeli; ayrıca açık/koyu tema
+    // varyantları marka kütüphanesinde durmaya devam etmeli.
+    const file = logo[1]!.slice(logo[1]!.lastIndexOf('/') + 1);
+    assert.ok(fs.existsSync(path.join(root, 'resources', file)), `Eksik marka varlığı: ${file}`);
+    for (const variant of ['logo.png', 'logo-dark.png', 'logo-safe.png']) {
+      assert.ok(fs.existsSync(path.join(root, 'resources', variant)), `Eksik tema varyantı: ${variant}`);
     }
+    // Eski <picture> düzeni geri gelmesin: Marketplace onu sessizce düşürür.
+    assert.doesNotMatch(readme, /<picture>/, 'README başlığında <picture> kullanılamaz (Marketplace siler)');
   });
 
   it('webview logo uses the monochrome-safe brand mark', () => {
@@ -314,6 +317,10 @@ describe('Module graph: layering rules', () => {
     // listelenmeli; aksi hâlde araç katmanı çekirdeğin içine sızar.
     const ALLOWED = new Set([
       'packages/core/src/core/callgraph/query.ts', // saf sorgu fonksiyonları
+      // Bilgi grafının saf katmanı: disk okumaz, model çağırmaz, durum tutmaz.
+      'packages/core/src/core/graph/relations.ts',
+      'packages/core/src/core/graph/architecture.ts',
+      'packages/core/src/core/graph/render.ts',
       'packages/core/src/core/verification/CommandRunner.ts' // süreç yürütme ilkelleri
     ]);
 

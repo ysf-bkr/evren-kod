@@ -96,6 +96,7 @@ src/
     ├── snapshot/                 # Dosya anlık görüntüleri ve diff geri alma
     ├── checkpoint/               # Tur bazlı durum geri sarma
     ├── callgraph/                # Çağrı haritası ve kod ilişkileri
+    ├── graph/                    # Birleşik bilgi grafı: çağrı + import + kararlar (packages/core)
     └── mcp/                      # Model Context Protocol istemcisi
 ```
 

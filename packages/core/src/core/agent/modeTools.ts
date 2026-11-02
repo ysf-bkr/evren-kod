@@ -1,7 +1,14 @@
 import { AgentMode, ToolName } from '../../shared/types';
 
-/** Çağrı haritası araçları: tamamen salt-okunur, her aşamada güvenli. */
-const CALLGRAPH_TOOL_NAMES = [
+/** Eski adlar dahil grafik araçları: tamamen salt-okunur, her aşamada güvenli. */
+const GRAPH_TOOL_NAMES = [
+  'knowledge_graph',
+  'graph_callers',
+  'graph_callees',
+  'graph_impact',
+  'graph_search',
+  'graph_status',
+  // Yürütme uyumluluğu: eski adla gelen çağrı da plan modunda çalışır.
   'get_callers',
   'get_callees',
   'call_graph_impact',
@@ -43,7 +50,7 @@ export const PLAN_MODE_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>([
   'write_knowledge_file',
   // Çağrı haritası araçları salt-okunur ve anlama/planlama aşamalarında en
   // çok burada gerekir; kod yazma kilidini etkilemezler.
-  ...CALLGRAPH_TOOL_NAMES,
+  ...GRAPH_TOOL_NAMES,
   // Tek uzmana devretme yazmaz: alt ajan okuma aşamasında salt-okunur araç
   // setiyle çalışır. Paralel görevler izole worktree açar; okuma için gereksiz.
   'invoke_subagent'
