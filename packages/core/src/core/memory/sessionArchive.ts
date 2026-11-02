@@ -80,6 +80,18 @@ const ROLE_LABEL: Record<ChatMessage['role'], string> = {
   system: 'Sistem'
 };
 
+/** Token satırı: toplam + varsa giden/gelen/önbellek kırılımı. */
+function formatTokenStats(task: TaskState): string {
+  const parts = [`${task.stats.totalTokens}`];
+  if (typeof task.stats.promptTokens === 'number' || typeof task.stats.completionTokens === 'number') {
+    parts.push(`giden ${task.stats.promptTokens ?? 0}`, `gelen ${task.stats.completionTokens ?? 0}`);
+  }
+  if (typeof task.stats.cachedTokens === 'number' && task.stats.cachedTokens > 0) {
+    parts.push(`önbellekten ${task.stats.cachedTokens}`);
+  }
+  return parts.join(' · ');
+}
+
 function formatToolCall(toolCall: ToolCall): string {
   const status = toolCall.status === 'completed' ? 'tamamlandı' : toolCall.status;
   const lines = [`- **${toolCall.name}** (${status})`];
@@ -98,7 +110,7 @@ export function serializeSessionMarkdown(task: TaskState): string {
     `- **Mod:** ${task.mode === 'plan' ? 'Planlama' : task.mode === 'education' ? 'Eğitim' : 'Kodlama'}`,
     `- **Durum:** ${task.status}`,
     `- **Adım:** ${task.stats.stepsCount}`,
-    `- **Token:** ${task.stats.totalTokens}`,
+    `- **Token:** ${formatTokenStats(task)}`,
     `- **Dışa aktarıldı:** ${new Date().toISOString()}`,
     '',
     `## Görev`,
@@ -225,6 +237,9 @@ export function parseSessionArchive(raw: string): TaskState {
     plan,
     stats: {
       totalTokens: typeof stats.totalTokens === 'number' ? stats.totalTokens : 0,
+      promptTokens: typeof stats.promptTokens === 'number' ? stats.promptTokens : undefined,
+      completionTokens: typeof stats.completionTokens === 'number' ? stats.completionTokens : undefined,
+      cachedTokens: typeof stats.cachedTokens === 'number' ? stats.cachedTokens : undefined,
       stepsCount: typeof stats.stepsCount === 'number' ? stats.stepsCount : 0,
       filesModified,
       lastModel: typeof stats.lastModel === 'string' ? stats.lastModel : undefined

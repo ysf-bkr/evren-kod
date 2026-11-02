@@ -46,6 +46,11 @@ export function normalizeRestoredState(
     checkpoints: undefined,
     stats: {
       totalTokens: saved.stats?.totalTokens ?? 0,
+      // Kırılım kaybolursa geri yüklenen oturumda önbellek isabet oranı gibi
+      // göstergeler bozulur; giden/gelen/önbellek sayıları da taşınmalı.
+      promptTokens: saved.stats?.promptTokens,
+      completionTokens: saved.stats?.completionTokens,
+      cachedTokens: saved.stats?.cachedTokens,
       stepsCount: saved.stats?.stepsCount ?? 0,
       filesModified: Array.isArray(saved.stats?.filesModified) ? saved.stats.filesModified : [],
       lastModel: saved.stats?.lastModel,

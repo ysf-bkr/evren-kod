@@ -12,6 +12,16 @@ Proje sürümlemesi 0.1.0 ile burada başlar.
 - **"Bilgi Grafiği" ekranı:** Eski "Çağrı Grafiği" paneli iki kaynağı birlikte anlatır: çağrı haritası sayılarına ek olarak bilgi tabanının dosya/sembol/karar sayaçları da gösterilir.
 - **README logosu:** Başlık logosu artık tek bir mutlak `raw.githubusercontent.com` adresi. VS Code Marketplacesi `<picture>` etiketini silip göreli yolları çözümleyemediği için Marketplace'te görünmeyen logo bu değişiklikle kalıcı olarak düzeltildi.
 - **Mimari özet hubs sıralaması:** Ham çağrı sayısı yerine import bağımlısı birincil ölçü; test dosyaları tüketici olduğu için merkez listesinden çıkarıldı.
+- **Alt ajan token muhasebesi:** Alt ajan ve paralel görev model çağrılarının giden/gelen/önbellek token kullanımı artık ana oturumun Σ rozetine ve görev istatistiklerine eklenir. Devretme yoluyla harcanan tokenlar "görev X token yaktı" sayısının dışında kalamaz.
+
+### Kaldırıldı
+
+- **Token bütçesi ayarı (`maxTokensPerTask`):** Ayar arayüzden çoktan kaldırılmıştı; artık dayanak kodu da temizlendi. Harcama kontrolü bilinçli olarak yalnızca kırpma, sıkıştırma ve önbellekle yapılır — görev asla sayısal bir token limitinde durdurulmaz.
+
+### Düzeltildi
+
+- **Oturum geri yüklemede token dökümü:** Geri yüklenen ve arşivden içe aktarılan oturumlar giden/gelen/önbellek token kırılımını korur; önbellek isabet oranı gibi göstergeler yeniden yüklemeden sonra bozulmaz. Markdown dışa aktarımı da dökümü satır olarak taşır.
+- **Kırpma notları geri kazanım ipucu verir:** `web_fetch`, `read_notebook` ve komut çıktılarındaki kırpma işaretleri artık modelin kalan içeriğe nasıl ulaşacağını söyler (`maxChars` yükseltme, not defterini `read_file` ile okuma, çıktıyı dosyaya yönlendirip aralık okuma).
 
 ## [0.1.0] - 2026-11-01
 

@@ -462,7 +462,7 @@ export const readNotebookTool: ToolDefinition = {
     const body = lines.join('\n\n');
     const limited =
       body.length > MAX_TOOL_OUTPUT_CHARS
-        ? `${body.slice(0, MAX_TOOL_OUTPUT_CHARS)}\n... [${body.length - MAX_TOOL_OUTPUT_CHARS} notebook output characters truncated]`
+        ? `${body.slice(0, MAX_TOOL_OUTPUT_CHARS)}\n... [${body.length - MAX_TOOL_OUTPUT_CHARS} notebook output characters truncated; use read_file on the notebook for specific cells]`
         : body;
     return `Notebook: ${argString(args.path)} (${raw.cells.length} cells)\n\n${limited}`;
   }

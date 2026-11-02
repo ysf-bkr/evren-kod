@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import * as assert from 'node:assert';
 import { SubagentManager } from '@evren-kod/core/core/multiagent/SubagentManager';
-import { ModelProvider, ProviderMessage } from '@evren-kod/core/providers/base';
+import { ModelCompletionResponse, ModelProvider, ProviderMessage } from '@evren-kod/core/providers/base';
 import { PermissionManager } from '@evren-kod/core/core/permission/PermissionManager';
 import { UserSettings } from '@evren-kod/core/shared/types';
 import type { CallGraphManager } from '@evren-kod/core/core/callgraph/CallGraphManager';
@@ -417,5 +417,74 @@ describe('SubagentManager: agent bazlı model ve otomatik fallback', () => {
       statuses.some((s) => s.startsWith('Failed:')),
       `failed durumu beklenmeli: ${statuses.join('|')}`
     );
+  });
+});
+
+describe('SubagentManager: token kullanım muhasebesi', () => {
+  /** 15 konumdan sonra ports nesnesine ulaşmak için undefined taşır. */
+  function managerWithPorts(
+    provider: ModelProvider,
+    ports: { onModelUsage: (usage: NonNullable<ModelCompletionResponse['usage']>) => void }
+  ): SubagentManager {
+    return new SubagentManager(
+      provider,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ports
+    );
+  }
+
+  it('model çağrısı kullanımını ports.onModelUsage ile raporlar', async () => {
+    // Alt ajan tokenları ana oturum istatistiklerine akmadan devretme,
+    // "görev X token yaktı" sayısının görünmez bir harcama kanalıydı.
+    const usageProvider: ModelProvider = {
+      id: 'test',
+      name: 'Test',
+      sendMessage: async () => ({
+        text: 'Rapor hazır.',
+        usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150, cachedTokens: 40 }
+      })
+    };
+    const reported: NonNullable<ModelCompletionResponse['usage']>[] = [];
+    const manager = managerWithPorts(usageProvider, {
+      onModelUsage: (usage) => reported.push(usage)
+    });
+
+    const result = await manager.runSubagent({ role: 'security', task: 'x' }, undefined, 1);
+
+    assert.ok(result.includes('Rapor hazır.'));
+    assert.strictEqual(reported.length, 1, 'kullanım bir kez raporlanmalı');
+    assert.strictEqual(reported[0]?.totalTokens, 150, 'toplam kullanım raporlanmalı');
+    assert.strictEqual(reported[0]?.promptTokens, 120, 'giden token raporlanmalı');
+    assert.strictEqual(reported[0]?.completionTokens, 30, 'gelen token raporlanmalı');
+    assert.strictEqual(reported[0]?.cachedTokens, 40, 'önbellek okuması raporlanmalı');
+  });
+
+  it('kullanım raporlanmayan yanıtlarda callback çağırmaz', async () => {
+    const plainProvider: ModelProvider = {
+      id: 'test',
+      name: 'Test',
+      sendMessage: async () => ({ text: 'Rapor hazır.' })
+    };
+    const reported: NonNullable<ModelCompletionResponse['usage']>[] = [];
+    const manager = managerWithPorts(plainProvider, {
+      onModelUsage: (usage) => reported.push(usage)
+    });
+
+    await manager.runSubagent({ role: 'security', task: 'x' }, undefined, 1);
+
+    assert.strictEqual(reported.length, 0, 'usage yoksa rapor da olmamalı');
   });
 });

@@ -139,7 +139,7 @@ export async function runShellCommand(
       const trimmed = result.trim() || 'Command completed with no output.';
       const suffix =
         stdoutTruncated || stderrTruncated || trimmed.length > MAX_TOOL_OUTPUT_CHARS
-          ? '\n\n[... Output truncated at 15000 characters ...]'
+          ? `\n\n[... Output truncated at ${MAX_TOOL_OUTPUT_CHARS} characters; narrow the command or redirect output to a file and read the exact range ...]`
           : '';
       const limited = trimmed.slice(0, MAX_TOOL_OUTPUT_CHARS - suffix.length) + suffix;
       const timeoutMessage = timedOut ? `\nCommand timed out after ${COMMAND_TIMEOUT_MS / 1000} sec.` : '';

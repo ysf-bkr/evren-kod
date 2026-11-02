@@ -66,10 +66,8 @@ export interface UserSettings {
   captureBaseline?: boolean;
   /** Otomatik onarımda modele verilecek en fazla geri bildirim denemesi. */
   maxRepairAttempts?: number;
-  /** Tek görevde en fazla ajan adımı. */
+  /** Tek görevde en fazla ajan adımı (CLI --max-steps; 0 = sınırsız). */
   maxStepsPerTask?: number;
-  /** Görev başına en fazla token bütçesi (0 veya tanımsızsa sınırsız). */
-  maxTokensPerTask?: number;
   /**
    * Modelin bağlam penceresi (token). Buda/sıkıştırma eşikleri buna göre
    * hesaplanır; boşsa varsayılan 96.000 kullanılır.

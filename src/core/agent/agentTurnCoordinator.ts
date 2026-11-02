@@ -122,9 +122,14 @@ export async function runAgentTurn(
   core.knowledgeCurator.resetTurnBudget();
   core.memoryRecordedForTask = false;
   // Token bütçesi görev kapsamlıdır: yeni kullanıcı istemi sayacı sıfırlar,
-  // iç devam turları aynı görevin harcamasını sürdürür.
+  // iç devam turları aynı görevin harcamasını sürdürür. Kırılımlar da toplamla
+  // birlikte sıfırlanmalı: rozet "görev tüketimi" der, ipucu ise giden/gelen
+  // kırılımını gösterir; yarısı sıfırlansa ikisi farklı dönemleri sayardı.
   if (!options.internal) {
     core.state.stats.totalTokens = 0;
+    core.state.stats.promptTokens = 0;
+    core.state.stats.completionTokens = 0;
+    core.state.stats.cachedTokens = 0;
   }
   core.checkpointManager.createCheckpoint(core.state, core.state.stats.stepsCount);
   core.state.checkpoints = core.checkpointManager.getSummaries();

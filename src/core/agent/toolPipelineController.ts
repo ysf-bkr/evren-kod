@@ -417,7 +417,13 @@ export class ToolPipelineController {
           { maxConcurrency: 4 }
         );
         tc.status = 'completed';
-        tc.result = formatTaskGraphResults(results);
+        // Rapor ana ajana kalıcı olarak yazılır ve her adımda yeniden gönderilir:
+        // diğer tüm araç çıktılarının geçtiği kırpma tünelinden bu özel yol da
+        // geçmeli (invoke/run_parallel limitleri yoksa ölü ayar olurdu).
+        tc.result = this.host.contextManager.truncateToolOutput(
+          formatTaskGraphResults(results),
+          'run_parallel_tasks'
+        );
         // Her görev yalıtılmış worktree'de koştu: ana çalışma alanı değişmedi.
         // Ana ağacı "değişti" sayıp doğrulama tetiklemek, hiç test edilmemiş
         // worktree değişikliklerini "doğrulandı" gösterirdi. Doğrulamanın
@@ -539,7 +545,9 @@ export class ToolPipelineController {
           this.host.activeAbortController?.signal
         );
         tc.status = 'completed';
-        tc.result = result;
+        // Uzun alt ajan raporları ve yalıtılmış worktree ekleri her adımda
+        // yeniden gönderilir; merkezi kırpma tüneli bu özel yolu da kapsar.
+        tc.result = this.host.contextManager.truncateToolOutput(result, 'invoke_subagent');
         // Alt ajan dosya değiştirdiyse ana ajanın doğrulama döngüsünü tetikle.
         if (this.host.snapshotManager.getSnapshots().length > snapshotCountBefore) {
           return { paused: false, filesChanged: true };

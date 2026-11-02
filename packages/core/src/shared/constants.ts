@@ -140,7 +140,6 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   maxRepairAttempts: 2,
   // 0 = sınırsız: turlar yalnızca kullanıcı opt-in bir sınır verirse duraklatılır.
   maxStepsPerTask: 0,
-  maxTokensPerTask: 0,
   maxContinuations: 12,
   useIntegratedTerminal: true
 };

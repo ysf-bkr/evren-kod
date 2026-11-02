@@ -443,7 +443,7 @@ export const webFetchTool: ToolDefinition = {
       const text = contentType.includes('text/html') ? stripHtml(raw) : raw;
       const limited =
         text.length > maxChars
-          ? `${text.slice(0, maxChars)}\n... [${text.length - maxChars} content characters truncated]`
+          ? `${text.slice(0, maxChars)}\n... [${text.length - maxChars} content characters truncated; raise maxChars (up to ${MAX_TOOL_OUTPUT_CHARS}) if you need more]`
           : text;
       return `URL: ${current.toString()}\nContent-Type: ${contentType || '(unknown)'}\n\n${limited || '(empty content)'}`;
     } catch (err) {

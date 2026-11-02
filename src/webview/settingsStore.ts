@@ -227,7 +227,7 @@ export async function restoreSettings(
     // Kaldırılan bütçe/sınır ayarlarını eski kayıtlardan temiz süzeriz; iç
     // varsayılanlar DEFAULT_USER_SETTINGS'ten gelir, kullanıcı override'ı yok.
     const hadLegacyBudget =
-      savedConfig.maxTokensPerTask !== undefined ||
+      (savedConfig as Record<string, unknown>).maxTokensPerTask !== undefined ||
       (savedConfig as Record<string, unknown>).maxCostPerTaskUsd !== undefined ||
       savedConfig.maxRepairAttempts !== undefined ||
       savedConfig.maxStepsPerTask !== undefined ||

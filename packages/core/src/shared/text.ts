@@ -16,7 +16,7 @@ export function stripAnsi(value: string): string {
 export function limitWithMarker(
   value: string,
   maxChars: number,
-  marker = '[... output truncated ...]'
+  marker = '[... output truncated; narrow the command or redirect output to a file and read the exact range ...]'
 ): string {
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}\n${marker}`;

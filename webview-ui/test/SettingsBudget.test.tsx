@@ -9,7 +9,7 @@ afterEach(() => cleanup());
 
 describe('SettingsView: sadeleştirilmiş davranış ayarları', () => {
   it('kaldırılan bütçe/sınır alanlarını artık göstermez', () => {
-    render(<SettingsView settings={settings({ maxTokensPerTask: 5000, maxContinuations: 7 })} />);
+    render(<SettingsView settings={settings({ maxContinuations: 7 })} />);
 
     assert.equal(screen.queryByLabelText('Token bütçesi'), null);
     assert.equal(screen.queryByLabelText('Otomatik devam sınırı'), null);

@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { ChatMessage, ToolCall } from '@evren-kod/core/shared/types';
 import { createModelProvider } from '@evren-kod/core/providers';
 import { DailyTokenLimitError } from '@evren-kod/core/providers/openai';
-import { ALL_TOOLS } from '@evren-kod/core/tools';
+import { MODEL_TOOLS } from '@evren-kod/core/tools';
 import { ToolDefinition } from '@evren-kod/core/tools/base';
 import { generateSystemPrompt } from '@evren-kod/core/core/prompts/systemPrompt';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
@@ -221,8 +221,8 @@ export class AgentLoop {
       logWarning('Could not initialize MCP servers', err);
     }
 
-    // Araç koleksiyonu
-    const allAvailableTools: ToolDefinition[] = [...Object.values(ALL_TOOLS), ...mcpTools];
+    // Araç koleksiyonu: eski adlar şemada listelenmez (bkz. tools/index.ts).
+    const allAvailableTools: ToolDefinition[] = [...MODEL_TOOLS, ...mcpTools];
 
     // GERÇEK PLANLAMA MODU: Dosya yazma, düzenleme ve komut çalıştırma araçları planlama modunda teknik olarak kilitlidir.
     // İş akışı ayrıca spec ve plan onaylanana kadar değişiklik yapan araçları kilitler.
@@ -251,21 +251,10 @@ export class AgentLoop {
     let changedDuringTurn = false;
 
     while (!this.host.isCancelled && this.host.state.status === 'running') {
-      // Token bütçesi bir sonraki model çağrısından ÖNCE kontrol edilir:
-      // duraklatılan turda hiç model çağrısı yapılmaz, yarım işlenmiş araç
-      // çağrısı ve boşa harcanan yanıt kalmaz. Aşım en fazla bir yanıtla
-      // sınırlıdır çünkü kullanım bilgisi ancak yanıtın sonunda gelir.
-      const tokenBudget = this.host.settings.maxTokensPerTask ?? 0;
-      if (tokenBudget > 0 && this.host.state.stats.totalTokens >= tokenBudget) {
-        this.host.state.status = 'paused';
-        this.host.notify({
-          level: 'warning',
-          message: `Token bütçesi sınırına ulaşıldı (${this.host.state.stats.totalTokens} / ${tokenBudget} token). Görev duraklatıldı; sürdürmek için Ayarlar'daki "Token bütçesi" değerini yükseltin ya da 0 (sınırsız) yapın.`
-        });
-        await this.host.saveCurrentState();
-        this.host.emitState();
-        return;
-      }
+      // Token bütçesi ayarı bilinçli olarak emekliye ayrıldı: harcama kontrolü
+      // kırpma/sıkıştırma ile yapılır, görev asla sayısal bir limitte
+      // durdurulmaz (README: "token senin ayarladığın sınırların esiri
+      // değildir"). Kullanım bilgisi yalnızca istatistiklere toplanır.
 
       if (maxSteps <= 0) {
         break;
@@ -642,7 +631,7 @@ export class AgentLoop {
       );
       this.host.notify({
         level: 'warning',
-        message: `Görev adım sınırına ulaşıldı (${stepBudget} adım). Devam etmek için "devam" yazın veya Ayarlar'daki adım bütçesini yükseltin (0 = sınırsız).`
+        message: `Görev adım sınırına ulaşıldı (${stepBudget} adım). Devam etmek için "devam" yazın.`
       });
       await this.host.saveCurrentState();
       this.host.emitState();

@@ -75,6 +75,16 @@ export function createSubagentManager(core: AgentCore): SubagentManager {
         return dirty
           ? `"${absolutePath}" contains unsaved editor changes. Save or revert them first.`
           : undefined;
+      },
+      // Alt ajan harcaması ana oturumun Σ rozetine ve istatistiklerine eklenir;
+      // devretme token muhasebesinin dışında kalamaz (denetim bulgusu).
+      onModelUsage: (usage) => {
+        const stats = core.state.stats;
+        stats.totalTokens += usage.totalTokens;
+        stats.promptTokens = (stats.promptTokens ?? 0) + usage.promptTokens;
+        stats.completionTokens = (stats.completionTokens ?? 0) + usage.completionTokens;
+        stats.cachedTokens = (stats.cachedTokens ?? 0) + (usage.cachedTokens ?? 0);
+        core.emitState();
       }
     }
   );

@@ -1,6 +1,7 @@
 import { ModelProvider, ModelCompletionResponse, ProviderMessage } from '../../providers/base';
 import { DailyTokenLimitError } from '../../providers/openai';
 import { ALL_TOOLS } from '../../tools';
+import { isModelVisibleTool } from '../../shared/types';
 import { ToolDefinition, coerceToolArguments, validateToolArguments, TerminalRunner } from '../../tools/base';
 import { ToolCall, ToolName } from '../../shared/types';
 import { errorMessage } from '../../shared/errors';
@@ -124,6 +125,13 @@ export interface SubagentPorts {
   };
   /** Dosya kaydedilmemiş editör değişiklikleri taşıyorsa engel gerekçesi. */
   dirtyFileReason?: (absolutePath: string) => string | undefined;
+  /**
+   * Alt ajanın her model çağrısından dönen kullanım bilgisi. Ana oturumun
+   * token muhasebesi devretmenin maliyetini de görmeli: rapor olmadan
+   * "görev X token yaktı" sayısı alt ajan harcamasını sessizce dışarıda
+   * bırakırdı (denetim bulgusu).
+   */
+  onModelUsage?: (usage: NonNullable<ModelCompletionResponse['usage']>) => void;
 }
 
 export class SubagentManager {
@@ -345,6 +353,7 @@ Note: Changes were not automatically applied to the main workspace. Review and a
       const declaredTools =
         custom.allowedTools && custom.allowedTools.length > 0 ? new Set(custom.allowedTools) : null;
       tools = Object.values(ALL_TOOLS).filter((t) => {
+        if (!isModelVisibleTool(t.name)) return false;
         if ((t.name === 'invoke_subagent' || t.name === 'run_parallel_tasks') && resolvedRole !== 'manager') {
           return false;
         }
@@ -379,7 +388,8 @@ Note: Changes were not automatically applied to the main workspace. Review and a
 
     if (!tools) {
       tools = Object.values(ALL_TOOLS).filter(
-        (t) => t.name !== 'invoke_subagent' && t.name !== 'ask_followup_question'
+        (t) =>
+          isModelVisibleTool(t.name) && t.name !== 'invoke_subagent' && t.name !== 'ask_followup_question'
       );
     }
 
@@ -481,6 +491,12 @@ Complete your task and provide a clear report of the results to the main agent w
           worktreePath: isolated ? workspaceRoot : undefined
         });
         return `[Subagent Error]: Subagent '${params.role}' could not reach any model (${detail}). The manager should continue this work directly or retry later.`;
+      }
+
+      // Kullanım muhasebesi: alt ajan tokenları ana oturumun istatistiklerine
+      // akar; devretme gizli bir harcama kanalı olamaz.
+      if (response.usage) {
+        this.ports?.onModelUsage?.(response.usage);
       }
 
       if (!response.toolCalls || response.toolCalls.length === 0) {
