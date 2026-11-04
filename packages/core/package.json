@@ -1,6 +1,6 @@
 {
   "name": "@evren-kod/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Evren motoru: sağlayıcılar, araçlar, izinler, bağlam, bilgi tabanı — VS Code'dan bağımsız.",
   "main": "./src/index.ts",

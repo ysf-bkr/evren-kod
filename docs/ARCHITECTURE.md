@@ -157,7 +157,7 @@ Bir sohbet görünüm durumu değil, yaşayan bir `AgentCore` örneğidir.
 | `npm run compile`              | Yalnızca extension bundle'ını esbuild ile derler.                                                            |
 | `npm run build:ui`             | Yalnızca webview uygulamasını Vite ile derler.                                                               |
 | `npm run build:cli`            | Yalnızca CLI bundle'ını derler.                                                                              |
-| `npm run package`              | `out/evren-kod-0.1.0.vsix` paketini üretir.                                                                   |
+| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                   |
 | `npm run audit:verify`         | `.evren-kod/audit.log` hash zincirini doğrular (`-- --workspace <path>`).                                          |
 | `npm run cli`                  | Başsız (headless) terminal CLI'ını kaynaktan çalıştırır.                                                     |
 | `npm run test:e2e`             | Derler ve gerçek bir VS Code penceresinde uçtan uca testleri çalıştırır.                                     |

@@ -24,6 +24,8 @@ export interface ModelCompletionResponse {
     totalTokens: number;
     /** Sağlayıcı tarafındaki istem önbelleğinden gelen tokenlar (indirimli faturalanır). */
     cachedTokens?: number;
+    /** Sağlayıcı saymadı; karakterden tahmin edildi (muhasebe dürüstlüğü için). */
+    estimated?: boolean;
   };
 }
 

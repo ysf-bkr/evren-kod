@@ -152,19 +152,28 @@ describe('tools/base: kardeş özellikler aynı şema nesnesini paylaşabilir (L
   });
 });
 
-describe('TaskPlanner: uzun bağımlılık zinciri yığın taşması yapmaz', () => {
-  it('10.000 adımlık zinciri doğrular', async () => {
+describe('Derin bağımlılık zinciri yığın taşması yapmaz', () => {
+  it('dedektör 10.000 adımlık zinciri yığını taşırmadan doğrular', async () => {
+    // Plancının 60 adım kapısı bu yolu model girdisi için kapattı; döngü
+    // dedektörü diskten geri yüklenen planlarda yine derin girdi görebilir,
+    // bu yüzden sınır testi artık dedektörün kendisine yöneltir.
+    const { detectDependencyCycle } = await import('@evren-kod/core/core/plan/dependencyCycle');
+    const steps = Array.from({ length: 10_000 }, (_, index) => ({
+      id: `s${index}`,
+      dependsOn: index > 0 ? [`s${index - 1}`] : []
+    }));
+    assert.strictEqual(detectDependencyCycle(steps), undefined);
+  });
+
+  it('plancı 60 üstü adımı artık kapıdan geçirmez', async () => {
     const { TaskPlanner } = await import('@evren-kod/core/core/plan/TaskPlanner');
     const planner = new TaskPlanner();
-
     const steps = Array.from({ length: 10_000 }, (_, index) => ({
       id: `s${index}`,
       title: `Adım ${index}`,
       dependsOn: index > 0 ? [`s${index - 1}`] : []
     }));
-
-    const plan = planner.update({ goal: 'derin', steps } as never);
-    assert.strictEqual(plan.steps.length, 10_000);
+    assert.throws(() => planner.update({ goal: 'derin', steps } as never), /at most 60 steps/i);
   });
 
   it('döngüyü hâlâ yakalar', async () => {

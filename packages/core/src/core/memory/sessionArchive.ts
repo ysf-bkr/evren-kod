@@ -19,6 +19,59 @@ export interface SessionArchive {
 
 const INTERRUPTED = 'The operation was interrupted before the session was exported.';
 
+/** Kalıcılık kopyasında tam gövdesi korunacak en yeni araç sonucu sayısı. */
+const PERSISTENCE_FULL_RESULTS = 30;
+/** Pencere dışında kalan eski araç sonucu gövdelerinin indirgeneceği uzunluk. */
+const PERSISTENCE_RESULT_STUB_CHARS = 400;
+
+/**
+ * Kalıcı depolamaya yazılacak küçültülmüş kopyayı üretir.
+ *
+ * Uzun bir görev yüzlerce araç sonucu biriktirir; hepsinin tam gövdesi her
+ * kayıtta yeniden serileştirilirse workspaceState şişer ve yazım yavaşlar.
+ * Canlı oturum hiç dokunulmadan tam hâlini taşımaya devam eder; yalnızca
+ * disine giden kopyada en yeni ~30 sonucun gövdesi tam kalır, eskiler
+ * kimliği ve başı korunarak kısaltılır. Bu bir sayısal Limit değil boyut
+ * kontrolüdür: görev durmaz, kullanıcı tam gövdeyi istersen dosyayı yeniden
+ * okutur.
+ */
+export function slimTaskForPersistence(task: TaskState): TaskState {
+  const bodies: string[][] = [];
+  for (const message of task.messages) {
+    for (const toolCall of message.toolCalls ?? []) {
+      bodies.push([toolCall.result ?? '']);
+    }
+  }
+  const total = bodies.length;
+  if (total <= PERSISTENCE_FULL_RESULTS) return task;
+
+  let index = 0;
+  const messages = task.messages.map((message) => {
+    if (!message.toolCalls || message.toolCalls.length === 0) return message;
+    let changed = false;
+    const toolCalls = message.toolCalls.map((toolCall) => {
+      const position = index++;
+      const result = toolCall.result;
+      if (
+        position >= total - PERSISTENCE_FULL_RESULTS ||
+        typeof result !== 'string' ||
+        result.length <= PERSISTENCE_RESULT_STUB_CHARS
+      ) {
+        return toolCall;
+      }
+      changed = true;
+      return {
+        ...toolCall,
+        result:
+          `${result.slice(0, PERSISTENCE_RESULT_STUB_CHARS)}\n` +
+          `[eski araç sonucu yer tasarrufu için kısaltıldı — ${result.length} karakterdi; gereken dosyayı yeniden oku]`
+      };
+    });
+    return changed ? { ...message, toolCalls } : message;
+  });
+  return { ...task, messages };
+}
+
 function normalizeToolCall(value: unknown): ToolCall | undefined {
   if (!isRecord(value)) return undefined;
   const id = typeof value.id === 'string' ? value.id : '';
@@ -88,6 +141,9 @@ function formatTokenStats(task: TaskState): string {
   }
   if (typeof task.stats.cachedTokens === 'number' && task.stats.cachedTokens > 0) {
     parts.push(`önbellekten ${task.stats.cachedTokens}`);
+  }
+  if (typeof task.stats.estimatedTokens === 'number' && task.stats.estimatedTokens > 0) {
+    parts.push(`≈${task.stats.estimatedTokens} tahmini`);
   }
   return parts.join(' · ');
 }
@@ -240,6 +296,7 @@ export function parseSessionArchive(raw: string): TaskState {
       promptTokens: typeof stats.promptTokens === 'number' ? stats.promptTokens : undefined,
       completionTokens: typeof stats.completionTokens === 'number' ? stats.completionTokens : undefined,
       cachedTokens: typeof stats.cachedTokens === 'number' ? stats.cachedTokens : undefined,
+      estimatedTokens: typeof stats.estimatedTokens === 'number' ? stats.estimatedTokens : undefined,
       stepsCount: typeof stats.stepsCount === 'number' ? stats.stepsCount : 0,
       filesModified,
       lastModel: typeof stats.lastModel === 'string' ? stats.lastModel : undefined

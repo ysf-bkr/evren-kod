@@ -8,18 +8,18 @@ Uzantı Marketplace'te yayımlanana kadar Marketplace kurulum bağlantısı kull
 Marketplace sayfası uzantı manifestindeki metadata'yı ve depodaki `README.md` dosyasını kullanır.
 Bu projede temel bilgiler tanımlıdır:
 
-| Bilgi | Değer / kaynak |
-| --- | --- |
-| Uzantı kimliği | `ysf-bkr.evren-kod` (`publisher` + `name`) |
-| Görünen ad ve kısa açıklama | `package.json` içindeki `displayName` ve `description` |
-| Yayıncı | `ysf-bkr` |
-| Simge | `resources/icon.png` |
-| Lisans | `MIT` ve `LICENSE` dosyası |
-| Kategori ve arama etiketleri | `package.json` içindeki `categories` ve `keywords` |
-| Kurulum, kullanım, gizlilik ve destek bilgisi | GitHub ve Marketplace'te gösterilen kök `README.md` |
-| Ayrıntılı veri işleme açıklaması | [`docs/PRIVACY.md`](./PRIVACY.md) |
-| Değişiklik geçmişi | [`CHANGELOG.md`](../CHANGELOG.md) |
-| Kaynak kodu ve hata bildirme | `package.json` içindeki `repository`, `homepage` ve `bugs` |
+| Bilgi                                         | Değer / kaynak                                             |
+| --------------------------------------------- | ---------------------------------------------------------- |
+| Uzantı kimliği                                | `ysf-bkr.evren-kod` (`publisher` + `name`)                 |
+| Görünen ad ve kısa açıklama                   | `package.json` içindeki `displayName` ve `description`     |
+| Yayıncı                                       | `ysf-bkr`                                                  |
+| Simge                                         | `resources/icon.png`                                       |
+| Lisans                                        | `MIT` ve `LICENSE` dosyası                                 |
+| Kategori ve arama etiketleri                  | `package.json` içindeki `categories` ve `keywords`         |
+| Kurulum, kullanım, gizlilik ve destek bilgisi | GitHub ve Marketplace'te gösterilen kök `README.md`        |
+| Ayrıntılı veri işleme açıklaması              | [`docs/PRIVACY.md`](./PRIVACY.md)                          |
+| Değişiklik geçmişi                            | [`CHANGELOG.md`](../CHANGELOG.md)                          |
+| Kaynak kodu ve hata bildirme                  | `package.json` içindeki `repository`, `homepage` ve `bugs` |
 
 Marketplace listesi tek dillidir: `displayName`, `description` ve kök
 `README.md` içeriğini dil seçici olmadan aynen gösterir. Ürünün hedef
@@ -77,8 +77,8 @@ yayını geri alınması zor bir işlemdir; publisher ve sürüm bilgilerini ön
 2. Sürüm numarasıyla aynı etiketi oluşturup gönderin. Örnek:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 3. `v<package.json sürümü>` biçimiyle eşleşen etiket, `.github/workflows/marketplace.yml`
@@ -94,10 +94,11 @@ otomatik güncelleme varsayılan olarak kapalıdır.
 VSCodium, Gitpod ve Eclipse Theia gibi açık kaynak VS Code türevleri Microsoft Marketplace yerine [Open VSX Registry](https://open-vsx.org/) kullanır.
 
 Aynı VSIX paketini Open VSX'e yayınlamak için:
+
 1. `open-vsx.org` üzerinde bir hesap açıp `ysf-bkr` adında bir namespace (yayıncı) oluşturun.
 2. Access Token üreterek yerel ortamda şu komutla yayınlayabilirsiniz:
    ```bash
-   npx ovsx publish out/evren-kod-0.1.0.vsix -p <OVSX_TOKEN>
+   npx ovsx publish out/evren-kod-0.1.1.vsix -p <OVSX_TOKEN>
    ```
 3. Çift yayın (Marketplace + Open VSX), iş akışına `OVSX_PAT` secret'ı ve bir Open VSX adımı eklenerek otomatikleştirilebilir. Mevcut `.github/workflows/marketplace.yml` yalnızca Visual Studio Marketplace'e yayınlar; bu adım henüz bağlı değildir.
 

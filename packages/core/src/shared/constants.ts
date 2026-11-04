@@ -88,6 +88,23 @@ export const GRAPH_MAX_BUDGET_CHARS = 12_000;
 /** Mimari özetin işleyeceği en fazla dizin. */
 export const GRAPH_MAX_GROUPS = 24;
 
+/**
+ * Görev durumu bloklarının (spec/plan/modül haritası) sistem istemine
+ * yazılabilen en büyük gövdesi. Model tek bir spec'i 40 KB'a şişirebilirdi;
+ * o metin her adımın her isteğinde yeniden taşınır. Kapılar yalnızca modele
+ * giden gövdeyi sınırlar; arayüz ve araç çıktıları tam içeriği görür.
+ */
+export const SPEC_PROMPT_BUDGET_CHARS = 4_000;
+export const PLAN_PROMPT_BUDGET_CHARS = 6_000;
+export const MODULE_PROMPT_BUDGET_CHARS = 4_000;
+
+/** Modelin tek planda üretebileceği azami adım ve modül sayısı. */
+export const MAX_PLAN_STEPS = 60;
+export const MAX_MODULE_COUNT = 32;
+
+/** Skill/AGENT.md açıklamalarının bağlam satırındaki azami uzunluğu. */
+export const SKILL_CONTEXT_LINE_CHARS = 200;
+
 /** Çalışma alanı komutu için varsayılan zaman aşımı. */
 export const COMMAND_TIMEOUT_MS = 120_000;
 

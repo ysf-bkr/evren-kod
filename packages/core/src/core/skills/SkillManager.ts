@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { frontmatterList, frontmatterScalar, parseFrontmatter } from '../../shared/frontmatter';
+import { SKILL_CONTEXT_LINE_CHARS } from '../../shared/constants';
 import type { AgentDefinition } from '../../shared/agents/types';
 
 export interface DiscoveredSkill {
@@ -164,19 +165,24 @@ export class SkillManager {
 
   public getPromptContext(): string {
     let text = '';
+    // Açıklamalar kullanıcı yazımıdır: tek bir gevezeteki skill tarifi tüm
+    // sistem istemini şişirebilirdi. Satır kapısı tanıtıcı bilgiyi korur,
+    // ayrıntı zaten read_skill ile istenir.
+    const line = (value: string) =>
+      value.length > SKILL_CONTEXT_LINE_CHARS ? `${value.slice(0, SKILL_CONTEXT_LINE_CHARS)}…` : value;
 
     // AGENTS.md kuralları tek yerden WorkspaceRuleManager tarafından eklenir.
     if (this.skills.length > 0) {
       text += `\n\n=== AVAILABLE SKILLS ===\nThe following custom skills are defined under .agents/skills. To use a skill, read its full instructions with the 'read_skill' tool:\n`;
       for (const s of this.skills) {
-        text += `- **${s.name}**: ${s.description}\n`;
+        text += `- **${s.name}**: ${line(s.description)}\n`;
       }
     }
 
     if (this.customAgents.length > 0) {
       text += `\n\n=== CUSTOM SUBAGENTS (.agents/agents) ===\nThe following project-specific subagents can be called with 'invoke_subagent':\n`;
       for (const a of this.customAgents) {
-        text += `- **${a.name}** (${a.role}): ${a.description}\n`;
+        text += `- **${a.name}** (${a.role}): ${line(a.description)}\n`;
       }
     }
 

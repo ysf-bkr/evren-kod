@@ -4,7 +4,8 @@ import { logWarning } from '@evren-kod/core/shared/logging';
 import {
   parseSessionArchive,
   serializeSessionArchive,
-  serializeSessionMarkdown
+  serializeSessionMarkdown,
+  slimTaskForPersistence
 } from '@evren-kod/core/core/memory/sessionArchive';
 
 export type SessionExportFormat = 'json' | 'markdown';
@@ -74,8 +75,9 @@ export class HistoryManager {
   }
 
   private async writeTask(task: TaskState): Promise<void> {
-    // Görevin tamamını kaydet
-    await this.context.workspaceState.update(`evren_kod_task_${task.id}`, task);
+    // Görevin tamamını kaydet. Kalıcılık kopyası eski araç sonucu gövdelerini
+    // budar; canlı nesneye dokunulmaz, arayüz tam çıktıyı görmeye devam eder.
+    await this.context.workspaceState.update(`evren_kod_task_${task.id}`, slimTaskForPersistence(task));
 
     // Özet listesini güncelle
     const summaries = this.getSummaries();

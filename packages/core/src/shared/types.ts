@@ -679,6 +679,12 @@ export interface TaskStats {
   cachedTokens?: number;
   /** Üretilen (completion) token toplamı. */
   completionTokens?: number;
+  /**
+   * Kesilen (iptal/takılma) isteklerde sağlayıcı saymadığı için karakterden
+   * tahmin edilip muhasebeye eklenen token. Σ rozetinde ayrı işaretlenir:
+   * harcanan görünmezden gelinmez, ama gerçek sayı gibi de satılmaz.
+   */
+  estimatedTokens?: number;
   stepsCount: number;
   filesModified: string[];
   lastModel?: string;

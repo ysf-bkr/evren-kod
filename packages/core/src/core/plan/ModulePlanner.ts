@@ -1,5 +1,7 @@
 import { ModuleLayer, ModulePlan, ProjectModule } from '../../shared/types';
 import { cleanStringList, slugify } from '../../shared/text';
+import { MAX_MODULE_COUNT, MODULE_PROMPT_BUDGET_CHARS } from '../../shared/constants';
+import { trimSmart } from '../context/ContextManager';
 import { detectDependencyCycle } from './dependencyCycle';
 
 /**
@@ -125,6 +127,14 @@ export class ModulePlanner {
     if (rawModules.length === 0) {
       throw new ModulePlanValidationError('A module plan must contain at least one module.');
     }
+    // Otuz iki modüllük bir harita artık planlama değil keşif; her isteğin
+    // bağlamını kalıcı olarak şişirir. Model bir katmanı alt modüllere bölebilir.
+    if (rawModules.length > MAX_MODULE_COUNT) {
+      throw new ModulePlanValidationError(
+        `A module plan may contain at most ${MAX_MODULE_COUNT} modules (received ${rawModules.length}). ` +
+          'Merge related modules; keep the map coarse.'
+      );
+    }
 
     const usedIds = new Set<string>();
     const modules: ProjectModule[] = rawModules.map((raw, index) => {
@@ -249,20 +259,31 @@ export class ModulePlanner {
   public formatForPrompt(): string {
     if (!this.plan) return '';
     const order = this.getBuildOrder();
-    const lines = order.map((module, index) => {
-      const deps = module.dependsOn.length > 0 ? ` — depends on: ${module.dependsOn.join(', ')}` : '';
-      const criteria = module.criteria.length > 0 ? ` — criteria: ${module.criteria.join(', ')}` : '';
+    const clamp = (value: string, max: number) => (value.length > max ? `${value.slice(0, max)}…` : value);
+    const rawLines = order.map((module, index) => {
+      const deps =
+        module.dependsOn.length > 0 ? ` — depends on: ${module.dependsOn.slice(0, 8).join(', ')}` : '';
+      const criteria =
+        module.criteria.length > 0
+          ? ` — criteria: ${clamp(module.criteria.slice(0, 3).join(', '), 200)}`
+          : '';
       return (
         `${index + 1}. [${module.layer}] ${module.id} (${module.name}) — @${module.ownerRole}\n` +
-        `   paths: ${module.paths.join(', ')}\n` +
-        `   responsibility: ${module.responsibility}${deps}${criteria}`
+        `   paths: ${clamp(module.paths.slice(0, 8).join(', '), 200)}\n` +
+        `   responsibility: ${clamp(module.responsibility, 200)}${deps}${criteria}`
       );
     });
+    const rawBody = rawLines.join('\n');
+    const body = trimSmart(rawBody, MODULE_PROMPT_BUDGET_CHARS, 'module map');
+    const note =
+      body === rawBody
+        ? ''
+        : '\nNote: the module map was compacted to fit the prompt budget; call update_module_plan to re-read it.';
 
     return `\n\n=== MODULE MAP (.evren-kod module plan) ===
 Goal: ${this.plan.goal || '(not specified)'}
 Write the modules in this order. Each module is a separate unit of work with a single responsibility:
-${lines.join('\n')}
+${body}${note}
 
 Module rules:
 - Write lower layers first (shared → domain → infrastructure → application → interface); a module may only use modules it depends on.

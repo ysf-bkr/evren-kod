@@ -6,6 +6,7 @@ import * as path from 'path';
 import process from 'process';
 import { createInterface } from 'readline/promises';
 import { createModelProvider } from '@evren-kod/core/providers';
+import { StreamInterruptedError } from '@evren-kod/core/providers/openai';
 import { ALL_TOOLS } from '@evren-kod/core/tools';
 import { ToolExecutionContext } from '@evren-kod/core/tools/base';
 import { runToolCall } from '@evren-kod/core/core/toolRunner';
@@ -308,6 +309,21 @@ async function main(): Promise<void> {
   // dur; aksi hâlde CLI otuz adımı aynı hatayla tüketir.
   let lastFailure: { key: string; count: number } | undefined;
 
+  // Kullanım muhasebesi: sağlayıcı ne saydıysa oturum sonunda toplanır.
+  // CLI'ın "sınır değil, kontrol" dürüstlüğü buradan geçiyor: görev kaç
+  // token yaktı, kullanıcıya gösterilir; sessiz yanma yok.
+  const sessionUsage = { prompt: 0, completion: 0, total: 0, cached: 0, requests: 0 };
+  const printUsageSummary = () => {
+    if (sessionUsage.total === 0 && sessionUsage.requests === 0) return;
+    process.stdout.write(
+      `\n— tüketim: ${sessionUsage.total.toLocaleString('tr-TR')} token ` +
+        `(giden ${sessionUsage.prompt.toLocaleString('tr-TR')} · ` +
+        `gelen ${sessionUsage.completion.toLocaleString('tr-TR')}` +
+        (sessionUsage.cached > 0 ? ` · önbellekten ${sessionUsage.cached.toLocaleString('tr-TR')}` : '') +
+        `; ${sessionUsage.requests} istek)\n`
+    );
+  };
+
   // Tek istem turu: etkileşimli modda aynı mesaj geçmişi sürer; model araçsız
   // yanıt verince tur biter ve söz terminale döner.
   const runPrompt = async (promptText: string): Promise<boolean> => {
@@ -341,6 +357,11 @@ async function main(): Promise<void> {
           stepSignal
         );
       } catch (err) {
+        // Kesinti bile faturalanmıştır: yanıp gitse de tüketim hanesine yazılır.
+        if (err instanceof StreamInterruptedError) {
+          sessionUsage.total += err.usage.totalTokens;
+          sessionUsage.requests += 1;
+        }
         if (repetitionHit) {
           // Korumalı kesinti: iptal değil, yanıtsız tur. Modele durumu bildir.
           messages.push({
@@ -356,9 +377,17 @@ async function main(): Promise<void> {
         }
         if (abortController.signal.aborted) {
           process.stdout.write('\nCancelled.\n');
+          printUsageSummary();
           process.exit(130);
         }
         throw err;
+      }
+      if (response.usage) {
+        sessionUsage.prompt += response.usage.promptTokens;
+        sessionUsage.completion += response.usage.completionTokens;
+        sessionUsage.total += response.usage.totalTokens;
+        sessionUsage.cached += response.usage.cachedTokens ?? 0;
+        sessionUsage.requests += 1;
       }
       if (response.text) {
         // Akışsız sağlayıcılar için son kontrol; akışta yazılan metin tekrar
@@ -405,7 +434,13 @@ async function main(): Promise<void> {
 
         const result = outcome.output;
         process.stdout.write(`\n[${toolName}] ${result.slice(0, 2_000)}\n`);
-        messages.push({ role: 'tool', toolCallId: toolCall.id, content: result });
+        // Geçmişe tam gövde yazmak, ContextManager budayana kadar her adımda
+        // yeniden faturalanır: kapıdan geçmiş halini sok, gösterimi ayrı tut.
+        messages.push({
+          role: 'tool',
+          toolCallId: toolCall.id,
+          content: contextManager.truncateToolOutput(result, toolName)
+        });
 
         // Döngü koruması: aynı araç aynı argümanlarla art arda üçüncü kez
         // patlarsa çıkmaz sokakta dönülüyordur; CLI'ı nazikçe durdur.
@@ -428,12 +463,14 @@ async function main(): Promise<void> {
       }
     }
     process.stderr.write(`Maximum step limit (${options.maxSteps}) reached.\n`);
+    printUsageSummary();
     return false;
   };
 
   if (options.prompt.trim()) {
     const completed = await runPrompt(options.prompt);
     sharedReadline?.close();
+    printUsageSummary();
     if (!completed) {
       process.exit(1);
     }
@@ -448,6 +485,7 @@ async function main(): Promise<void> {
     await runPrompt(line);
   }
   sharedReadline?.close();
+  printUsageSummary();
 }
 
 function isMainModule(): boolean {

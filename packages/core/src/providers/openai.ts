@@ -40,6 +40,29 @@ export class DailyTokenLimitError extends Error {
 }
 
 /**
+ * Akış yarım kaldığında fırlatılır: kullanıcı iptali, takılma zaman aşımı ya
+ * da ajanın kendi tekrar-çökme kesmesi. Sunucu o ana kadarki üretimi
+ * FATURALAMIŞTIR; hata bu yüzden tahmini kullanım bilgisi taşır. Ajan döngüsü
+ * bunu muhasebeye "tahmini" olarak ekler — yoksa Σ rozeti gerçek harcamayı
+ * sistematik olarak düşük gösterirdi (denetim bulgusu M3).
+ */
+export class StreamInterruptedError extends Error {
+  constructor(
+    message: string,
+    readonly usage: NonNullable<ModelCompletionResponse['usage']>,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
+    this.name = 'StreamInterruptedError';
+  }
+}
+
+/** Kaba token tahmini: ~3.8 karakter/token (ContextManager ile aynı sabit). */
+export function estimateTokensFromChars(chars: number): number {
+  return Math.ceil(Math.max(0, chars) / 3.8);
+}
+
+/**
  * 429 gövdesinde günlük kota işaretini arar (EVREN: `code=daily_token_limit_exceeded`).
  * Kota, sayfa değişiminde sıfırlanır; bu hata geçici sayılıp yeniden denenmemelidir.
  */
@@ -93,8 +116,6 @@ export interface OpenAICompatibleConfig {
 
 /** Başlıkları bekleme süresi; sonrasında vazgeçilir. */
 const HEADER_TIMEOUT_MS = 120_000;
-/** Akışın sessiz kalabileceği süre; sonrasında takılmış sayılır. */
-const STREAM_STALL_TIMEOUT_MS = 120_000;
 const MAX_ERROR_BODY_CHARS = 500;
 
 /**
@@ -412,6 +433,23 @@ export class OpenAICompatibleProvider implements ModelProvider {
       let streamDone = false;
       const toolCallsMap: Map<number, { id: string; name: string; argumentsStr: string }> = new Map();
 
+      // Kesinti muhasebesi: sunucu bu ana kadarki istem ve üretim için
+      // ücretlendirmeyi yapmıştır. Sağlayıcı usage göndermediyse karakterden
+      // tahmin edilir; Σ rozeti yanmış tokenı hiç görmemezlikten gelemez.
+      const requestChars =
+        JSON.stringify(body.messages ?? '').length + JSON.stringify(body.tools ?? '').length;
+      const interruptedUsage = (): NonNullable<ModelCompletionResponse['usage']> => {
+        if (streamUsage) return streamUsage;
+        const promptTokens = estimateTokensFromChars(requestChars);
+        const completionTokens = estimateTokensFromChars(fullText.length);
+        return {
+          promptTokens,
+          completionTokens,
+          totalTokens: promptTokens + completionTokens,
+          estimated: true
+        };
+      };
+
       const handleEvent = (rawLine: string) => {
         const trimmed = rawLine.trim();
         if (!trimmed || !trimmed.startsWith('data:')) return;
@@ -495,7 +533,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       while (!streamDone) {
         if (signal?.aborted) {
           await reader.cancel().catch(() => {});
-          throw new Error('Request cancelled by the user.');
+          throw new StreamInterruptedError('Request cancelled by the user.', interruptedUsage());
         }
         armStallTimer(this.stallTimeoutMs);
 
@@ -504,11 +542,16 @@ export class OpenAICompatibleProvider implements ModelProvider {
           chunk = await reader.read();
         } catch (err) {
           if (signal?.aborted) {
-            throw new Error('Request cancelled by the user.', { cause: err });
+            throw new StreamInterruptedError('Request cancelled by the user.', interruptedUsage(), {
+              cause: err
+            });
           }
           if (timedOut) {
-            throw new Error(
-              `Model stream stalled for ${Math.round(STREAM_STALL_TIMEOUT_MS / 1000)} sec; the request was stopped.`,
+            // Mesaj fiilen silahlanan zamanlayıcıyı söylemeli; sabit değeri
+            // yazmak kullanıcıya yanlış bir eşik bildirir (denetim L3).
+            throw new StreamInterruptedError(
+              `Model stream stalled for ${Math.round(this.stallTimeoutMs / 1000)} sec; the request was stopped.`,
+              interruptedUsage(),
               { cause: err }
             );
           }

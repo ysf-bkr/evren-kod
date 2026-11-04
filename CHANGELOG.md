@@ -3,7 +3,7 @@
 Bu dosya kullanıcıları etkileyen önemli değişiklikleri kaydeder.
 Proje sürümlemesi 0.1.0 ile burada başlar.
 
-## [Yayınlanmamış]
+## [0.1.1] - 2026-11-04
 
 ### Değiştirildi
 
@@ -13,15 +13,25 @@ Proje sürümlemesi 0.1.0 ile burada başlar.
 - **README logosu:** Başlık logosu artık tek bir mutlak `raw.githubusercontent.com` adresi. VS Code Marketplacesi `<picture>` etiketini silip göreli yolları çözümleyemediği için Marketplace'te görünmeyen logo bu değişiklikle kalıcı olarak düzeltildi.
 - **Mimari özet hubs sıralaması:** Ham çağrı sayısı yerine import bağımlısı birincil ölçü; test dosyaları tüketici olduğu için merkez listesinden çıkarıldı.
 - **Alt ajan token muhasebesi:** Alt ajan ve paralel görev model çağrılarının giden/gelen/önbellek token kullanımı artık ana oturumun Σ rozetine ve görev istatistiklerine eklenir. Devretme yoluyla harcanan tokenlar "görev X token yaktı" sayısının dışında kalamaz.
-
-### Kaldırıldı
-
-- **Token bütçesi ayarı (`maxTokensPerTask`):** Ayar arayüzden çoktan kaldırılmıştı; artık dayanak kodu da temizlendi. Harcama kontrolü bilinçli olarak yalnızca kırpma, sıkıştırma ve önbellekle yapılır — görev asla sayısal bir token limitinde durdurulmaz.
+- **İstem önbelleği iki katmana ayrıldı:** Sistem istemi tur boyunca bayt-kararlı kalır (kimlik, mod, kurallar, hafıza, dondurulmuş bilgi tabanı); değişen görev durumu (aşama, spec, plan kutuları, modül haritası, onboarding) her model çağrısında mesaj listenin sonundaki `<system_context>` kuyruğunda tazelenir. Plan kutusu işaretlenince tüm önbellek çöp olmaz; yalnızca kuyruk tokenları yeniden faturalanır.
+- **Görev durumu blokları bütçelendi:** Spec, plan ve modül haritası artık isteme sınırsız gövde yazamaz (gövde başına 4-6 KB karakter kapısı); tamamlanan plan adımları tam metin yerine kimlik listesine sıkıştırılır, tek planda en çok 60 adım / 32 modül kabul edilir. Model bir spec'i onlarca KB'a şişirse de her isteğin bağlamı zehirlenmez.
+- **Bilgi tabanı tek bütçe tüketir:** Repo haritası, insan dosyaları ve modül özetleri tek `charBudget` payını sırayla kullanır; özetler eskiden bütçenin üzerine ekleniyordu. Sığmayan özetler sayıyla bildirilir.
+- **Doğrulama notları tekilleştirildi:** "Zaten var olan hatalar" notu her doğrulama turunda yeniden eklenmez; sonuncusu yerinde tazelenir. Skill/AGENT.md açıklamaları bağlam satırında 200 karakterle sınırlanır.
 
 ### Düzeltildi
 
 - **Oturum geri yüklemede token dökümü:** Geri yüklenen ve arşivden içe aktarılan oturumlar giden/gelen/önbellek token kırılımını korur; önbellek isabet oranı gibi göstergeler yeniden yüklemeden sonra bozulmaz. Markdown dışa aktarımı da dökümü satır olarak taşır.
 - **Kırpma notları geri kazanım ipucu verir:** `web_fetch`, `read_notebook` ve komut çıktılarındaki kırpma işaretleri artık modelin kalan içeriğe nasıl ulaşacağını söyler (`maxChars` yükseltme, not defterini `read_file` ile okuma, çıktıyı dosyaya yönlendirip aralık okuma).
+- **Kesilen isteğin tokenı artık kaybolmuyor:** Kullanıcı iptali, akış takılması veya tekrar çökmesi nedeniyle yarım kalan isteklerde sunucu üretimi FATURALAMIŞTIR; yakılan token artık tahmini olarak muhasebeye eklenir ve Σ rozeti ipucunda "≈N tahmini (kesilen istekler)" diye ayrı işaretlenir. Rozet gerçek harcamayı sistematik olarak düşük göstermez.
+- **Takılma mesajı doğru eşiği söylüyor:** "Model stream stalled for X sec" uyarısı sabit 120 saniyeyi değil, fiilen silahlanan yapılandırılmış zaman aşımını bildirir.
+- **Budama gerçek kullanıcı sözünü korur:** Bağlam budaması en son kullanıcı mesajını ararken `<system_context>` enjeksiyon bloklarını atlar; kuyruğun kendisi korunup gerçek istek budanamaz.
+- **CLI tüketim özeti:** Terminal ajanı çıkışta oturumun token dökümünü (giden/gelen/önbellek/istek sayısı) basar; iptal ve kesintilerde de yazılır. CLI araç çıktıları geçmişe artık kapıdan geçmiş hâliyle yazılır.
+- **Kalıcı oturum boyut kapısı:** Depolama kopyasında en yeni 30 araç sonucunun gövdesi tam kalır, daha eski ve büyük gövdeler başı korunarak kısaltılır; canlı oturum bundan etkilenmez, workspaceState şişmez.
+- **Pazar yeri kurulum belgeleri:** Uzantı VS Code Marketplace'te yayına girdi (`ysf-bkr.evren-kod`); README ve geliştirici belgeleri Marketplace kurulumunu birincil yol olarak gösterir, "henüz yayımlanmadı" notları kaldırıldı.
+
+### Kaldırıldı
+
+- **Token bütçesi ayarı (`maxTokensPerTask`):** Ayar arayüzden çoktan kaldırılmıştı; artık dayanak kodu da temizlendi. Harcama kontrolü bilinçli olarak yalnızca kırpma, sıkıştırma ve önbellekle yapılır — görev asla sayısal bir token limitinde durdurulmaz.
 
 ## [0.1.0] - 2026-11-01
 

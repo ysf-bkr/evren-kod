@@ -7,7 +7,7 @@
 import * as vscode from 'vscode';
 import { ChatMessage, ToolCall } from '@evren-kod/core/shared/types';
 import { createModelProvider } from '@evren-kod/core/providers';
-import { DailyTokenLimitError } from '@evren-kod/core/providers/openai';
+import { DailyTokenLimitError, StreamInterruptedError } from '@evren-kod/core/providers/openai';
 import { MODEL_TOOLS } from '@evren-kod/core/tools';
 import { ToolDefinition } from '@evren-kod/core/tools/base';
 import { generateSystemPrompt } from '@evren-kod/core/core/prompts/systemPrompt';
@@ -188,30 +188,39 @@ export class AgentLoop {
         'The knowledge base is being indexed in the background right now. Before any project-wide ' +
         'scan (list_directory/read_file sweeps), call get_project_knowledge once — it waits for the ' +
         'index and returns the repo map, so most reads become unnecessary.';
-    const workflow = this.host.workflow.getWorkflow();
-    const workflowContext =
-      formatWorkflowForPrompt(workflow, this.host.state.mode) +
-      this.host.specStore.formatForPrompt(workflow.specId);
-    // Belgelenmemiş projedeki ilk görev: modelden, kullanıcı görevinin yanı sıra
-    // project.md taslağı yazması istenir (araç kapısından onaylanır).
-    const onboardingNudge = this.host.knowledgeCurator.needsOnboardingDraft()
-      ? this.host.knowledgeCurator.onboardingNudge()
-      : '';
+    // Önbellek disiplini (iki katman):
+    // 1. SİSTEM İSTEMİ bayt-kararlıdır: kimlik, mod, kurallar, workspace
+    //    özelleştirmeleri, proje hafızası ve tur başına DONDURULMUŞ bilgi
+    //    tabanı anlık görüntüsü. Tur içinde hiç değişmediği için sağlayıcı
+    //    istem önbelleği sistem + geçmiş ön ekini indirimli okur.
+    // 2. GÖREV DURUMU blokları (aşama, spec, plan, modül haritası, onboarding
+    //    dürtmesi, anlamsal hafıza) her adımda yeniden kurulur ve mesaj
+    //    listesinin SONUNA `<system_context>` kuyruğu olarak eklenir. Böylece
+    //    plan kutucuğu işaretlenince tüm önbellek çöp olmaz; model canlı plan
+    //    durumunu görür ve değişen yalnızca kuyruk tokenları faturalanır.
     const systemPrompt =
       (await generateSystemPrompt(
         workspaceRoot,
         this.host.state.mode,
         customizationContext,
         projectMemoryContext,
-        this.host.planner.formatForPrompt(),
+        '',
         this.host.settings.autonomy
-      )) +
-      `${onboardingNudge}\n${workflowContext}${knowledgeContext}` +
-      this.host.modulePlanner.formatForPrompt();
-    // Önbellek disiplini: tur başına değişen anlamsal hafıza sonuçları sistem
-    // istemine GİRMEZ. Sistem istemi bayt-kararlı kalırsa sağlayıcı istem
-    // önbelleği tüm geçmişi indirimli okur; bloklar mesaj listenin sonuna
-    // eklenir (aşağıda buildProviderMessages kuyruk bağlamı olarak taşır).
+      )) + knowledgeContext;
+    // Görev durumu her adımda tazelenir: spec onayı, plan kutuları ve aşama
+    // kilidi tur içinde değişir; bayat kopya modele yanlış dünya anlatır.
+    const taskStateContext = (): string =>
+      [
+        formatWorkflowForPrompt(this.host.workflow.getWorkflow(), this.host.state.mode),
+        this.host.specStore.formatForPrompt(this.host.workflow.getWorkflow().specId),
+        this.host.planner.formatForPrompt(),
+        this.host.modulePlanner.formatForPrompt(),
+        // Belgelenmemiş projedeki ilk görev: modelden, kullanıcı görevinin yanı
+        // sıra project.md taslağı yazması istenir (araç kapısından onaylanır).
+        this.host.knowledgeCurator.needsOnboardingDraft() ? this.host.knowledgeCurator.onboardingNudge() : ''
+      ]
+        .filter((block) => block.trim().length > 0)
+        .join('\n');
 
     let mcpTools: ToolDefinition[] = [];
     try {
@@ -267,11 +276,12 @@ export class AgentLoop {
       tools = toolsForCurrentStage();
 
       // LLM için tam mesaj geçmişini oluştur (saf yardımcı, birim testli).
-      const providerMessages = buildProviderMessages(
-        systemPrompt,
-        this.host.state.messages,
-        vectorMemoryContext
-      );
+      // Kuyruk bağlamı her adımda tazelenir: canlı spec/plan/aşama durumu +
+      // anlamsal hafıza; sistem istemi ve geçmiş ise önbellekte kalır.
+      const tailContext = [taskStateContext(), vectorMemoryContext]
+        .filter((block) => block.trim().length > 0)
+        .join('\n');
+      const providerMessages = buildProviderMessages(systemPrompt, this.host.state.messages, tailContext);
 
       // Akış yapan asistan mesajı tutucusu
       const assistantMsgId = this.host.nextMessageId();
@@ -333,6 +343,21 @@ export class AgentLoop {
           this.host.activeAbortController.signal
         );
       } catch (err) {
+        // Kesinti muhasebesi (denetim M3): sunucu bu ana kadarki üretim için
+        // ücretlendirmiştir. Yanıt yarım kaldı diye yakılan token buharlaşamaz;
+        // tahmini kullanım Σ'ya "tahmini" olarak yazılır, sonra akış neyse o.
+        if (err instanceof StreamInterruptedError) {
+          const stats = this.host.state.stats;
+          stats.totalTokens += err.usage.totalTokens;
+          if (err.usage.estimated) {
+            stats.estimatedTokens = (stats.estimatedTokens ?? 0) + err.usage.totalTokens;
+          } else {
+            // Sağlayıcı gerçekten saymış: alt kırılıma da yazılsın, eksik kalmasın.
+            stats.promptTokens = (stats.promptTokens ?? 0) + err.usage.promptTokens;
+            stats.completionTokens = (stats.completionTokens ?? 0) + err.usage.completionTokens;
+            stats.cachedTokens = (stats.cachedTokens ?? 0) + (err.usage.cachedTokens ?? 0);
+          }
+        }
         if (repetitionCollapse) {
           // Bu iptal kaza değil, korumalı kesintidir: iptal sayılmaz; çökmüş
           // kuyruk atılır, temiz ön ek yanıt kabul edilir.

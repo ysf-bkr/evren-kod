@@ -62,7 +62,7 @@ Evren Kod, yüksek kod kalitesi ve test izolasyonu için kapsamlı kontrol scrip
 | `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                                                                                |
 | `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular; ölçüm Node birim test kümesi (`test/unit/**`) üzerinden yapılır, webview UI testleri ayrı koşar ve eşiğe dâhil değildir. |
 | `npm run check`                | Tam kalite kapısı: format + tip + lint + dil + test + kapsam.                                                                                                  |
-| `npm run package`              | `out/evren-kod-0.1.0.vsix` paketini üretir.                                                                                                                     |
+| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                                                                     |
 | `npm run install:ext`          | VSIX paketini üretip yerel VS Code ortamına kurar/günceller.                                                                                                   |
 
 ---

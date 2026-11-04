@@ -13,14 +13,15 @@
 > **Zanaat:** Bilgi grafiğiyle mimariyi okur; hiçbir düzenlemeyi kanıtsız "başarılı" saymaz. · **Kalkan:** İzin kalkanı, dizin hapsi ve komut politikası — izin sizden alınmadan tek satır yazılmaz. · **Dürüstlük:** Yanlışını gizlemez: tekrarlayan yanıt kesilir, çıkmaz sokakta üçüncü denemede durur, "testler geçti" yalnızca testler gerçekten geçince söylenir.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/ysf-bkr.evren-kod?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ysf-bkr.evren-kod)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.106-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml/badge.svg)](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-852%20passing-2ea44f)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/tests-868%20passing-2ea44f)](./docs/DEVELOPMENT.md)
 
 **Geliştirici:** Yusuf BEKAR · **E-posta:** [ybekar@msn.com](mailto:ybekar@msn.com)
 
-[GitHub Deposu](https://github.com/ysf-bkr/evren-kod) · [Hata Bildir / Özellik İste](https://github.com/ysf-bkr/evren-kod/issues) · [Geliştirici Kılavuzu](./docs/DEVELOPMENT.md)
+**[Marketplace'den Kur](https://marketplace.visualstudio.com/items?itemName=ysf-bkr.evren-kod)** · [GitHub Deposu](https://github.com/ysf-bkr/evren-kod) · [Hata Bildir / Özellik İste](https://github.com/ysf-bkr/evren-kod/issues) · [Geliştirici Kılavuzu](./docs/DEVELOPMENT.md)
 
 </div>
 
@@ -47,7 +48,7 @@
 | **EVREN Kotası ve Model Çubuğu**            | Sohbet altındaki çubuk, EVREN günlük token kotasını (kullanılan / sınır / kalan) canlı gösterir ve sohbetten ayrılmadan model değiştirmeyi sağlar.                                                                                                                                                                                                           |
 | **Arka Planda Çalışan Sohbetler**           | Her sohbet kendi ajan çekirdeğinde çalışır: sohbet değiştirmek veya yeni sohbet açmak önceki görevi (ve alt ajanlarını) durdurmaz. Paylaşılan servisler sayesinde ikinci sohbet ucuzdur.                                                                                                                                                                     |
 | **Türkçe Belgeler ve Türkçe Arayüz**        | Proje belgeleri, rehberler ve arayüzdeki tüm hata mesajları, bildirimler ve plan adımları eksiksiz Türkçe.                                                                                                                                                                                                                                                   |
-| **Bilgi Grafiği (Knowledge Graph)**         | Çağrı haritası, dosya import'ları, sembol imzaları ve kayıtlı mimari kararlar tek grafında: ajan bir görev için projeyi baştan okumak yerine hazır bağıntıları okur; her çıktı sabit token bütçesiyle döner. Arayüzde "Bilgi Grafiği" ekranında gezilebilir. |
+| **Bilgi Grafiği (Knowledge Graph)**         | Çağrı haritası, dosya import'ları, sembol imzaları ve kayıtlı mimari kararlar tek grafında: ajan bir görev için projeyi baştan okumak yerine hazır bağıntıları okur; her çıktı sabit token bütçesiyle döner. Arayüzde "Bilgi Grafiği" ekranında gezilebilir.                                                                                                 |
 | **Akıl Sağlığı Korumaları**                 | Model bir satıra kilitlenip aynı metni sonsuza dek tekrarladığında akış otomatik kesilir; aynı araç aynı argümanla üçüncü kez patlarsa tur duraklatılır. Uzun görevler sessizce kontrolden çıkamaz.                                                                                                                                                          |
 | **Bağlam Penceresi Ayarı**                  | Modelinin bağlam pencereyi ayarlardan bildir; sohbet geçmişi ve araç çıktıları gerçek sınıra göre budanır, istekler taşmaz.                                                                                                                                                                                                                                  |
 | **Terminal Arayüzü (`evren-kod`)**          | Aynı çekirdek terminalde: tek istemlik çalıştırma ya da `evren-kod` ile etkileşimli sohbet; onaylar, plan ve korumalar VS Code ile aynı.                                                                                                                                                                                                                     |
@@ -70,18 +71,25 @@ Evren Kod bir otonomluk şovu değil, zanaatkâr çırağı gibi tasarlandı: ç
 
 ### 1. Kurulum
 
-> [!NOTE]
-> Uzantı henüz VS Code Marketplace'te yayımlanmadı. İlk sürüme kadar VSIX
-> paketini aşağıdaki adımlarla yerel olarak üretip kurun.
+Uzantı **VS Code Marketplace**'te yayımda: [Evren Kod — ysf-bkr.evren-kod](https://marketplace.visualstudio.com/items?itemName=ysf-bkr.evren-kod)
 
-Yerel VSIX paketiyle (`out/evren-kod-0.1.0.vsix`) derleyip kurabilirsiniz:
+```bash
+# Marketplace'ten kurmak için:
+code --install-extension ysf-bkr.evren-kod
+
+# veya VS Code içinde Ctrl+Shift+P (Cmd+Shift+P) → "Extensions: Install Extensions"
+# → arama kutusuna "Evren Kod" yazın.
+```
+
+Kaynaktan geliştirmek veya geliştirme sürümü kullanmak isterseniz yerel VSIX
+paketini (`out/evren-kod-0.1.1.vsix`) derleyip kurabilirsiniz:
 
 ```bash
 # Otomatik derleme, paketleme ve kurulum için:
 npm run install:ext
 
 # veya üretilen VSIX paketini doğrudan kurmak için:
-code --install-extension out/evren-kod-0.1.0.vsix --force
+code --install-extension out/evren-kod-0.1.1.vsix --force
 ```
 
 ### 2. Model Sağlayıcınızı Seçin
@@ -151,7 +159,6 @@ Evren Kod'un iç yapısı, modül katmanları, test çalıştırma ve katkı sa�
 
 - **Komut geri alma temiz Git ağacı ister:** `execute_command` bir Git checkpoint'i alır ve geri alınabilir; ancak bu yalnızca depoda bir `HEAD` varsa ve komut öncesi çalışma ağacı temizse çalışır. Git deposu olmayan alanlarda komut yan etkileri geri alınamaz; bu durumlar için Git'i kendiniz kullanın.
 - **Plan modu sandbox değil, araç kilididir:** plan modu yazma ve komut araçlarını şemadan çıkarır, ancak işletim sistemi düzeyinde yalıtım sağlamaz. Güvenilmeyen depolar için Dev Container kullanın.
-- **Henüz Marketplace'te değil:** kurulum şimdilik yerel olarak üretilen VSIX paketi gerektirir.
 
 ---
 

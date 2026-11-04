@@ -49,7 +49,7 @@ if (uiPkg.author?.name !== 'Yusuf BEKAR' || uiPkg.author?.email !== 'ybekar@msn.
 
 const stale = [
   'evren-kod-0.0.2.vsix',
-  'evren-kod-0.1.1.vsix',
+  'evren-kod-0.1.0.vsix',
   'evren-kod-0.2.0.vsix',
   'evren-kod-0.0.4.vsix'
 ];

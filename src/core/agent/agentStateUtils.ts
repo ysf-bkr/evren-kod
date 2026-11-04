@@ -51,6 +51,7 @@ export function normalizeRestoredState(
       promptTokens: saved.stats?.promptTokens,
       completionTokens: saved.stats?.completionTokens,
       cachedTokens: saved.stats?.cachedTokens,
+      estimatedTokens: saved.stats?.estimatedTokens,
       stepsCount: saved.stats?.stepsCount ?? 0,
       filesModified: Array.isArray(saved.stats?.filesModified) ? saved.stats.filesModified : [],
       lastModel: saved.stats?.lastModel,

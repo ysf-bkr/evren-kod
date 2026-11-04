@@ -117,15 +117,20 @@ export const TaskHeader: React.FC<TaskHeaderProps> = ({ state, changedFileCount,
   // Görev token rozeti: toplam tüketim görünür, ipucunda giden/gelen kırılımı
   // ve önbellek okuma isabeti — tasarrufun ölçülebilmesi için.
   const tokenBadge = (() => {
-    const { totalTokens, promptTokens, completionTokens, cachedTokens } = state.stats;
+    const { totalTokens, promptTokens, completionTokens, cachedTokens, estimatedTokens } = state.stats;
     if (!totalTokens) return null;
     const hitRate = promptTokens && cachedTokens ? Math.round((cachedTokens / promptTokens) * 100) : null;
     const title = [
       `Görev tüketimi — giden ${formatTokens(promptTokens)} · gelen ${formatTokens(completionTokens)} token`,
-      hitRate !== null ? `istem önbelleğinden okunan ${formatTokens(cachedTokens)} (%${hitRate})` : ''
+      hitRate !== null ? `istem önbelleğinden okunan ${formatTokens(cachedTokens)} (%${hitRate})` : '',
+      // Kesilen isteklerden tahmini sayılan token dürüstçe işaretlenir: yakıldı
+      // ama sağlayıcı tam saymadı. Rozette "≈" ile ayrılır.
+      estimatedTokens ? `≈${formatTokens(estimatedTokens)} tahmini (kesilen istekler)` : ''
     ]
       .filter(Boolean)
       .join(' · ');
+    // Rozet toplamı yakılan tüm tokenı sayar (gerçek + tahmini); tahmin payı
+    // ipucunda ayrıca belirtilir — sayı şişirilmez, kaynağı saklanmaz.
     return (
       <Badge tone="neutral" mono title={title} aria-label="Görev token tüketimi">
         Σ {formatTokens(totalTokens)}

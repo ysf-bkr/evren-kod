@@ -959,6 +959,20 @@ export class KnowledgeStore {
     const truncate = (value: string, max: number) =>
       value.length > max ? `${value.slice(0, max)}\n… [truncated]` : value;
 
+    // Tek bir toplam bütçe, sırayla tüketilir. Eskiden her bölüm kendi dilimini
+    // alırken repo haritası ve modül özetleri bütçenin ÜZERİNE ekleniyordu:
+    // 40 özet × 2000 karakter, insan dosyalarının payını katlayıp geçebilirdi.
+    let remaining = charBudget;
+    const spend = (text: string): string => {
+      if (text.length > remaining) {
+        const kept = `${text.slice(0, Math.max(0, remaining - 16))}\n… [budget]`;
+        remaining = 0;
+        return kept;
+      }
+      remaining -= text.length;
+      return text;
+    };
+
     const sections: string[] = [];
     const project = (this.human.project || '').trim();
     const conventions = (this.human.conventions || '').trim();
@@ -970,21 +984,43 @@ export class KnowledgeStore {
         `Indexed files: ${this.files.size} · symbols: ${this.symbols.length}` +
           (this.state?.lastCommit ? ` · last commit: ${this.state.lastCommit}` : '')
       );
-      const repoMap = this.renderRepoMap(80, 3_000);
-      if (repoMap) sections.push(repoMap);
+      const repoMap = this.renderRepoMap(80, Math.min(3_000, remaining));
+      if (repoMap) sections.push(spend(repoMap));
     }
-    if (project) sections.push(`=== PROJECT ===\n${truncate(project, Math.floor(charBudget / 4))}`);
+    if (project) sections.push(spend(`=== PROJECT ===\n${truncate(project, Math.floor(charBudget / 4))}`));
     if (conventions)
-      sections.push(`=== CONVENTIONS ===\n${truncate(conventions, Math.floor(charBudget / 4))}`);
-    if (decisions) sections.push(`=== DECISIONS ===\n${truncate(decisions, Math.floor(charBudget / 4))}`);
+      sections.push(spend(`=== CONVENTIONS ===\n${truncate(conventions, Math.floor(charBudget / 4))}`));
+    if (decisions)
+      sections.push(spend(`=== DECISIONS ===\n${truncate(decisions, Math.floor(charBudget / 4))}`));
 
     const summarized = this.getSummarizedFiles().slice(0, fileBudget);
-    if (summarized.length > 0) {
-      sections.push(
-        '=== MODULE SUMMARIES ===\n' + summarized.map((file) => `- ${file.path}: ${file.summary}`).join('\n')
-      );
+    if (summarized.length > 0 && remaining > 200) {
+      // Özetler en kıymetli ikinci kaynaktır ama sınırsız taşınamaz: satır
+      // başına kapı + kalan bütçe kadar; sığmayanlar sayıyla bildirilir.
+      const lines: string[] = [];
+      let used = 0;
+      let shown = 0;
+      for (const file of summarized) {
+        const summary = file.summary?.trim() || '(no summary)';
+        const line = `- ${file.path}: ${summary.length > 240 ? `${summary.slice(0, 240)}…` : summary}`;
+        if (used + line.length + 1 > remaining - '=== MODULE SUMMARIES ==='.length - 32) break;
+        lines.push(line);
+        used += line.length + 1;
+        shown++;
+      }
+      if (lines.length > 0) {
+        remaining -= used;
+        const tail =
+          shown < summarized.length
+            ? `\n[… ${summarized.length - shown} more summaries available via get_project_knowledge]`
+            : '';
+        sections.push(`=== MODULE SUMMARIES ===\n${lines.join('\n')}${tail}`);
+      }
     }
-    if (notes) sections.push(`=== NOTES ===\n${truncate(notes, Math.floor(charBudget / 6))}`);
+    if (notes && remaining > 100)
+      sections.push(
+        spend(`=== NOTES ===\n${truncate(notes, Math.min(Math.floor(charBudget / 6), remaining))}`)
+      );
 
     if (sections.length === 0) return '';
 

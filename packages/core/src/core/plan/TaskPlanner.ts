@@ -1,6 +1,8 @@
 import { PlanStep, PlanStepStatus, TaskPlan } from '../../shared/types';
 import { assignPlanRoles, rolesForStep } from '../../shared/agents/routing';
 import { slugify } from '../../shared/text';
+import { MAX_PLAN_STEPS, PLAN_PROMPT_BUDGET_CHARS } from '../../shared/constants';
+import { trimSmart } from '../context/ContextManager';
 import { detectDependencyCycle } from './dependencyCycle';
 
 const VALID_STATUSES: ReadonlySet<PlanStepStatus> = new Set<PlanStepStatus>([
@@ -87,6 +89,14 @@ export class TaskPlanner {
     const rawSteps = Array.isArray(input.steps) ? input.steps : [];
     if (rawSteps.length === 0) {
       throw new Error('A plan must contain at least one step.');
+    }
+    // Sayısal çıpa değil, çarpıtma koruması: altmış adımlık bir "plan" zaten
+    // planlama değildir ve her isteğin bağlamını kalıcı olarak zehirler.
+    if (rawSteps.length > MAX_PLAN_STEPS) {
+      throw new Error(
+        `A plan may contain at most ${MAX_PLAN_STEPS} steps (received ${rawSteps.length}). ` +
+          'Consolidate related work into fewer, meaningful steps.'
+      );
     }
 
     const usedIds = new Set<string>();
@@ -229,30 +239,47 @@ export class TaskPlanner {
 
   /**
    * Model bağlamına eklenecek kısa plan özeti.
+   *
+   * Tamamlanmış adımlar tam satır olarak DEĞİL, kimlik listesi olarak taşınır:
+   * yirmi adımlık planda on beşi bittiğinde, geçmişin kanıtını her istekte
+   * yeniden okumak bağlam israfıdır; modele gereken tek şey onların bittiği.
+   * Aktif adımlar tam bağlamıyla kalır ve blok bütçeyi aşarsa kırpılır.
    */
   public formatForPrompt(): string {
     if (!this.plan) return '';
-    const lines = this.plan.steps.map((step) => {
-      const mark =
-        step.status === 'completed'
-          ? 'x'
-          : step.status === 'in_progress'
-            ? '~'
-            : step.status === 'blocked'
-              ? '!'
-              : ' ';
-      const deps = step.dependsOn.length > 0 ? ` [depends on: ${step.dependsOn.join(', ')}]` : '';
-      const criteria = step.completionCriteria ? ` — Completion: ${step.completionCriteria}` : '';
-      const owner = step.ownerRole ? ` — Owner: @${step.ownerRole}` : '';
-      return `- [${mark}] ${step.id}: ${step.title}${deps}${criteria}${owner}`;
-    });
+    const clamp = (value: string, max: number) => (value.length > max ? `${value.slice(0, max)}…` : value);
+
+    const renderStep = (step: PlanStep, full: boolean): string => {
+      const mark = full ? (step.status === 'in_progress' ? '~' : step.status === 'blocked' ? '!' : ' ') : 'x';
+      const deps = full && step.dependsOn.length > 0 ? ` [depends on: ${step.dependsOn.join(', ')}]` : '';
+      const criteria =
+        full && step.completionCriteria ? ` — Completion: ${clamp(step.completionCriteria, 200)}` : '';
+      const owner = full && step.ownerRole ? ` — Owner: @${step.ownerRole}` : '';
+      return `- [${mark}] ${step.id}: ${clamp(step.title, 160)}${deps}${criteria}${owner}`;
+    };
+
+    const lines: string[] = [];
+    const done = this.plan.steps.filter((step) => step.status === 'completed');
+    const open = this.plan.steps.filter((step) => step.status !== 'completed');
+    if (open.length > 0) lines.push(...open.map((step) => renderStep(step, true)));
+    if (done.length > 0) {
+      const doneIds = done.map((step) => step.id).join(', ');
+      lines.push(`- [x] ${done.length} step(s) already completed (do not redo): ${clamp(doneIds, 400)}`);
+    }
 
     const ready = this.getReadySteps();
     const readyText = ready.length > 0 ? `\nSteps ready to start: ${ready.map((s) => s.id).join(', ')}` : '';
 
+    const rawBody = lines.join('\n');
+    const body = trimSmart(rawBody, PLAN_PROMPT_BUDGET_CHARS, 'plan steps');
+    const omissionNote =
+      body === rawBody
+        ? ''
+        : '\nNote: step lines were compacted to fit the prompt budget; ids and marks remain accurate.';
+
     return `\n\n=== ACTIVE TASK PLAN ===
 Goal: ${this.plan.goal || '(not specified)'}
-${lines.join('\n')}${readyText}
+${body}${readyText}${omissionNote}
 
 Plan rules:
 - "~" marks a step currently in progress, "x" marks it completed, and "!" marks it blocked.

@@ -346,9 +346,14 @@ export class ContextManager {
 
     // Son kullanıcı mesajı bu turun kimliğidir: ne düşürülebilir ne kırpılabilir
     // (denetim m.7). Birimi işaretlenir ve tüm aşamalarda muaf tutulur.
+    // Enjeksiyon blokları (`<system_context>` kuyruğu ve sistem notları) kullanıcı
+    // sözü değildir: koruma adayı aranırken atlanır, yoksa kuyruğun kendisi
+    // korunup gerçek istek budanabilirdi.
+    const isUserWord = (message: ProviderMessage): boolean =>
+      message.role === 'user' && !message.content.trimStart().startsWith('<system_context>');
     let lastUserUnitIndex = -1;
     for (let i = units.length - 1; i >= 0; i--) {
-      if (units[i]?.some((message) => message.role === 'user')) {
+      if (units[i]?.some(isUserWord)) {
         lastUserUnitIndex = i;
         break;
       }

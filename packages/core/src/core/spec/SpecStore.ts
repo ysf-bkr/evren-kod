@@ -2,7 +2,8 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { isRecord } from '../../shared/errors';
 import { cleanStringList, slugify } from '../../shared/text';
-import { EVREN_KOD_DIR, EVREN_KOD_SUBDIRS } from '../../shared/constants';
+import { EVREN_KOD_DIR, EVREN_KOD_SUBDIRS, SPEC_PROMPT_BUDGET_CHARS } from '../../shared/constants';
+import { trimSmart } from '../context/ContextManager';
 
 /**
  * Spec'ler bir görevin sözleşmesidir: ne yapılacak, ne yapılmayacak, hangi
@@ -397,24 +398,33 @@ export class SpecStore {
     const spec = id ? this.specs.get(id) : undefined;
     if (!spec) return '';
 
+    // Tek alanın şişmesi tüm oturumun her isteğini zehirler: alan başına
+    // kapılar + blok bütçesi, bağlamı modelin iyi niyetine bırakmaz.
+    const clamp = (value: string, max: number) => (value.length > max ? `${value.slice(0, max)}…` : value);
     const lines = [
       '=== TASK SPEC ===',
       `Spec: ${spec.id} (${spec.status})`,
-      `Goal: ${spec.goal}`,
-      `Risk: ${spec.risk}`
+      `Goal: ${clamp(spec.goal, 400)}`,
+      `Risk: ${clamp(spec.risk, 120)}`
     ];
-    if (spec.scope.length > 0) lines.push(`In scope: ${spec.scope.join('; ')}`);
-    if (spec.outOfScope.length > 0) lines.push(`Out of scope: ${spec.outOfScope.join('; ')}`);
-    if (spec.assumptions.length > 0) lines.push(`Assumptions: ${spec.assumptions.join('; ')}`);
-    if (spec.files.length > 0) lines.push(`Files: ${spec.files.join(', ')}`);
+    const list = (items: string[], max: number, each: number) => clamp(items.slice(0, max).join('; '), each);
+    if (spec.scope.length > 0) lines.push(`In scope: ${list(spec.scope, 30, 1_500)}`);
+    if (spec.outOfScope.length > 0) lines.push(`Out of scope: ${list(spec.outOfScope, 20, 1_000)}`);
+    if (spec.assumptions.length > 0) lines.push(`Assumptions: ${list(spec.assumptions, 20, 1_000)}`);
+    if (spec.files.length > 0) lines.push(`Files: ${list(spec.files, 60, 1_500)}`);
     lines.push('Acceptance criteria:');
-    for (const criterion of spec.acceptanceCriteria) {
-      lines.push(`- [${criterion.done ? 'x' : ' '}] ${criterion.id}: ${criterion.text}`);
+    for (const criterion of spec.acceptanceCriteria.slice(0, 40)) {
+      lines.push(`- [${criterion.done ? 'x' : ' '}] ${criterion.id}: ${clamp(criterion.text, 200)}`);
+    }
+    if (spec.acceptanceCriteria.length > 40) {
+      lines.push(
+        `- ... ${spec.acceptanceCriteria.length - 40} further criteria exist; mark them with update_acceptance_criteria by id.`
+      );
     }
     lines.push(
       'Rules: do not expand beyond the stated scope without asking. Do not claim completion before the criteria are met.',
       '=== END OF SPEC ==='
     );
-    return `\n\n${lines.join('\n')}`;
+    return `\n\n${trimSmart(lines.join('\n'), SPEC_PROMPT_BUDGET_CHARS, 'spec')}`;
   }
 }

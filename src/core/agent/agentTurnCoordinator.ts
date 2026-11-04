@@ -130,6 +130,7 @@ export async function runAgentTurn(
     core.state.stats.promptTokens = 0;
     core.state.stats.completionTokens = 0;
     core.state.stats.cachedTokens = 0;
+    core.state.stats.estimatedTokens = 0;
   }
   core.checkpointManager.createCheckpoint(core.state, core.state.stats.stepsCount);
   core.state.checkpoints = core.checkpointManager.getSummaries();

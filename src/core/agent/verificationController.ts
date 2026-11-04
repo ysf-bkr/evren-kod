@@ -11,6 +11,9 @@ import type { VerificationManager } from '@evren-kod/core/core/verification/Veri
 
 type VerificationResult = Awaited<ReturnType<VerificationManager['verify']>>;
 
+/** "Zaten var olan hatalar" notunun sabit imzası: aynı not yeniden eklenmez, yerinde tazelenir. */
+const PREEXISTING_NOTE_MARK = 'These errors existed before the changes';
+
 /** Doğrulama sonuç durumunu state'e yazar ve arayüzü senkronlar (tur sonu + görev sonu ortak). */
 export async function publishVerificationStats(
   host: AgentHost,
@@ -172,14 +175,28 @@ export class VerificationController {
       }
     } else if (decision.action === 'proceed' && decision.reason === 'only-preexisting') {
       // Başlangıç noktasında zaten var olan hatalar için ajanı döngüye sokma.
-      this.host.state.messages.push({
-        id: this.host.nextMessageId(),
-        role: 'system',
-        content:
-          `${verification.summary}\n\nNote: These errors existed before the changes. ` +
-          'Make sure you did not introduce a new regression; you do not need to fix existing errors.',
-        timestamp: Date.now()
-      });
+      // Not sabittir: her doğrulama turunda yenisini eklemek yerine sonuncusu
+      // yerinde güncellenir, yoksa on doğrulama turu aynı öğüdü on kez taşıtır.
+      const noteContent =
+        `${verification.summary}\n\nNote: These errors existed before the changes. ` +
+        'Make sure you did not introduce a new regression; you do not need to fix existing errors.';
+      const messages = this.host.state.messages;
+      const existingIndex = [...messages]
+        .map((message) => message.role === 'system' && message.content.includes(PREEXISTING_NOTE_MARK))
+        .lastIndexOf(true);
+      if (existingIndex >= 0) {
+        const previous = messages[existingIndex];
+        if (previous && previous.content !== noteContent) {
+          messages[existingIndex] = { ...previous, content: noteContent, timestamp: Date.now() };
+        }
+      } else {
+        messages.push({
+          id: this.host.nextMessageId(),
+          role: 'system',
+          content: noteContent,
+          timestamp: Date.now()
+        });
+      }
       this.host.repairAttempts = 0;
     } else if (decision.action === 'retry') {
       return this.injectRepairAttempt(
