@@ -21,7 +21,8 @@ evren-kod/                                 npm workspaces monorepo
 │   └── core/                             Ajanın vscode'a bağlı çalışma zamanı parçaları
 │       ├── agent/                        AgentCore, agentLoop, agentHost, toolPipeline
 │       │                                 denetleyicisi, session/workflow/verification
-│       │                                 denetleyicileri, terminalExecution, SessionRegistry
+│       │                                 denetleyicileri, terminalExecution, SessionRegistry,
+│       │                                 projectTeamContext (profil + ekip istem bağlamı)
 │       ├── lsp/LspClient.ts              Gerçek dil sunucusu istemcisi; @evren-kod/core'un
 │       │                                 LspClientPort biçimini yapısal olarak karşılar
 │       ├── mcp/McpHub.ts                 MCP istemcilerini webview mesajlamasına bağlayan merkez
@@ -32,7 +33,9 @@ evren-kod/                                 npm workspaces monorepo
 │   │   └── src/
 │   │       ├── index.ts                  Varil (barrel) girişi
 │   │       ├── shared/                   Sözleşmeler (types, constants, version), komut
-│   │       │                             politikası, maskeleme, metin yardımcıları, ajan kaydı
+│   │       │                             politikası, maskeleme, metin yardımcıları, ajan
+│   │       │                             kaydı (13 şemsiye rol), catalog/ (12 kategoride
+│   │       │                             89 uzman), team.ts (profilden aktif ekip seçimi)
 │   │       ├── providers/                LLM adaptörleri (Ollama, EVREN, OpenRouter, OpenAI)
 │   │       ├── tools/                    Araçlar (SSRF bekçisi, yol hapsi, ayrıştırıcılar,
 │   │       │                             shell, git, knowledge, web)
@@ -43,6 +46,8 @@ evren-kod/                                 npm workspaces monorepo
 │   │                                     plan, verification, routing, audit, snapshot,
 │   │                                     checkpoint, worktree, rules, skills, workflow,
 │   │                                     hooks, git, spec, mcp istemcisi
+│   │       └── core/project/             ProjectProfiler: uygulama türü ve stack algılama,
+│   │       │                             `.evren-kod/project-profile.json` kalıcılığı
 │   │       └── core/lsp/port.ts          LspClientPort: motor vscode modülünü asla görmez
 │   └── cli/                              @evren-kod/cli — terminal ajanı (`evren-kod`)
 │       └── src/index.ts                  @evren-kod/core üzerinde ReAct döngüsü + readline arayüzü
@@ -120,7 +125,65 @@ Bir sohbet görünüm durumu değil, yaşayan bir `AgentCore` örneğidir.
 
 ---
 
-## 4. Güvenilirlik ve Güvenlik Sözleşmeleri
+## 4. Proje Profili ve Uzman Ekip Kataloğu
+
+Ajanın ilk sorusu "burada ne tür bir uygulama geliştiriliyor?" sorusudur. Cevap üç katmanda üretilir:
+
+**ProjectProfiler** (`packages/core/src/core/project/`): Depo taranır (`node_modules`, `dist`,
+`.git` gibi paket/çıktı klasörlerine girilmez) ve manifest kanıtlarından uygulama türü
+(`web-frontend`, `web-backend`, `fullstack`, `mobile`, `desktop`, `library`, `cli`) ile
+teknoloji yığını çıkarılır. Sonuç `.evren-kod/project-profile.json` dosyasına yazılır;
+`"source": "manual"` içeren profil kullanıcı elle düzenlediği anlamına gelir ve otomatik
+tarama onu asla ezmez. `detectProfile` saf fonksiyondur: aynı dosya listesi her zaman
+aynı profili üretir.
+
+**Uzman kataloğu** (`shared/agents/`): Kayıt defteri 13 şemsiye rol + 12 kategoride
+89 katalog uzmanından oluşur (Yönetim, Mimari, Frontend, Backend, Veritabanı, Mobil,
+Masaüstü, Kalite, Güvenlik, DevOps, Yapay Zekâ, Operasyon). Uzmanlar `defineSpecialist`
+fabrikasıyla şemsiye rolün araç yetkilerini devralır; `invoke_subagent` ve
+`run_parallel_tasks` yetkisi fabrika seviyesinde her uzmandan geri alınır — orkestrasyon
+tekeli @manager'dır. Plan adımı yönlendirmesi (`routing.ts`) şemsiye rollerde kalır;
+uzmanlar `invoke_subagent` ile doğrudan çağrılabilir ve lead takma adları
+(`backend-lead → backend` gibi) tek merkezdeki `ROLE_ALIASES`'te çözülür.
+
+**Aktif ekip seçimi** (`shared/agents/team.ts`): 100+ tanımın tamamı hiçbir turda modele
+gösterilmez. Proje profili her görev için deterministik bir ekip seçer:
+
+```text
+Kural sırası: çekirdek gözetmenler (manager, analyst, architect, explorer,
+              quality, security, git)
+            → türün şemsiye rolleri (ör. fullstack → frontend + backend + database)
+            → stack eşleşen uzmanlar (eşleşme sayısı sıralı, eşitlikte ad sırası)
+            → kategori uzmanları (bütçe artanı)
+Bütçe: 14. Çekirdek ve şemsiye roller bütçe dolunca da düşmez; yalnızca
+uzmanlar budanır. Aynı profil → aynı ekip (önbellek ve prompt kararlılığı).
+```
+
+Seçilen ekip, sistem isteminin bayt-kararlı önbellek önekine `ACTIVE SPECIALIST TEAM`
+bloğu olarak girer (`generateSystemPrompt` → `teamContext`). VS Code konağında
+`src/core/agent/projectTeamContext.ts` kök başına bir kez çözüp önbellekler; CLI aynı
+bloğu `resolveProfile + selectActiveTeam + formatTeamContext` ile kendisi kurar.
+
+**Yayın kapısı (`core/gate/ReleaseGate.ts`):** `done` kapısı kriter ve doğrulamanın
+yanında taze bir PASS kararı ister. Karar `record_release_gate` aracıyla kaydedilir;
+kayıt anının dünyası (değişen dosyalar, işaretli kriterler, doğrulama durumu)
+sha256 digest'ine damgalanır ve karardan sonra tek dosya değişse kapı yeniden koşar.
+"pass" beyanı makine denetiminden geçer (`machineCheckPass`): kriterler eksik ya da
+doğrulama taze geçmemişse kayıt BLOCK'a döner. Doğrulama geçtiği hâlde kapı kararı
+yoksa iş akışı `build`'e geri dönmez; `verify`'de kalır ve modele `@release-gate`
+denetimini isteyen sistem talimatı yazılır. Planlama modu kapıdan muaftır.
+
+**Denetim defteri (`core/gate/ReviewLedger.ts`):** Her dosya yazımı (ana ajanın
+`write_file`/`edit_file`'ı ve alt ajanların ana ağaca dokunan yazmaları — konağa
+`SubagentPorts.onSubagentWrite` ile bildirilir) `WorkflowState.reviewLedger`
+defterine yazar-rol kimliğiyle işlenir. Yalnızca kalite/güvenlik/mimari
+kategorisindeki roller incelemeye yetkilidir (`REVIEWER_CATEGORIES`); bir reviewer
+turundaki başarılı tamamlama kendinden önceki ve kendinden farklı rollerin
+yazmalarını "incelendi" işaretler — yazar kendi yazdığını inceleyemez. Defter
+durumu kapı digest'ine girer ve `machineCheckPass` inceleme borcu olan dünyada
+"pass"ı reddeder. Aynı dosyanın yeniden yazılması eski inceleme kararını düşürür.
+
+## 5. Güvenilirlik ve Güvenlik Sözleşmeleri
 
 | Konu                     | Tasarım Tercihi ve Davranış                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -135,7 +198,7 @@ Bir sohbet görünüm durumu değil, yaşayan bir `AgentCore` örneğidir.
 
 ---
 
-## 5. Geliştirici Scriptleri ve Araç Zinciri
+## 6. Geliştirici Scriptleri ve Araç Zinciri
 
 | Komut                          | Açıklama                                                                                                     |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
@@ -164,7 +227,7 @@ Bir sohbet görünüm durumu değil, yaşayan bir `AgentCore` örneğidir.
 
 ---
 
-## 6. Endüstriyel Modül Akışı
+## 7. Endüstriyel Modül Akışı
 
 Kod, plandan doğrudan yazılmaz. Ajan önce katmanlı bir modül haritası kurar;
 böylece "ne nereye gidecek" ve "hangi sırayla yazılacak" sorusu tek bir dosyaya
@@ -198,7 +261,7 @@ ve hangi modülün işlendiği tek bakışta izlenir.
 
 ---
 
-## 7. Arayüz Geliştirme ve Tasarım Sistemi İlkeleri
+## 8. Arayüz Geliştirme ve Tasarım Sistemi İlkeleri
 
 - **Merkezi Stil Tanımı (`webview-ui/src/index.css`):**
   Tipografi ölçeği (`--evren-kod-text-*`), kenar yuvarlaklıkları, kontrol yükseklikleri, yüzey renkleri ve kart stilleri tek dosyada toplanmıştır.
@@ -213,7 +276,7 @@ ve hangi modülün işlendiği tek bakışta izlenir.
 
 ---
 
-## 8. Test Mimarisi ve Kapsam
+## 9. Test Mimarisi ve Kapsam
 
 Test süiti hâlihazırda 646 testten (542 çekirdek + 104 webview) oluşur ve üç katmanda icra edilir:
 
