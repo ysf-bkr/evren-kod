@@ -94,6 +94,7 @@ const POLICIES: Partial<Record<ToolName, ToolPolicyKind>> = {
   ask_followup_question: 'never',
   update_plan: 'never',
   update_module_plan: 'never',
+  record_release_gate: 'never',
   undo_change: 'never'
 };
 

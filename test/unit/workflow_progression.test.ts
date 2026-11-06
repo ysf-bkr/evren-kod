@@ -135,6 +135,14 @@ describe('AgentCore: aşama ilerlemesi', () => {
       await core.getSpecStore().setCriterionDone(root, spec.id, criterion.id, true);
     }
     core.getState().stats.verification = { status: 'passed', attempts: 0, summary: 'ok' };
+    // Yayın kapısı: taze PASS kararı olmadan done kapısı artık kapalı.
+    await core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['denetim tamam'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'test geçti' }],
+      risks: [],
+      rollback: 'git revert'
+    });
 
     core.getState().workflow!.stage = 'verify';
     const result = await core.setWorkflowStage('done');
@@ -176,6 +184,14 @@ describe('AgentCore: aşama ilerlemesi', () => {
       summary: 'no test command',
       skippedReason: 'no-commands'
     };
+    // no-commands kabul edilebilir doğrulama durumudur; kapı yine de koşar.
+    await core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['komut yok, denetim elle'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'elle denetlendi' }],
+      risks: [],
+      rollback: 'git revert'
+    });
 
     core.getState().workflow!.stage = 'verify';
     const allowed = await core.setWorkflowStage('done');
@@ -238,5 +254,136 @@ describe('modeTools: bilgi grafı her aşamada açık', () => {
     for (const tool of ['write_file', 'edit_file', 'execute_command', 'git_commit']) {
       assert.strictEqual(PLAN_MODE_TOOLS.has(tool as never), false, tool);
     }
+  });
+});
+
+describe('Yayın kapısı: done önü son denetim', () => {
+  /** Kriterleri işaretleyip doğrulamayı geçmiş, kapısı eksik bir ajan kurar. */
+  async function readyForGateAgent(root: string) {
+    const built = await buildStageAgent(root, ['a']);
+    for (const criterion of built.spec.acceptanceCriteria) {
+      await built.core.getSpecStore().setCriterionDone(root, built.spec.id, criterion.id, true);
+    }
+    built.core.getState().stats.verification = { status: 'passed', attempts: 0, summary: 'ok' };
+    built.core.getState().workflow!.stage = 'verify';
+    return built;
+  }
+
+  it('taze kapı kararı olmadan verify aşamasında kalır ve @release-gate ister', async () => {
+    const root = await workspace();
+    const { core } = await readyForGateAgent(root);
+
+    const result = await core.setWorkflowStage('done');
+    assert.strictEqual(result.ok, false, 'kapısız done açılmamalı');
+    assert.match(String(result.reason), /release gate/i);
+
+    // verify işleyicisi build'e düşürmez; kapı talimatını sistem mesajı yazar.
+    await core.workflow.runVerifyStage(true);
+    const workflow = core.getState().workflow!;
+    assert.strictEqual(workflow.stage, 'verify', 'yalnızca kapı eksikse build’e dönülmez');
+    assert.match(String(workflow.blockedReason), /release-gate/);
+    const instruction = core
+      .getState()
+      .messages.filter((m) => m.role === 'system' && m.content.includes('release-gate'));
+    assert.ok(instruction.length > 0, 'modele @release-gate talimatı yazılmalı');
+  });
+
+  it('kapı kararı sonrası dosya değişirse karar bayatlar', async () => {
+    const root = await workspace();
+    const { core } = await readyForGateAgent(root);
+
+    await core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['denetim tamam'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'test geçti' }],
+      risks: [],
+      rollback: 'git revert'
+    });
+    assert.strictEqual((await core.setWorkflowStage('done')).ok, true);
+
+    // Ayrı bir görevde karar sonrası değişiklik simülasyonu: yeni turda
+    // aynı karar bayat sayılmalıdır.
+    const other = await readyForGateAgent(root);
+    await other.core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['denetim tamam'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'test geçti' }],
+      risks: [],
+      rollback: 'git revert'
+    });
+    other.core.getState().stats.filesModified.push('src/gec-degistirilen.ts');
+    const stale = await other.core.setWorkflowStage('done');
+    assert.strictEqual(stale.ok, false, 'karar sonrası değişiklik kapıyı bayatlatmalı');
+    assert.match(String(stale.reason), /invalidates|değişti|stale/i);
+    // Motor gerekçesinin ayrıntısı makine değerlendirmesinden Türkçe gelir.
+    const gate = other.core.workflow.evaluateGate();
+    assert.strictEqual(gate.ok, false);
+    assert.match(String(gate.reason), /değişti/);
+  });
+
+  it('makine denetimi: eksik kriterle kaydedilen pass BLOCK’a döner', async () => {
+    const root = await workspace();
+    const built = await buildStageAgent(root, ['a', 'b']);
+    // Yalnızca ilk kriter işaretli; doğrulama geçmiş olsa da pass kaydedilemez.
+    await built.core.getSpecStore().setCriterionDone(root, built.spec.id, 'ac-1', true);
+    built.core.getState().stats.verification = { status: 'passed', attempts: 0, summary: 'ok' };
+
+    const resultText = await built.core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['ben tamamlanmış görüyorum'],
+      criteriaEvidence: [],
+      risks: [],
+      rollback: 'git revert'
+    });
+    assert.match(resultText, /BLOCK/);
+    assert.match(resultText, /Kabul kriterleri/);
+    assert.strictEqual(built.core.getState().workflow?.releaseGate?.verdict, 'block');
+  });
+});
+
+describe('Denetim defteri: uçtan uca hat', () => {
+  beforeEach(() => {
+    stub.resetTestState();
+  });
+
+  it('yazan uzmanın değişikliği bağımsız reviewer görmeden kapı PASS olamaz', async () => {
+    const root = await workspace();
+    const { core, spec } = await buildStageAgent(root, ['a']);
+
+    // Ana ajan turda dosya yazıyor: defter borcu doğar.
+    await core.handleSendMessage('dosya oluştur');
+    assert.ok(core.workflow.unreviewedChanges().includes('a.ts'), 'yazma deftere işlenmeli');
+
+    for (const criterion of spec.acceptanceCriteria) {
+      await core.getSpecStore().setCriterionDone(root, spec.id, criterion.id, true);
+    }
+    core.getState().stats.verification = { status: 'passed', attempts: 0, summary: 'ok' };
+    core.getState().workflow!.stage = 'verify';
+
+    // İnceleme borcu varken pass beyanı makinece BLOCK'a çevrilir.
+    const blocked = await core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['ben tamamlanmış görüyorum'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'test geçti' }],
+      risks: [],
+      rollback: 'git revert'
+    });
+    assert.match(blocked, /BLOCK/);
+    assert.match(blocked, /bağımsız incelemeden geçmedi/);
+    assert.strictEqual((await core.setWorkflowStage('done')).ok, false);
+
+    // Bağımsız reviewer tamamlanınca (okuma kanıtıyla) borç kapanır.
+    core.workflow.recordLedgerReview('quality', ['a.ts']);
+    assert.deepEqual(core.workflow.unreviewedChanges(), []);
+    const passed = await core.workflow.releaseGatePort.record({
+      verdict: 'pass',
+      reasons: ['denetim tamam'],
+      criteriaEvidence: [{ id: 'ac-1', note: 'test geçti' }],
+      risks: [],
+      rollback: 'git revert'
+    });
+    assert.match(passed, /PASS/);
+    const result = await core.setWorkflowStage('done');
+    assert.strictEqual(result.ok, true, result.reason);
   });
 });

@@ -1,5 +1,14 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Clock, Loader2, RefreshCw, ShieldQuestion } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  ShieldQuestion,
+  ShieldX
+} from 'lucide-react';
 import { TaskState } from '@shared/types';
 import { Button } from '../ui';
 import { resolveMessagePhase } from './MessageStatus';
@@ -42,6 +51,13 @@ export function resolveChatStatus(state: TaskState): ChatStatus {
       message: `Araç onayı bekleniyor: ${state.pendingToolCall.name}`,
       canRetry: false
     };
+  }
+
+  // Kapı durdurmuşsa şerit bunu dürüstçe gösterir: görev "bitti" görünürken
+  // aslında neden bitmediği tek satırda okunur (ör. yayın kapısı kararı yok).
+  const stalled = state.workflow?.blockedReason;
+  if (stalled && (state.status === 'completed' || state.status === 'idle')) {
+    return { kind: 'waiting', message: stalled, canRetry: false };
   }
 
   if (state.activeSubagent) {
@@ -151,11 +167,49 @@ const verificationLabel = (state: TaskState): { text: string; tone: string } | n
   }
 };
 
+/**
+ * Yayın kapısı rozeti: karar kaydı varsa PASS/BLOCK gösterir; doğrulama
+ * aşamasında karar yoksa "kapı bekliyor" der. Karar sonrası dosya değişirse
+ * kapı yeniden koşar — bu, ipucunda dürüstçe belirtilir.
+ */
+const releaseGateLabel = (state: TaskState): { text: string; tone: string; title: string } | null => {
+  const workflow = state.workflow;
+  if (!workflow) return null;
+  const record = workflow.releaseGate;
+  if (record) {
+    const title = [
+      `Kapı kararı ${new Date(record.recordedAt).toLocaleString('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })} · kanıt: ${record.criteriaEvidence.length} kriter`,
+      record.reasons[0] || '',
+      record.rollback ? `Geri alma: ${record.rollback}` : '',
+      'Karar sonrası dosya değişirse kapı yeniden koşar.'
+    ]
+      .filter(Boolean)
+      .join(' — ');
+    return record.verdict === 'pass'
+      ? { text: 'Kapı: Geçti', tone: 'evren-kod-text-success', title }
+      : { text: 'Kapı: Engellendi', tone: 'evren-kod-text-error', title };
+  }
+  if (workflow.stage === 'verify') {
+    return {
+      text: 'Kapı bekliyor',
+      tone: 'evren-kod-text-info',
+      title: 'Doğrulama tamamlandı; @release-gate bağımsız denetimi bekleniyor.'
+    };
+  }
+  return null;
+};
+
 /** Bestecinin altındaki tek satırlık durum çizgisi. */
 export const ChatStatusBar: React.FC<ChatStatusBarProps> = ({ state, onRetry }) => {
   const status = resolveChatStatus(state);
   const verification = verificationLabel(state);
-  if ((status.kind === 'idle' || !status.message) && !verification) return null;
+  const gate = releaseGateLabel(state);
+  if ((status.kind === 'idle' || !status.message) && !verification && !gate) return null;
 
   return (
     <div
@@ -177,6 +231,18 @@ export const ChatStatusBar: React.FC<ChatStatusBarProps> = ({ state, onRetry }) 
           title={state.stats.verification?.summary || 'Otomatik doğrulama'}
         >
           {verification.text}
+        </span>
+      )}
+      {gate && (
+        <span className={`flex shrink-0 items-center gap-1 font-mono ${gate.tone}`} title={gate.title}>
+          {gate.text === 'Kapı: Geçti' ? (
+            <ShieldCheck className="evren-kod-icon-xs" />
+          ) : gate.text === 'Kapı: Engellendi' ? (
+            <ShieldX className="evren-kod-icon-xs" />
+          ) : (
+            <ShieldQuestion className="evren-kod-icon-xs" />
+          )}
+          {gate.text}
         </span>
       )}
       {status.canRetry && (

@@ -141,6 +141,8 @@ export interface TransitionContext {
   criteriaMet: boolean;
   /** Doğrulama geçti mi (ya da bilinçli olarak atlandı mı)? */
   verificationPassed: boolean;
+  /** Taze ve PASS bir yayın kapısı kararı var mı (@release-gate kaydı)? */
+  releaseGatePassed: boolean;
 }
 
 /**
@@ -227,6 +229,13 @@ export function gateForStage(
       }
       if (!context.verificationPassed) {
         return { allowed: false, reason: 'Verification must pass (or be explicitly skipped) before done.' };
+      }
+      if (!context.releaseGatePassed) {
+        return {
+          allowed: false,
+          reason:
+            'Release gate has no fresh PASS verdict: delegate the final audit to @release-gate and record it with record_release_gate. Any file change after the verdict invalidates it.'
+        };
       }
       return { allowed: true };
 

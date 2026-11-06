@@ -6,6 +6,9 @@ import { previewToolDiff } from './sidebarEditorOps';
 import { fetchModelIds } from './modelCatalog';
 import { resolveCallGraphPanelRequest } from './callgraphPanel';
 import { ROLE_ALIASES, getAgentDefinition } from '@evren-kod/core/shared/agents';
+import { PROJECT_KIND_IDS, PROJECT_STACK_IDS, ProjectProfile } from '@evren-kod/core/shared/types';
+import { profileWorkspace, resolveProfile, saveProfile } from '@evren-kod/core/core/project/ProjectProfiler';
+import { invalidateProjectTeamContext } from '../core/agent/projectTeamContext';
 import type { SkillManager } from '@evren-kod/core/core/skills/SkillManager';
 import type { WebviewMessageHandlerMap, SidebarHandlerContext } from './sidebarMessageHandlers';
 
@@ -17,6 +20,8 @@ type UiHandlerKeys =
   | 'OPEN_MCP_CONFIG'
   | 'RESTART_MCP'
   | 'GET_CUSTOMIZATIONS'
+  | 'GET_PROJECT_PROFILE'
+  | 'SAVE_PROJECT_PROFILE'
   | 'GET_KNOWLEDGE_STATUS'
   | 'REINDEX_KNOWLEDGE'
   | 'CLEAR_KNOWLEDGE'
@@ -156,6 +161,81 @@ export function createUiHandlers(ctx: SidebarHandlerContext): Pick<WebviewMessag
         ctx.postMessage({
           type: 'CUSTOMIZATIONS_LOADED',
           payload: await ctx.buildCustomizationsPayload(workspaceRoot, message.payload?.reload)
+        });
+      }
+    },
+
+    GET_PROJECT_PROFILE: async (message) => {
+      const workspaceRoot = getActiveWorkspaceRoot();
+      if (!workspaceRoot) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'warning', message: 'Bir çalışma alanı klasörü açın.' }
+        });
+        return;
+      }
+      try {
+        // rescan: otomatik taramayı zorla; elle kaydedilmiş profil korunur.
+        let profile: ProjectProfile;
+        if (message.payload?.rescan) {
+          profile = await profileWorkspace(workspaceRoot);
+          await saveProfile(workspaceRoot, profile);
+          invalidateProjectTeamContext(workspaceRoot);
+        } else {
+          profile = await resolveProfile(workspaceRoot);
+        }
+        ctx.postMessage({ type: 'PROJECT_PROFILE_LOADED', payload: { profile } });
+      } catch (err) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'error', message: errorMessage(err, 'Proje profili okunamadı.') }
+        });
+      }
+    },
+
+    SAVE_PROJECT_PROFILE: async (message) => {
+      const workspaceRoot = getActiveWorkspaceRoot();
+      if (!workspaceRoot) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'warning', message: 'Bir çalışma alanı klasörü açın.' }
+        });
+        return;
+      }
+      const { primaryKind, stacks, monorepo } = message.payload;
+      // Webview'dan gelen veri güvenilmezdir: kimlikler çalışma zamanında süzülür.
+      if (!PROJECT_KIND_IDS.includes(primaryKind)) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'error', message: 'Bilinmeyen proje türü seçimi.' }
+        });
+        return;
+      }
+      const safeStacks = [...new Set(stacks.filter((s) => PROJECT_STACK_IDS.includes(s)))].sort();
+      const profile: ProjectProfile = {
+        version: 1,
+        generatedAt: new Date().toISOString(),
+        source: 'manual',
+        kinds: [primaryKind],
+        primaryKind,
+        stacks: safeStacks,
+        monorepo: Boolean(monorepo),
+        confidence: 1,
+        evidence: ['Proje türü ve yığın kullanıcı tarafından elle seçildi.']
+      };
+      try {
+        await saveProfile(workspaceRoot, profile);
+        // Ekip seçimi profile bağlı: önbellek düşürülür ki yeni ekip hemen geçerli olsun.
+        invalidateProjectTeamContext(workspaceRoot);
+        ctx.postMessage({ type: 'PROJECT_PROFILE_LOADED', payload: { profile } });
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'info', message: 'Proje profili kaydedildi; uzman ekip yeniden seçildi.' }
+        });
+      } catch (err) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'error', message: errorMessage(err, 'Proje profili kaydedilemedi.') }
         });
       }
     },

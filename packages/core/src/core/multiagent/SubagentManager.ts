@@ -28,6 +28,7 @@ import { ContextManager, trimSmart } from '../context/ContextManager';
 import type { HookResult } from '../hooks/HookManager';
 import type { CallGraphManager } from '../callgraph/CallGraphManager';
 import type { GitManager } from '../git/GitManager';
+import type { ReleaseGatePort } from '../../tools/contracts';
 import {
   BUILT_IN_SUBAGENT_ROLE_IDS,
   getAgentDefinition,
@@ -132,6 +133,18 @@ export interface SubagentPorts {
    * bırakırdı (denetim bulgusu).
    */
   onModelUsage?: (usage: NonNullable<ModelCompletionResponse['usage']>) => void;
+  /**
+   * Alt ajanın ana çalışma alanında okuduğu/yazdığı her dosya. Konak yazmayı
+   * denetim defterine, okumayı reviewer kapsama kanıtına işler; yalıtılmış
+   * (worktree) yürütme ana ağaca dokunmadığı için bildirilmez.
+   */
+  onSubagentFileAccess?: (event: { role: string; file: string; kind: 'read' | 'write' }) => void;
+  /**
+   * Yayın kapısı servisi. @release-gate uzmanı kararı kendi turunda
+   * kaydedebilmeli: araç yürütme bağlamına port buradan verilir, yoksa
+   * `record_release_gate` alt ajanda "service not ready" ile patlardı.
+   */
+  releaseGate?: () => ReleaseGatePort | undefined;
 }
 
 export class SubagentManager {
@@ -676,6 +689,15 @@ Complete your task and provide a clear report of the results to the main agent w
                 const cached = this.sharedFileReadCache.get(cacheKey);
                 if (cached && cached.mtimeMs === stat.mtimeMs) {
                   this.onAudit?.(auditTc, 'subagent_cached_read', workspaceRoot);
+                  // Önbek-isyabı da inceleme kanıtıdır: içerik reviewer'a
+                  // gerçekten teslim edildi, dosya da o andan beri değişmedi.
+                  if (!isolated) {
+                    this.ports?.onSubagentFileAccess?.({
+                      role: params.role,
+                      file: subagentPath,
+                      kind: 'read'
+                    });
+                  }
                   messages.push({
                     role: 'tool',
                     toolCallId: tc.id,
@@ -717,9 +739,25 @@ Complete your task and provide a clear report of the results to the main agent w
               terminal: this.terminalProvider?.(),
               callGraph: this.callGraphManager,
               gitManager: this.gitManager,
+              releaseGate: this.ports?.releaseGate?.(),
               signal
             });
             this.onAudit?.(auditTc, 'subagent_completed', workspaceRoot);
+            // Denetim defteri: ana ağaca dokunan başarılı yazma konağa bildirilir.
+            if (
+              !isolated &&
+              (tc.name === 'write_file' || tc.name === 'edit_file') &&
+              typeof subagentPath === 'string' &&
+              subagentPath
+            ) {
+              this.ports?.onSubagentFileAccess?.({ role: params.role, file: subagentPath, kind: 'write' });
+            }
+            // Okuma kanıtı: salt-okunur araç başarılı olduysa içerik gerçekten
+            // teslim edildi. Yalnızca okumalar kapsama sayılır (read_file ve
+            // dosya hedefli salt-okunur araçlar); yazma gibi yoldan doğrulanır.
+            if (!isolated && tc.name === 'read_file' && typeof subagentPath === 'string' && subagentPath) {
+              this.ports?.onSubagentFileAccess?.({ role: params.role, file: subagentPath, kind: 'read' });
+            }
             messages.push({
               role: 'tool',
               toolCallId: tc.id,

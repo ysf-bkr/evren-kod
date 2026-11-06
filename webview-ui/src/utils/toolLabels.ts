@@ -32,6 +32,7 @@ export const TOOL_TITLES: Record<ToolName, string> = {
   update_plan: 'Plan güncelleniyor',
   update_module_plan: 'Modül haritası güncelleniyor',
   run_verification: 'Doğrulama çalıştırılıyor',
+  record_release_gate: 'Yayın kapısı kararı kaydediliyor',
   get_references: 'Kullanımlar aranıyor',
   get_workspace_symbols: 'Çalışma alanı sembolleri listeleniyor',
   index_workspace: 'Çalışma alanı indeksleniyor',

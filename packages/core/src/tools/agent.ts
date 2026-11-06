@@ -15,7 +15,7 @@ export const invokeSubagentTool: ToolDefinition = {
       role: {
         type: 'string',
         description:
-          'Subagent role: manager, analyst, architect, backend, frontend, mobile, native, database, devops, explorer, git, quality, security.'
+          'Subagent role: an umbrella role (manager, analyst, architect, backend, frontend, mobile, native, database, devops, explorer, git, quality, security) or any catalog specialist id from the active team (for example react-developer, migration-engineer, release-gate).'
       },
       task: {
         type: 'string',

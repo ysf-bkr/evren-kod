@@ -150,3 +150,74 @@ describe('ChatStatusBar: durum satırı', () => {
     assert.strictEqual(container.textContent, '');
   });
 });
+
+const workflowOf = (overrides: Partial<NonNullable<TaskState['workflow']>> = {}) => ({
+  stage: 'verify' as const,
+  questionsAsked: 0,
+  specApproved: true,
+  planApproved: true,
+  knowledgeReady: true,
+  updatedAt: Date.now(),
+  ...overrides
+});
+
+const gateRecord = (verdict: 'pass' | 'block') => ({
+  specId: 'spec-1',
+  verdict,
+  reasons: verdict === 'pass' ? ['tüm kriterler koşuldu'] : ['test eksik'],
+  criteriaEvidence: [{ id: 'ac-1', note: 'e2e geçti' }],
+  risks: [],
+  rollback: 'git revert',
+  verificationStatus: 'passed',
+  digest: 'abc123',
+  recordedAt: new Date().toISOString(),
+  recordedBy: 'release-gate'
+});
+
+describe('ChatStatusBar: yayın kapısı rozeti', () => {
+  it('doğrulama aşamasında karar yoksa kapının beklediğini söyler', () => {
+    render(<ChatStatusBar state={baseState({ workflow: workflowOf() })} onRetry={() => {}} />);
+    assert.match(screen.getByRole('status').textContent ?? '', /Kapı bekliyor/);
+  });
+
+  it('PASS kararı yeşil rozetle gösterilir', () => {
+    const state = baseState({ workflow: workflowOf({ releaseGate: gateRecord('pass') }) });
+    render(<ChatStatusBar state={state} onRetry={() => {}} />);
+    const badge = screen.getByText('Kapı: Geçti');
+    assert.ok(badge.getAttribute('title')?.includes('git revert'));
+  });
+
+  it('BLOCK kararı gerekçesiyle gösterilir', () => {
+    const state = baseState({ workflow: workflowOf({ releaseGate: gateRecord('block') }) });
+    render(<ChatStatusBar state={state} onRetry={() => {}} />);
+    assert.ok(screen.getByText('Kapı: Engellendi'));
+    const status = resolveChatStatus(state);
+    assert.ok(status);
+  });
+
+  it('kapı kararı sonrası şerit artık "bekliyor" demez', () => {
+    const state = baseState({
+      workflow: workflowOf({ stage: 'done', releaseGate: gateRecord('pass') })
+    });
+    render(<ChatStatusBar state={state} onRetry={() => {}} />);
+    assert.ok(!screen.queryByText('Kapı bekliyor'));
+  });
+});
+
+describe('ChatStatusBar: kapı durdurması görünür', () => {
+  it('tur bitmiş ama kapı durdurmuşsa neden dürüstçe yazılır', () => {
+    const state = baseState({
+      status: 'completed',
+      messages: [userMessage],
+      workflow: workflowOf({
+        stage: 'verify',
+        blockedReason: 'Yayın kapısı kararı yok: @release-gate uzmanını çağır.'
+      })
+    });
+    const status = resolveChatStatus(state);
+    assert.strictEqual(status.kind, 'waiting');
+    assert.match(status.message, /release-gate/);
+    render(<ChatStatusBar state={state} onRetry={() => {}} />);
+    assert.match(screen.getByRole('status').textContent ?? '', /Yayın kapısı kararı yok/);
+  });
+});

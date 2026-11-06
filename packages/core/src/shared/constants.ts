@@ -37,7 +37,8 @@ export const EVREN_KOD_FILES = {
   mcpConfig: 'mcp_config.json',
   hooks: 'hooks.json',
   auditLog: 'audit.log',
-  verificationBaseline: 'verification-baseline.json'
+  verificationBaseline: 'verification-baseline.json',
+  projectProfile: 'project-profile.json'
 } as const;
 
 /**

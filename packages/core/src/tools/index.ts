@@ -49,6 +49,7 @@ import {
   updateModulePlanTool,
   updatePlanTool
 } from './agent';
+import { recordReleaseGateTool } from './gate';
 import { webFetchTool, webSearchTool } from './web';
 import {
   LEGACY_GRAPH_TOOLS,
@@ -88,6 +89,7 @@ const ALL_TOOL_OBJECTS: Record<ToolName, ToolDefinition> = {
   update_plan: updatePlanTool,
   update_module_plan: updateModulePlanTool,
   run_verification: runVerificationTool,
+  record_release_gate: recordReleaseGateTool,
   get_references: getReferencesTool,
   get_workspace_symbols: getWorkspaceSymbolsTool,
   index_workspace: indexWorkspaceTool,

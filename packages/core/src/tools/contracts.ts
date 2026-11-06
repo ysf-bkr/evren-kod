@@ -87,5 +87,20 @@ export type EmbeddingPort = Pick<EmbeddingIndex, 'rank'>;
 /** Spec yaşam döngüsü. */
 export type SpecPort = Pick<SpecStore, 'create' | 'get' | 'setCriterionDone'>;
 
+/**
+ * Yayın kapısı kararı: kaydı konağın gerçek durumuna (kriterler, doğrulama,
+ * değişen dosyalar) karşı makine denetiminden geçiren servis. Motor konağı
+ * görmez; denetim kurallarının saf kısmı `core/gate/ReleaseGate.ts`'te yaşar.
+ */
+export interface ReleaseGatePort {
+  record(input: {
+    verdict: 'pass' | 'block';
+    reasons: string[];
+    criteriaEvidence: Array<{ id: string; note: string }>;
+    risks: string[];
+    rollback: string;
+  }): Promise<string>;
+}
+
 /** Çağrı haritası durumu (salt-okunur). */
 export type CallGraphPort = Pick<CallGraphManager, 'status' | 'getDocument'>;

@@ -11,6 +11,7 @@ import type {
   LspPort,
   PermissionPort,
   ProjectMemoryPort,
+  ReleaseGatePort,
   SnapshotPort,
   SpecPort,
   VerificationPort,
@@ -62,6 +63,8 @@ export interface ToolExecutionContext {
   /** Bilgi tabanı üzerinde yerel anlamsal arama (isteğe bağlı). */
   embeddingIndex?: EmbeddingPort;
   specStore?: SpecPort;
+  /** Yayın kapısı kararı kaydı (opsiyonel; workflow'suz akışlarda yok). */
+  releaseGate?: ReleaseGatePort;
   /** Salt-okunur çağrı haritası (opsiyonel). */
   callGraph?: CallGraphPort;
   workflow?: WorkflowState;

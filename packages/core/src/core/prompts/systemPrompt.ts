@@ -2,10 +2,12 @@ import { AgentMode, AutonomyLevel } from '../../shared/types';
 
 const ORCHESTRATION_RULE = `10. [Orchestrate]: Leverage your built-in specialist subagents for expert domain management.
    - Delegate by default for non-trivial work: a task that spans several domains (API + UI + tests), touches three or more files, or needs a deep audit should start specialists instead of doing everything inline.
-   - Call invoke_subagent directly with the specialist role for focused work (@explorer, @analyst, @architect, @backend, @frontend, @mobile, @native, @database, @devops, @quality, @security, @git). Use role "manager" when the work needs orchestration across several specialists, including run_parallel_tasks for independent steps.
+   - Call invoke_subagent directly with the specialist role for focused work (@explorer, @analyst, @architect, @backend, @frontend, @mobile, @native, @database, @devops, @quality, @security, @git). When an ACTIVE SPECIALIST TEAM block is present, prefer its listed teammates: they were selected for this project's type and stack. Use role "manager" when the work needs orchestration across several specialists, including run_parallel_tasks for independent steps.
    - Delegation is allowed during analysis too: before the spec/plan is approved, specialists run read-only, so start @analyst or @architect to inspect the codebase before writing the spec.
    - Only @manager can orchestrate multiple subagents in parallel; specialist roles focus on their domain tools and reports and do not spawn further subagents.
    - A subagent cannot ask the user for approval; anything that needs approval stays with you. Do not delegate a step you cannot verify afterwards.
+   - The workflow's "done" stage requires a fresh PASS from the independent @release-gate specialist, recorded with record_release_gate. When verification passes, delegate that final audit instead of declaring victory yourself; any file change after the verdict makes it stale.
+   - Every file you or a specialist writes enters a review ledger, and so does every change measured after execute_command or merge_worktree (unmeasurable command changes enter as an opaque "command:*" debt). The release gate machine-checks it: a PASS is refused while any write sits unreviewed. Delegate each writing role's changes to a different read-only reviewer from the quality, security or architecture categories (for example @quality) and instruct it to open every changed file with read_file - only files the reviewer actually read count as reviewed; a "command:*" entry is cleared by any completed audit run.
    - Do not delegate trivial one-file edits: delegation has a cost and a report to read.
 11. [Defensive Engineering & Edge Cases]:
    - Think like a senior human engineer: never assume only the happy path.
@@ -61,7 +63,8 @@ export async function generateSystemPrompt(
   customizationContext?: string,
   projectMemoryContext?: string,
   planContext?: string,
-  autonomy?: AutonomyLevel
+  autonomy?: AutonomyLevel,
+  teamContext?: string
 ): Promise<string> {
   const approvals = approvalLines(autonomy);
   const modeInstructions =
@@ -129,7 +132,7 @@ CORE PRINCIPLES AND RULES:
    - Explanations to the user in chat and short inline code comments (explaining "why") are in Turkish, but the actual executable code, function signatures, variables, and file names MUST ALWAYS BE IN ENGLISH.
 9. [Code Quality]: Never use lazy placeholders such as 'TODO' or '// rest of code unchanged' in code blocks. Produce complete, compilable code.
 ${ORCHESTRATION_RULE}
-${autonomySection(autonomy)}${customizationContext ? `\n\n${customizationContext}` : ''}${projectMemoryContext || ''}${planContext || ''}
+${autonomySection(autonomy)}${teamContext ? `\n\n${teamContext}` : ''}${customizationContext ? `\n\n${customizationContext}` : ''}${projectMemoryContext || ''}${planContext || ''}
 `;
 }
 

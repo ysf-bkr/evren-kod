@@ -34,6 +34,7 @@ import {
 } from '@evren-kod/core/core/multiagent/parallelScheduler';
 import type { CommandCheckpoint } from '@evren-kod/core/core/git/GitManager';
 import { ROLE_ALIASES, getAgentDefinition } from '@evren-kod/core/shared/agents';
+import { normalizeFile, REVIEWER_CATEGORIES } from '@evren-kod/core/core/gate/ReviewLedger';
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { MAX_INTAKE_QUESTIONS } from '@evren-kod/core/core/workflow/TaskWorkflow';
 import { describeWorkflow } from '@evren-kod/core/core/workflow/TaskWorkflow';
@@ -424,6 +425,17 @@ export class ToolPipelineController {
           formatTaskGraphResults(results),
           'run_parallel_tasks'
         );
+        // Paralel grafın tamamlanan reviewer düğümleri de deftere işlenir.
+        for (const nodeResult of results) {
+          if (nodeResult.status !== 'completed') continue;
+          const nodeRole = (
+            ROLE_ALIASES[nodeResult.task.role.toLowerCase()] || nodeResult.task.role
+          ).toLowerCase();
+          const nodeDef = getAgentDefinition(nodeRole);
+          if (nodeDef && REVIEWER_CATEGORIES.has(nodeDef.category)) {
+            this.host.workflow.completeReviewerRun(nodeDef.name);
+          }
+        }
         // Her görev yalıtılmış worktree'de koştu: ana çalışma alanı değişmedi.
         // Ana ağacı "değişti" sayıp doğrulama tetiklemek, hiç test edilmemiş
         // worktree değişikliklerini "doğrulandı" gösterirdi. Doğrulamanın
@@ -449,9 +461,25 @@ export class ToolPipelineController {
         if (!worktreePath || !resolvedWorktree.startsWith(`${allowedRoot}${path.sep}`)) {
           throw new Error('Only worktrees under .evren-kod/worktrees can be merged.');
         }
+        const statusBeforeMerge = await this.porcelainSnapshot(root);
         const message = await this.host.worktreeManager.mergeDiffIntoMain(resolvedWorktree, workspaceRoot);
         tc.status = 'completed';
         tc.result = message.message;
+        // Birleşen dosyalar kör nokta olmasın: ana ağaca giren gerçek
+        // değişiklikler ölçülüp denetim defterine "worktree-merge" yazarıyla
+        // işlenir; bağımsız reviewer görmeden kapı PASS diyemez.
+        if (message.applied) {
+          const statusAfterMerge = await this.porcelainSnapshot(root);
+          const merged = changedPathsBetween(statusBeforeMerge ?? '', statusAfterMerge ?? '');
+          for (const file of merged) {
+            if (!this.host.state.stats.filesModified.includes(file)) {
+              this.host.state.stats.filesModified.push(file);
+            }
+          }
+          if (merged.length > 0) {
+            this.host.workflow.recordLedgerWrites('worktree-merge', merged);
+          }
+        }
         // Birleşen değişiklikler testleri tetiklemeli: eskiden merge sonrası
         // doğrulama hiç çalışmıyordu.
         return { paused: false, filesChanged: message.applied };
@@ -545,6 +573,11 @@ export class ToolPipelineController {
           this.host.activeAbortController?.signal
         );
         tc.status = 'completed';
+        // Denetim defteri: tamamlanan bağımsız reviewer turu, yalnızca bu
+        // turda GERÇEKTEN okuduğu dosyaların borcunu kapatır.
+        if (def && REVIEWER_CATEGORIES.has(def.category)) {
+          this.host.workflow.completeReviewerRun(def.name);
+        }
         // Uzun alt ajan raporları ve yalıtılmış worktree ekleri her adımda
         // yeniden gönderilir; merkezi kırpma tüneli bu özel yolu da kapsar.
         tc.result = this.host.contextManager.truncateToolOutput(result, 'invoke_subagent');
@@ -631,6 +664,7 @@ export class ToolPipelineController {
         vectorMemory: this.host.vectorMemory,
         embeddingIndex: this.host.embeddingIndex,
         specStore: this.host.specStore,
+        releaseGate: this.host.workflow.releaseGatePort,
         callGraph: this.host.callGraphManager,
         workflow: this.host.workflow.getWorkflow(),
         sandbox: this.host.getSandboxConfig(workspaceRoot),
@@ -678,6 +712,11 @@ export class ToolPipelineController {
         if (targetPath && !this.host.state.stats.filesModified.includes(targetPath)) {
           this.host.state.stats.filesModified.push(targetPath);
         }
+        // Denetim defteri: orkestratörün kendi yazdığı dosya da bağımsız
+        // inceleme borcudur; kapı önünde reviewer turu istenir.
+        if (targetPath) {
+          this.host.workflow.recordLedgerWrites('manager', [targetPath]);
+        }
         // Çağrı haritası aynı görev içinde bayat kalmasın: yalnızca bu dosya
         // yeniden taranır. Hata olsa bile görev akışı bozulmaz.
         if (targetPath && workspaceRoot) {
@@ -699,10 +738,27 @@ export class ToolPipelineController {
         // hepsi değiştirmez. Ölçülebildiğinde (Git deposu) gerçek farka bakılır;
         // ölçülemediğinde muhafazakâr davranıp "değişti" kabul edilir.
         if (commandStatusBefore === undefined || !workspaceRoot) {
+          // Ölçülemeyen komut en tehlikeli kör noktadır: hangi dosyanın
+          // değiştiği bilinmiyor. Deftere saydam bir gölge borç yazılır;
+          // inceleme borcu ve digest komuttan sonra da ayakta kalır.
+          if (workspaceRoot) {
+            this.host.workflow.recordLedgerWrites('manager', [`command:${tc.id}`]);
+          }
           return { paused: false, filesChanged: true };
         }
         const statusAfter = await this.porcelainSnapshot(workspaceRoot);
-        return { paused: false, filesChanged: statusAfter !== commandStatusBefore };
+        const changed = changedPathsBetween(commandStatusBefore, statusAfter ?? '');
+        for (const file of changed) {
+          if (!this.host.state.stats.filesModified.includes(file)) {
+            this.host.state.stats.filesModified.push(file);
+          }
+        }
+        if (changed.length > 0) {
+          this.host.workflow.recordLedgerWrites('manager', changed);
+        }
+        // Dosya listesi değişmese bile status metni değiştiyse bir şey oldu:
+        // doğrulamayı tetiklemede eski muhafazakâr davranış korunur.
+        return { paused: false, filesChanged: changed.length > 0 || statusAfter !== commandStatusBefore };
       }
     } catch (err) {
       tc.status = 'error';
@@ -775,4 +831,41 @@ export class ToolPipelineController {
       }
     }
   }
+}
+
+/**
+ * `git status --porcelain` çıktısını dosya→durum-kodu haritasına çevirir.
+ * Yeniden adlandırma satırlarında (`R  eski -> yeni`) hedef yolu esas alır;
+ * amaç "bu dosyada şu an ne durumu görünüyor" sorusuna tek cevap vermektir.
+ */
+export function parsePorcelainStatus(status: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const line of status.split('\n')) {
+    if (line.length < 4) continue;
+    const code = line.slice(0, 2);
+    let file = line.slice(3);
+    const arrow = file.indexOf(' -> ');
+    if (arrow >= 0) file = file.slice(arrow + 4);
+    file = file.replace(/^"|"$/g, '');
+    if (file) map.set(normalizeFile(file), code);
+  }
+  return map;
+}
+
+/**
+ * İki durum anlık görüntüsü arasındaki gerçek dosya değişiklikleri: durum
+ * kodu değişen, ortaya çıkan veya kaybolan yollar. Komut ve worktree
+ * birleştirme sonrası denetim defteri borcu bu listeden doğar.
+ */
+export function changedPathsBetween(before: string, after: string): string[] {
+  const a = parsePorcelainStatus(before);
+  const b = parsePorcelainStatus(after);
+  const changed = new Set<string>();
+  for (const [file, code] of b) {
+    if (a.get(file) !== code) changed.add(file);
+  }
+  for (const file of a.keys()) {
+    if (!b.has(file)) changed.add(file);
+  }
+  return [...changed].sort();
 }

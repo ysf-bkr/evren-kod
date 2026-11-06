@@ -206,7 +206,8 @@ describe('TaskWorkflow: stage gates', () => {
     hasPlan: false,
     hasModules: false,
     criteriaMet: false,
-    verificationPassed: false
+    verificationPassed: false,
+    releaseGatePassed: true
   };
 
   it('does not move to plan stage without spec approval', () => {

@@ -163,6 +163,14 @@ export interface WorkflowPort {
   setWorkflowStage(stage: WorkflowStage): Promise<{ ok: boolean; reason?: string }>;
   currentSpecCriteriaMet(): boolean;
   verificationPassed(): boolean;
+  /** `record_release_gate` aracının konağa bağladığı kapı servisi. */
+  releaseGatePort: import('@evren-kod/core/tools/contracts').ReleaseGatePort;
+  /** Denetim defteri: yazma olayları ve tamamlanan bağımsız reviewer turları. */
+  recordLedgerWrites(role: string, files: readonly string[]): void;
+  recordLedgerReview(reviewer: string, seenFiles: readonly string[]): void;
+  recordLedgerRead(role: string, file: string): void;
+  completeReviewerRun(reviewer: string): string[];
+  unreviewedChanges(): string[];
   advanceWorkflowAfterTurn(context: { changedFiles: boolean }): Promise<void>;
   runReviewStage(): Promise<void>;
   runVerifyStage(reachedVerify: boolean): Promise<void>;

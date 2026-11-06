@@ -5,7 +5,7 @@
  * Kapılar `@core/workflow/TaskWorkflow` içindeki saf fonksiyonlardan gelir;
  * bu sınıf yalnızca yan etkileri (durum, kalıcılık, arayüz) uygular.
  */
-import { ToolCall } from '@evren-kod/core/shared/types';
+import { ToolCall, ReleaseGateRecord } from '@evren-kod/core/shared/types';
 import {
   canTransition,
   createWorkflowState,
@@ -15,10 +15,25 @@ import {
   WorkflowStage,
   WorkflowState
 } from '@evren-kod/core/core/workflow/TaskWorkflow';
+import {
+  computeChangesDigest,
+  evaluateReleaseGate,
+  formatGateRecord,
+  machineCheckPass,
+  GateWorldSnapshot
+} from '@evren-kod/core/core/gate/ReleaseGate';
+import { ReleaseGatePort } from '@evren-kod/core/tools/contracts';
 import { errorMessage } from '@evren-kod/core/shared/errors';
 import { isReadOnlyMode } from '@evren-kod/core/core/agent/modeTools';
 import { logWarning } from '@evren-kod/core/shared/logging';
 import { rolesForChangedFiles } from '@evren-kod/core/shared/agents/routing';
+import { ROLE_ALIASES } from '@evren-kod/core/shared/agents';
+import {
+  markReviewed,
+  normalizeFile,
+  recordWrites,
+  unreviewedFiles
+} from '@evren-kod/core/core/gate/ReviewLedger';
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import type { TaskSpec } from '@evren-kod/core/core/spec/SpecStore';
@@ -144,7 +159,8 @@ export class WorkflowController {
         hasPlan: this.host.planner.hasPlan(),
         hasModules: this.host.modulePlanner.hasPlan(),
         criteriaMet: this.currentSpecCriteriaMet(),
-        verificationPassed: this.verificationPassed()
+        verificationPassed: this.verificationPassed(),
+        releaseGatePassed: this.evaluateGate().ok
       },
       this.host.state.mode
     );
@@ -189,6 +205,184 @@ export class WorkflowController {
       return verification.skippedReason === 'no-workspace' || verification.skippedReason === 'no-commands';
     }
     return false;
+  }
+
+  /**
+   * Yayın kapısı servisi: `record_release_gate` aracı bu port üzerinden
+   * karar kaydeder. Kayıt anının dünyası (değişen dosyalar, işaretli
+   * kriterler, doğrulama durumu) digest'e damgalanır; karardan sonra tek
+   * dosya değişse karar bayatlar ve kapı yeniden koşar.
+   */
+  public readonly releaseGatePort: ReleaseGatePort = {
+    record: (input) => this.recordReleaseGate(input)
+  };
+
+  /** Kapı kararının damgalandığı dünya görünümü. */
+  private currentGateWorld(): GateWorldSnapshot {
+    const specId = this.getWorkflow().specId;
+    const spec = specId ? this.host.specStore.get(specId) : undefined;
+    return {
+      files: this.host.state.stats.filesModified ?? [],
+      criteriaDone: (spec?.acceptanceCriteria ?? []).filter((c) => c.done).map((c) => c.id),
+      verificationStatus: this.host.state.stats.verification?.status ?? 'not_run',
+      unreviewed: unreviewedFiles(this.getWorkflow().reviewLedger ?? [])
+    };
+  }
+
+  /**
+   * Denetim defterine yazma olayı işler: yazar rol takma addan çözülen
+   * kimliktir; aynı dosya yeniden yazılırsa eski inceleme kararı düşer.
+   */
+  public recordLedgerWrites(role: string, files: readonly string[]): void {
+    const workflow = this.getWorkflow();
+    const writer = (ROLE_ALIASES[role.toLowerCase()] || role).toLowerCase();
+    workflow.reviewLedger = recordWrites(workflow.reviewLedger ?? [], writer, files);
+  }
+
+  /**
+   * Bağımsız reviewer turunun tamamlandığını deftere işler. Yalnızca
+   * incelemeye yetkili kategoriler (kalite/güvenlik/mimari) sayılır ve
+   * kapsama kanıtı şarttır: reviewer yalnızca GERÇEKTEN okuduğu dosyaların
+   * borcunu kapatır. `seenFiles` reviewer'ın bu turda okuduğu yollardır.
+   */
+  public recordLedgerReview(reviewer: string, seenFiles: readonly string[]): void {
+    const workflow = this.getWorkflow();
+    const role = (ROLE_ALIASES[reviewer.toLowerCase()] || reviewer).toLowerCase();
+    workflow.reviewLedger = markReviewed(workflow.reviewLedger ?? [], role, seenFiles);
+  }
+
+  /**
+   * Alt ajan okumalarını oturan kanıt seti. Kalıcı değildir: yalnızca
+   * o an koşan tur için anlamlıdır ve tüketildiğinde silinir.
+   */
+  private readonly subagentReads = new Map<string, Set<string>>();
+
+  /** Alt uzmanın okuduğu dosyayı inceleme kanıtı olarak biriktirir. */
+  public recordLedgerRead(role: string, file: string): void {
+    const key = (ROLE_ALIASES[role.toLowerCase()] || role).toLowerCase();
+    let reads = this.subagentReads.get(key);
+    if (!reads) {
+      // Bellek güvenliği: tek rolün okuma kanıtı sınırsız büyümez.
+      if (this.subagentReads.size > 32) this.subagentReads.clear();
+      reads = new Set();
+      this.subagentReads.set(key, reads);
+    }
+    if (reads.size < 500) reads.add(normalizeFile(file));
+  }
+
+  /** Reviewer turu bitti: okuma kanıtını tüketir ve borcu kapsama göre kapatır. */
+  public completeReviewerRun(reviewer: string): string[] {
+    const key = (ROLE_ALIASES[reviewer.toLowerCase()] || reviewer).toLowerCase();
+    const seen = [...(this.subagentReads.get(key) ?? [])];
+    this.subagentReads.delete(key);
+    this.recordLedgerReview(key, seen);
+    return seen;
+  }
+
+  /** İnceleme bekleyen dosyalar; kapı makine denetimi ve talimat metni bunu sorar. */
+  public unreviewedChanges(): string[] {
+    return unreviewedFiles(this.getWorkflow().reviewLedger ?? []);
+  }
+
+  /** Taze PASS kararı var mı? `done` kapısı bu cevabı sorar. */
+  public evaluateGate(): { ok: boolean; reason?: string } {
+    const workflow = this.getWorkflow();
+    return evaluateReleaseGate(workflow.releaseGate, {
+      currentSpecId: workflow.specId,
+      currentDigest: computeChangesDigest(this.currentGateWorld())
+    });
+  }
+
+  /**
+   * Kapı kararını kaydeder. "pass" beyanı makine denetiminden geçer:
+   * kriterler eksik ya da doğrulama taze geçmemişse kayıt BLOCK'a çevrilir
+   * ve makine gerekçeleri eklenir — modelin iyimserliği kapıyı açamaz.
+   */
+  private async recordReleaseGate(input: {
+    verdict: 'pass' | 'block';
+    reasons: string[];
+    criteriaEvidence: Array<{ id: string; note: string }>;
+    risks: string[];
+    rollback: string;
+  }): Promise<string> {
+    const workflow = this.getWorkflow();
+    const specId = workflow.specId;
+    if (!specId) {
+      return 'Yayın kapısı kaydedilemedi: bu iş akışında aktif bir spec yok.';
+    }
+    let verdict = input.verdict;
+    const reasons = [...input.reasons];
+    if (verdict === 'pass') {
+      const failures = machineCheckPass({
+        hasSpec: this.host.specStore.get(specId)?.status === 'approved',
+        criteriaMet: this.currentSpecCriteriaMet(),
+        verificationPassed: this.verificationPassed(),
+        unreviewedChanges: unreviewedFiles(workflow.reviewLedger ?? [])
+      });
+      if (failures.length > 0) {
+        verdict = 'block';
+        reasons.push(...failures);
+      }
+    }
+    const world = this.currentGateWorld();
+    const record: ReleaseGateRecord = {
+      specId,
+      verdict,
+      reasons,
+      criteriaEvidence: input.criteriaEvidence,
+      risks: input.risks,
+      rollback: input.rollback,
+      verificationStatus: world.verificationStatus,
+      digest: computeChangesDigest(world),
+      recordedAt: new Date().toISOString(),
+      // Kararı kimin kaydettiği izlenebilir olmalı: alt ajan turunda koşan
+      // araç aktif rolü taşır; ana ajan kaydediyorsa orkestratörün kendisidir.
+      recordedBy: this.host.state.activeSubagent?.role ?? 'manager'
+    };
+    workflow.releaseGate = record;
+    workflow.updatedAt = Date.now();
+    if (verdict === 'block') {
+      workflow.blockedReason = `Yayın kapısı BLOCK: ${reasons[0] || 'gerekçe belirtilmedi'}`;
+    }
+    this.syncProgressToState();
+    await this.host.saveCurrentState();
+    this.host.emitState();
+    return formatGateRecord(record);
+  }
+
+  /**
+   * Yayın kapısı talimatını modele sistem mesajı olarak iletir.
+   *
+   * Doğrulama geçtiği hâlde taze kapı kararı yoksa aşama `verify`'de kalır
+   * (build'e döngü yok); ajan bağımsız @release-gate denetimini çağırır ve
+   * kararı `record_release_gate` ile kaydeder.
+   */
+  public requestReleaseGate(reason?: string): void {
+    const workflow = this.getWorkflow();
+    workflow.blockedReason = reason || 'Yayın kapısı kararı bekleniyor.';
+    const unreviewed = unreviewedFiles(workflow.reviewLedger ?? []);
+    const reviewHint =
+      unreviewed.length > 0
+        ? `Önce bağımsız inceleme zorunlu: denetim defterinde ${unreviewed.length} kayıt incelemesiz ` +
+          `(${unreviewed.slice(0, 8).join(', ')}). Yazan rolden farklı salt-okunur bir reviewer uzmanını ` +
+          `(ör. invoke_subagent role "quality") çağır ve DEĞİŞEN DOSYALARIN HER BİRİNİ read_file ile açtır: ` +
+          `yalnızca gerçekten okunan dosyaların borcu kapanır. Ölçülemeyen komut kayıtları (command:*) ` +
+          `herhangi bir tamamlanmış denetim turuyla kapanır. `
+        : '';
+    this.host.state.messages.push({
+      id: this.host.nextMessageId(),
+      role: 'system',
+      content:
+        `Doğrulama tamamlandı; görev bitmeden önce bağımsız yayın kapısı koşmalı. ${reviewHint}` +
+        `invoke_subagent ile role "release-gate" uzmanını çağır: her kabul kriterini ` +
+        `(ac-1, ac-2, …) kanıtlayan senaryoyu tek tek denetlesin, kalan riskleri ve tek ` +
+        `cümlelik geri alma planını listelelesin, kararı record_release_gate aracıyla ` +
+        `kaydetsin. Kayıt sonrası dosya değişirse karar bayatlar; kapı yeniden koşar. ` +
+        `Kapı durumu: ${reason || 'karar yok'}`,
+      timestamp: Date.now()
+    });
+    void this.host.saveCurrentState().then(() => this.host.emitState());
+    this.syncProgressToState();
   }
 
   /**
@@ -237,7 +431,7 @@ export class WorkflowController {
     if (!result.ok) {
       workflow.blockedReason =
         nextStage === 'done'
-          ? 'Görev tamamlanmadı: kabul kriterleri işaretlenmeli ve doğrulama geçmeli.'
+          ? 'Görev tamamlanmadı: kabul kriterleri işaretlenmeli, doğrulama geçmeli ve @release-gate taze bir PASS kararı kaydetmeli.'
           : `${stageLabel(nextStage)} aşamasına geçilemedi; önce tamamlanması gereken adımlar var.`;
       this.syncProgressToState();
       this.host.emitState();
@@ -414,6 +608,14 @@ export class WorkflowController {
         workflow.blockedReason = undefined;
         this.syncProgressToState();
         this.host.emitState();
+        return;
+      }
+      // Kriter ve doğrulama tamamsa eksik olan yalnızca yayın kapısıdır:
+      // build'e geri düşürmek gereksiz döngü üretirdi; verify'de kal ve
+      // @release-gate denetimini iste.
+      const gate = this.evaluateGate();
+      if (!gate.ok && this.currentSpecCriteriaMet() && this.verificationPassed()) {
+        this.requestReleaseGate(gate.reason);
         return;
       }
     }

@@ -7,6 +7,192 @@ export type ModelProviderType = 'evren' | 'ollama' | 'openrouter' | 'openai-comp
 export type AgentMode = 'code' | 'plan' | 'education';
 
 /**
+ * Geliştirilen uygulama türü. Proje profili uzman ekip seçimini buna göre yapar.
+ */
+export type ProjectKind =
+  | 'web-frontend'
+  | 'web-backend'
+  | 'fullstack'
+  | 'mobile'
+  | 'desktop'
+  | 'library'
+  | 'cli'
+  | 'unknown';
+
+/**
+ * Teknoloji yığını kimlikleri. Proje profilinin çıktısı ile kataloğun
+ * `stacks` alanı aynı bu kimliklerde buluşur.
+ */
+export type StackId =
+  | 'typescript'
+  | 'javascript'
+  | 'react'
+  | 'nextjs'
+  | 'vue'
+  | 'nuxt'
+  | 'angular'
+  | 'svelte'
+  | 'nodejs'
+  | 'nestjs'
+  | 'express'
+  | 'python'
+  | 'django'
+  | 'fastapi'
+  | 'flask'
+  | 'java'
+  | 'spring'
+  | 'kotlin'
+  | 'dotnet'
+  | 'aspnet'
+  | 'php'
+  | 'laravel'
+  | 'go'
+  | 'rust'
+  | 'cpp'
+  | 'qt'
+  | 'csharp'
+  | 'flutter'
+  | 'dart'
+  | 'android'
+  | 'ios'
+  | 'swift'
+  | 'react-native'
+  | 'electron'
+  | 'tauri'
+  | 'sql'
+  | 'postgres'
+  | 'mysql'
+  | 'sqlite'
+  | 'mongodb'
+  | 'prisma'
+  | 'redis'
+  | 'graphql'
+  | 'grpc'
+  | 'docker'
+  | 'kubernetes'
+  | 'terraform'
+  | 'ansible'
+  | 'ci-github'
+  | 'ml-python'
+  | 'mcp';
+
+/** Elle profil kaydının doğrulanması için çalışma zamanı kimlik listeleri. */
+export const PROJECT_KIND_IDS = [
+  'web-frontend',
+  'web-backend',
+  'fullstack',
+  'mobile',
+  'desktop',
+  'library',
+  'cli',
+  'unknown'
+] as const satisfies readonly ProjectKind[];
+
+export const PROJECT_STACK_IDS = [
+  'typescript',
+  'javascript',
+  'react',
+  'nextjs',
+  'vue',
+  'nuxt',
+  'angular',
+  'svelte',
+  'nodejs',
+  'nestjs',
+  'express',
+  'python',
+  'django',
+  'fastapi',
+  'flask',
+  'java',
+  'spring',
+  'kotlin',
+  'dotnet',
+  'aspnet',
+  'php',
+  'laravel',
+  'go',
+  'rust',
+  'cpp',
+  'qt',
+  'csharp',
+  'flutter',
+  'dart',
+  'android',
+  'ios',
+  'swift',
+  'react-native',
+  'electron',
+  'tauri',
+  'sql',
+  'postgres',
+  'mysql',
+  'sqlite',
+  'mongodb',
+  'prisma',
+  'redis',
+  'graphql',
+  'grpc',
+  'docker',
+  'kubernetes',
+  'terraform',
+  'ansible',
+  'ci-github',
+  'ml-python',
+  'mcp'
+] as const satisfies readonly StackId[];
+
+// Derleme zamanı kapsama denetimi: birleşime yeni kimlik eklenip listeye
+// eklenmezse bu iki satır kırılır ve liste asla güncelliğini yitiremez.
+type KindIdsCovered = ProjectKind extends (typeof PROJECT_KIND_IDS)[number] ? true : never;
+const _kindIdsCovered: KindIdsCovered = true;
+void _kindIdsCovered;
+type StackIdsCovered = StackId extends (typeof PROJECT_STACK_IDS)[number] ? true : never;
+const _stackIdsCovered: StackIdsCovered = true;
+void _stackIdsCovered;
+
+/** Agent kataloğunun A–L kategori grupları. */
+export type AgentCategory =
+  | 'management'
+  | 'architecture'
+  | 'frontend'
+  | 'backend'
+  | 'database'
+  | 'mobile'
+  | 'desktop'
+  | 'quality'
+  | 'security'
+  | 'devops'
+  | 'ai'
+  | 'operations'
+  | 'recon';
+
+/**
+ * Proje profili: kullanıcının hangi tür uygulamayı geliştirdiğini anlatır;
+ * aktif ekip seçimi ve arayüz bu veriye dayanır. Kalıcılığı
+ * `.evren-kod/project-profile.json` dosyasındadır.
+ */
+export interface ProjectProfile {
+  /** Şema sürümü; ilerideki taşımalar için. */
+  version: 1;
+  /** ISO zaman damgası. */
+  generatedAt: string;
+  /** `manual`: kullanıcı elle düzeltti; otomatik tarama üzerine yazmaz. */
+  source: 'auto' | 'manual';
+  /** Türler ağırlık sırasına göre; ilk eleman birincil türdür. */
+  kinds: ProjectKind[];
+  primaryKind: ProjectKind;
+  /** Deterministik çıktı: her zaman alfabetik sıralı ve benzersiz. */
+  stacks: StackId[];
+  /** Kök manifest `workspaces` içeriyor veya birden fazla bağımsız manifest var. */
+  monorepo: boolean;
+  /** 0–1 arası tespit güveni; sinyal sayısı düştükçe azalır. */
+  confidence: number;
+  /** Arayüzde gösterilecek kısa gerekçeler (Türkçe). */
+  evidence: string[];
+}
+
+/**
  * Ajanın ne kadar kendi başına ilerleyeceği.
  *
  * - `manual`: spec/plan onayları ve her tur kullanıcıya sorulur.
@@ -138,6 +324,7 @@ export type ToolName =
   | 'update_plan'
   | 'update_module_plan'
   | 'run_verification'
+  | 'record_release_gate'
   | 'get_references'
   | 'get_workspace_symbols'
   | 'index_workspace'
@@ -191,6 +378,7 @@ export const TOOL_NAMES: readonly ToolName[] = [
   'update_plan',
   'update_module_plan',
   'run_verification',
+  'record_release_gate',
   'get_references',
   'get_workspace_symbols',
   'index_workspace',
@@ -450,6 +638,58 @@ export interface WorkflowState {
   updatedAt: number;
   /** İş akışının neden ilerleyemediği; arayüzde dürüstçe gösterilir. */
   blockedReason?: string;
+  /** Son yayın kapısı kararı; `done` kapısı bunun taze ve `pass` olmasını ister. */
+  releaseGate?: ReleaseGateRecord;
+  /**
+   * Denetim defteri: yazan rolün değiştirdiği dosyalar ve hangilerinin
+   * bağımsız bir reviewer tarafından görüldüğü. Kapı PASS kararı, defterde
+   * inceleme bekleyen değişiklik bırakmaz.
+   */
+  reviewLedger?: ReviewLedgerEntry[];
+}
+
+/** Denetim defteri girişi: bir dosyanın kim tarafından yazıldığı ve kimin incelediği. */
+export interface ReviewLedgerEntry {
+  /** Çalışma alanına göreli dosya yolu. */
+  file: string;
+  /** Değişikliği yazan rol kimliği (alt ajan rolü veya `manager`). */
+  writer: string;
+  /** Bağımsız incelemeyi tamamlayan rol; tanımsızsa değişiklik hâlâ inceleme bekliyor. */
+  reviewedBy?: string;
+  /** Kayıt anı (ISO). */
+  at: string;
+}
+
+export type ReleaseGateVerdict = 'pass' | 'block';
+
+/** Kriter başına kapı kanıtı: hangi senaryo koşuldu, sonuç ne. */
+export interface ReleaseGateCriterionEvidence {
+  id: string;
+  note: string;
+}
+
+/**
+ * Yayın kapısı kaydı. `digest`, kayıt anındaki dosya/kriter/doğrulama
+ * durumunun özetidir; kayıt sonrası bir dosya değişirse digest farklılaşır
+ * ve kapı kararı bayat sayılır.
+ */
+export interface ReleaseGateRecord {
+  specId: string;
+  verdict: ReleaseGateVerdict;
+  /** Kararın gerekçeleri (modele ve kullanıcıya gösterilir). */
+  reasons: string[];
+  criteriaEvidence: ReleaseGateCriterionEvidence[];
+  /** Bilinen riskler; "risk yok" iddiası yerine liste beklenir. */
+  risks: string[];
+  /** Geri alma planı tek cümlede; kapı bunu zorunlu tutar. */
+  rollback: string;
+  /** Kayıt anındaki doğrulama durumu (passed/skipped/…). */
+  verificationStatus: string;
+  /** Değişiklik özeti; aynı girdi aynı digest'i üretir. */
+  digest: string;
+  recordedAt: string;
+  /** Kararı kaydeden rol (genellikle @release-gate). */
+  recordedBy: string;
 }
 
 export interface AcceptanceCriterionSummary {
@@ -765,6 +1005,13 @@ export type WebviewToExtensionMessage =
   | { type: 'OPEN_MCP_CONFIG' }
   | { type: 'RESTART_MCP' }
   | { type: 'GET_CUSTOMIZATIONS'; payload?: { reload?: boolean } }
+  /** Kayıtlı proje profilini ister; `rescan` verilirse depoyu yeniden tarar. */
+  | { type: 'GET_PROJECT_PROFILE'; payload?: { rescan?: boolean } }
+  /** Kullanıcının elle seçtiği profili `manual` olarak kalıcılaştırır. */
+  | {
+      type: 'SAVE_PROJECT_PROFILE';
+      payload: { primaryKind: ProjectKind; stacks: StackId[]; monorepo: boolean };
+    }
   | { type: 'GET_KNOWLEDGE_STATUS' }
   | { type: 'REINDEX_KNOWLEDGE'; payload?: { force?: boolean } }
   | { type: 'CLEAR_KNOWLEDGE' }
@@ -812,6 +1059,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'TASK_HISTORY_LOADED'; payload: { history: TaskSummary[] } }
   | { type: 'MCP_STATUS_LOADED'; payload: { servers: McpServerInfo[] } }
   | { type: 'CUSTOMIZATIONS_LOADED'; payload: WorkspaceCustomizations }
+  | { type: 'PROJECT_PROFILE_LOADED'; payload: { profile: ProjectProfile } }
   | { type: 'KNOWLEDGE_STATUS_LOADED'; payload: KnowledgeStatusPayload }
   | { type: 'GIT_CHANGES_LOADED'; payload: GitChangesPayload }
   | { type: 'VSCODE_THEME_CHANGED'; payload: VsCodeThemeConfig }

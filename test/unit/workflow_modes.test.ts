@@ -64,7 +64,8 @@ describe('Workflow: stages by mode', () => {
       hasPlan: true,
       hasModules: true,
       criteriaMet: false,
-      verificationPassed: false
+      verificationPassed: false,
+      releaseGatePassed: true
     };
     assert.strictEqual(gateForStage('done', base, 'plan').allowed, true);
     assert.strictEqual(gateForStage('done', base, 'code').allowed, false);
@@ -77,7 +78,8 @@ describe('Workflow: stages by mode', () => {
       hasPlan: false,
       hasModules: false,
       criteriaMet: false,
-      verificationPassed: false
+      verificationPassed: false,
+      releaseGatePassed: true
     };
     assert.strictEqual(gateForStage('plan', base, 'plan').allowed, true);
     assert.strictEqual(gateForStage('plan', base, 'code').allowed, false);
@@ -112,7 +114,8 @@ describe('Workflow: post-approval progress (stuck regression)', () => {
       hasPlan: true,
       hasModules: true,
       criteriaMet: true,
-      verificationPassed: true
+      verificationPassed: true,
+      releaseGatePassed: true
     };
     assert.strictEqual(gateForStage('done', context, 'code').allowed, true);
 

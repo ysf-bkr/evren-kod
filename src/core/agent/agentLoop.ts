@@ -11,6 +11,7 @@ import { DailyTokenLimitError, StreamInterruptedError } from '@evren-kod/core/pr
 import { MODEL_TOOLS } from '@evren-kod/core/tools';
 import { ToolDefinition } from '@evren-kod/core/tools/base';
 import { generateSystemPrompt } from '@evren-kod/core/core/prompts/systemPrompt';
+import { projectTeamContext } from './projectTeamContext';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import { filterToolsForMode } from '@evren-kod/core/core/agent/modeTools';
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
@@ -205,7 +206,8 @@ export class AgentLoop {
         customizationContext,
         projectMemoryContext,
         '',
-        this.host.settings.autonomy
+        this.host.settings.autonomy,
+        await projectTeamContext(workspaceRoot)
       )) + knowledgeContext;
     // Görev durumu her adımda tazelenir: spec onayı, plan kutuları ve aşama
     // kilidi tur içinde değişir; bayat kopya modele yanlış dünya anlatır.

@@ -15,6 +15,7 @@ import { ModelProviderType, NavigationDestination, UserSettings } from '@shared/
 import { ScreenHeader } from '../../common/ScreenHeader';
 import { Button, Card, ListButton, Section, SectionTitle, TextField, Toggle } from '../../ui';
 import { PROVIDERS, ProviderSection } from './SettingsProviderSection';
+import { ProjectProfileCard } from './SettingsProjectProfileCard';
 import { useSettingsView } from './useSettingsView';
 
 interface SettingsViewProps {
@@ -233,6 +234,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             />
           )}
         </Section>
+
+        <ProjectProfileCard />
 
         <Section>
           <SectionTitle icon={<ShieldCheck className="evren-kod-icon-xs" />} title="Onay ve izinler" />

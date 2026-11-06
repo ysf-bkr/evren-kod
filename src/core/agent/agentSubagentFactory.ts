@@ -1,6 +1,8 @@
+import * as nodePath from 'node:path';
 import * as vscode from 'vscode';
 import { SubagentManager, SubagentTaskParams } from '@evren-kod/core/core/multiagent/SubagentManager';
 import { ROLE_ALIASES, getAgentDefinition } from '@evren-kod/core/shared/agents';
+import { REVIEWER_CATEGORIES } from '@evren-kod/core/core/gate/ReviewLedger';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import { logWarning } from '@evren-kod/core/shared/logging';
 import { createModelProvider } from '@evren-kod/core/providers';
@@ -85,7 +87,25 @@ export function createSubagentManager(core: AgentCore): SubagentManager {
         stats.completionTokens = (stats.completionTokens ?? 0) + usage.completionTokens;
         stats.cachedTokens = (stats.cachedTokens ?? 0) + (usage.cachedTokens ?? 0);
         core.emitState();
-      }
+      },
+      // Denetim defteri: alt uzmanın ana ağaca yazdığı dosya borç doğurur,
+      // okuduğu dosya inceleme kanıtı biriktirir; kapı bu kayıtlara bakar.
+      onSubagentFileAccess: ({ role, file, kind }) => {
+        const root = getActiveWorkspaceRoot();
+        const relative = root && nodePath.isAbsolute(file) ? nodePath.relative(root, file) : file;
+        if (!relative) return;
+        if (kind === 'write') {
+          core.workflow.recordLedgerWrites(role, [relative]);
+          if (!core.state.stats.filesModified.includes(relative)) {
+            core.state.stats.filesModified.push(relative);
+          }
+        } else {
+          core.workflow.recordLedgerRead(role, relative);
+        }
+      },
+      // @release-gate uzmanı kararı kendi turunda kaydedebilsin: port olmadan
+      // record_release_gate alt ajan bağlamında "service not ready" olurdu.
+      releaseGate: () => core.workflow.releaseGatePort
     }
   );
 }
@@ -133,6 +153,10 @@ export async function runSubagentFromUi(core: AgentCore, params: SubagentTaskPar
       0,
       core.activeAbortController.signal
     );
+    // Arayüzden başlatılan reviewer turu da kapsama kanıtıyla deftere işlenir.
+    if (def && REVIEWER_CATEGORIES.has(def.category)) {
+      core.workflow.completeReviewerRun(def.name);
+    }
     core.state.messages.push({
       id: core.nextMessageId(),
       role: 'assistant',
