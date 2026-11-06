@@ -10,6 +10,7 @@ export const mobile: AgentDefinition = {
   uiDescription: 'React Native, Expo, iOS/Android mobil uygulama geliştirme',
   capability: 9,
   tier: 'core',
+  category: 'mobile',
   tags: ['mobile', 'ui'],
   tools: [
     'read_file',

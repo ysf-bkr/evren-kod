@@ -10,6 +10,7 @@ export const manager: AgentDefinition = {
   uiDescription: 'Görev delegasyonu, bağımlılık koordinasyonu ve ajan orkestrasyonu',
   capability: 10,
   tier: 'supreme',
+  category: 'management',
   tags: ['core', 'orchestration', 'governance'],
   tools: [
     'read_file',

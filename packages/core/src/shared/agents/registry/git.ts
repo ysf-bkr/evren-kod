@@ -10,6 +10,7 @@ export const git: AgentDefinition = {
   uiDescription: 'Sürüm kontrolü, dallanma, commit ve PR hazırlığı',
   capability: 8,
   tier: 'core',
+  category: 'devops',
   tags: ['core', 'logistics'],
   tools: [
     'git_status',

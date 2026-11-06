@@ -9,6 +9,7 @@ export const native: AgentDefinition = {
   uiDescription: 'Rust, Go, C/C++, sistem çağrıları ve yüksek başarımlı kodlar',
   capability: 9,
   tier: 'recon',
+  category: 'desktop',
   tags: ['core', 'native'],
   tools: [
     'read_file',

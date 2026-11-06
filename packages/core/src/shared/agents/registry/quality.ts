@@ -10,6 +10,7 @@ export const quality: AgentDefinition = {
   uiDescription: 'Test otomasyonu, kod inceleme, lint denetimi ve kalite kapıları',
   capability: 9,
   tier: 'core',
+  category: 'quality',
   tags: ['core', 'audit', 'discipline'],
   tools: [
     'read_file',

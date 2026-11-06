@@ -10,6 +10,7 @@ export const database: AgentDefinition = {
   uiDescription: 'Veritabanı şemaları, migrationlar, indeksleme ve sorgu optimizasyonu',
   capability: 9,
   tier: 'core',
+  category: 'database',
   tags: ['core', 'data'],
   tools: [
     'read_file',

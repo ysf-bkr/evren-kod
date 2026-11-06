@@ -9,6 +9,7 @@ export const analyst: AgentDefinition = {
   uiDescription: 'Gereksinim analizi, şartname doğrulama ve sözleşme denetimi',
   capability: 9,
   tier: 'recon',
+  category: 'management',
   tags: ['core', 'strategy'],
   tools: [
     'read_file',

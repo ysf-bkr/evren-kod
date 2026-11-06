@@ -10,6 +10,7 @@ export const devops: AgentDefinition = {
   uiDescription: 'CI/CD boru hatları, Docker, altyapı ve dağıtım otomasyonu',
   capability: 9,
   tier: 'core',
+  category: 'devops',
   tags: ['core', 'infra'],
   tools: [
     'read_file',

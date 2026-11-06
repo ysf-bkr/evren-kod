@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   RefreshCw,
   FileCode,
@@ -38,6 +38,7 @@ import {
   Checkbox,
   EmptyState,
   IconButton,
+  Input,
   ListButton,
   Section,
   SectionTitle,
@@ -78,6 +79,39 @@ const CodePreview: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </pre>
 );
 
+/** Katalog kategori sırası ve Türkçe grup başlıkları (A–L). */
+const CATEGORY_ORDER = [
+  'management',
+  'architecture',
+  'frontend',
+  'backend',
+  'database',
+  'mobile',
+  'desktop',
+  'quality',
+  'security',
+  'devops',
+  'ai',
+  'operations',
+  'recon'
+] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  management: 'Yönetim ve Analiz',
+  architecture: 'Mimari ve Tasarım',
+  frontend: 'Frontend',
+  backend: 'Backend',
+  database: 'Veritabanı',
+  mobile: 'Mobil',
+  desktop: 'Masaüstü',
+  quality: 'Test ve Kalite',
+  security: 'Güvenlik',
+  devops: 'DevOps ve Altyapı',
+  ai: 'Yapay Zekâ',
+  operations: 'Ürün ve Operasyon',
+  recon: 'Keşif'
+};
+
 export const AgentsView: React.FC<AgentsViewProps> = ({ state, onSelectMenu, changedFileCount }) => {
   const {
     customizations,
@@ -97,6 +131,29 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ state, onSelectMenu, cha
 
   const openFile = (path: string) => vscode.postMessage({ type: 'OPEN_AGENTS_FILE', payload: { path } });
   const memoryCount = customizations.memoryEntryCount || 0;
+
+  // Katalog 100+ uzman içerir; düz liste yerine arama + kategori grupları.
+  const [agentQuery, setAgentQuery] = useState('');
+  const visibleGroups = useMemo(() => {
+    const query = agentQuery.trim().toLowerCase();
+    const byCategory = new Map<string, (typeof BUILT_IN_SUBAGENT_ROLES)[number][]>();
+    for (const role of BUILT_IN_SUBAGENT_ROLES) {
+      if (query) {
+        const haystack =
+          `${role.name} ${role.role} ${role.description} ${(role.stacks ?? []).join(' ')}`.toLowerCase();
+        if (!haystack.includes(query)) continue;
+      }
+      const category = role.category ?? 'recon';
+      const list = byCategory.get(category) ?? [];
+      list.push(role);
+      byCategory.set(category, list);
+    }
+    return CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
+      category,
+      label: CATEGORY_LABELS[category] ?? category,
+      agents: byCategory.get(category) ?? []
+    }));
+  }, [agentQuery]);
 
   const selectRole = (role: string) => {
     setLaunchRole((current) => (current === role ? null : role));
@@ -432,120 +489,144 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ state, onSelectMenu, cha
 
         <Section>
           <SectionTitle icon={<Layers className="evren-kod-icon-xs" />} title="Yerleşik ajanlar" />
-          <div className="flex flex-col gap-1.5">
-            {BUILT_IN_SUBAGENT_ROLES.map((agent) => {
-              const isCustomized = customizations.agents.some(
-                (a) =>
-                  a.name.toLowerCase() === agent.role.toLowerCase() ||
-                  a.role.toLowerCase() === agent.role.toLowerCase()
-              );
-              const customAgentDef = customizations.agents.find(
-                (a) =>
-                  a.name.toLowerCase() === agent.role.toLowerCase() ||
-                  a.role.toLowerCase() === agent.role.toLowerCase()
-              );
-
-              return (
-                <div
-                  key={agent.role}
-                  className={`rounded-md border p-2 transition ${
-                    launchRole === agent.role
-                      ? 'evren-kod-border-brand evren-kod-bg-info'
-                      : 'evren-kod-border-surface evren-kod-bg-surface'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => selectRole(agent.role)}
-                      className="flex min-w-0 flex-1 items-start gap-2 text-left"
-                      title={`${agent.name} ile görev başlat`}
-                    >
-                      <span className="mt-0.5 shrink-0">
-                        {ROLE_ICONS[agent.role] ?? <Bot className="evren-kod-icon-sm" />}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium evren-kod-text-fg truncate">{agent.name}</span>
-                          <span className="text-2xs font-mono evren-kod-text-muted">({agent.role})</span>
-                          {isCustomized ? (
-                            <span className="text-2xs rounded evren-kod-bg-warning border evren-kod-border-warning px-1 font-mono evren-kod-text-warning shrink-0">
-                              Özelleştirildi
-                            </span>
-                          ) : agent.role === 'manager' ? (
-                            <span className="text-2xs rounded evren-kod-bg-error border evren-kod-border-error px-1 font-mono evren-kod-text-error shrink-0 font-medium">
-                              Orkestratör
-                            </span>
-                          ) : (
-                            agent.tier && (
-                              <span className="text-2xs uppercase font-mono px-1 rounded evren-kod-bg-input evren-kod-text-muted border evren-kod-border-surface shrink-0">
-                                {agent.tier}
-                              </span>
-                            )
-                          )}
-                        </div>
-                        <div className="evren-kod-caption mt-0.5 line-clamp-2">{agent.description}</div>
-                      </div>
-                    </button>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      {isCustomized && customAgentDef ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => openFile(customAgentDef.path)}
-                            title="Özelleştirilmiş ajan dosyasını aç ve kurallarını düzenle"
-                            icon={<FileCode className="evren-kod-icon-xs" />}
-                          >
-                            Düzenle
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() =>
-                              vscode.postMessage({
-                                type: 'RESET_BUILTIN_AGENT',
-                                payload: { role: agent.role }
-                              })
-                            }
-                            title="Yerleşik varsayılan ayarlara geri dön"
-                            icon={<RotateCcw className="evren-kod-icon-xs" />}
-                          >
-                            Sıfırla
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() =>
-                            vscode.postMessage({
-                              type: 'CUSTOMIZE_BUILTIN_AGENT',
-                              payload: { role: agent.role }
-                            })
-                          }
-                          title="Bu ajanın prompt, kural ve izinlerini .agents/ altında özelleştir"
-                          icon={<Wrench className="evren-kod-icon-xs" />}
-                        >
-                          Özelleştir
-                        </Button>
-                      )}
-                      <Button
-                        variant={launchRole === agent.role ? 'primary' : 'ghost'}
-                        size="xs"
-                        onClick={() => selectRole(agent.role)}
-                        icon={<Play className="evren-kod-icon-xs" />}
-                        title={`${agent.name} ile görev başlat`}
-                      >
-                        Görev
-                      </Button>
-                    </div>
+          <Input
+            value={agentQuery}
+            onChange={(event) => setAgentQuery(event.target.value)}
+            placeholder="Uzman ara: ad, rol, teknoloji (react, flutter, güvenlik…)"
+            aria-label="Yerleşik ajan ara"
+          />
+          {visibleGroups.length === 0 ? (
+            <EmptyState description="Aramayla eşleşen uzman ajan yok." />
+          ) : (
+            <div className="flex flex-col gap-3">
+              {visibleGroups.map((group) => (
+                <div key={group.category} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-2xs font-mono uppercase tracking-wide evren-kod-text-muted">
+                      {group.label}
+                    </span>
+                    <span className="text-2xs font-mono evren-kod-text-muted">{group.agents.length}</span>
                   </div>
+                  {group.agents.map((agent) => {
+                    const isCustomized = customizations.agents.some(
+                      (a) =>
+                        a.name.toLowerCase() === agent.role.toLowerCase() ||
+                        a.role.toLowerCase() === agent.role.toLowerCase()
+                    );
+                    const customAgentDef = customizations.agents.find(
+                      (a) =>
+                        a.name.toLowerCase() === agent.role.toLowerCase() ||
+                        a.role.toLowerCase() === agent.role.toLowerCase()
+                    );
+
+                    return (
+                      <div
+                        key={agent.role}
+                        className={`rounded-md border p-2 transition ${
+                          launchRole === agent.role
+                            ? 'evren-kod-border-brand evren-kod-bg-info'
+                            : 'evren-kod-border-surface evren-kod-bg-surface'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => selectRole(agent.role)}
+                            className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                            title={`${agent.name} ile görev başlat`}
+                          >
+                            <span className="mt-0.5 shrink-0">
+                              {ROLE_ICONS[agent.role] ?? <Bot className="evren-kod-icon-sm" />}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium evren-kod-text-fg truncate">
+                                  {agent.name}
+                                </span>
+                                <span className="text-2xs font-mono evren-kod-text-muted">
+                                  ({agent.role})
+                                </span>
+                                {isCustomized ? (
+                                  <span className="text-2xs rounded evren-kod-bg-warning border evren-kod-border-warning px-1 font-mono evren-kod-text-warning shrink-0">
+                                    Özelleştirildi
+                                  </span>
+                                ) : agent.role === 'manager' ? (
+                                  <span className="text-2xs rounded evren-kod-bg-error border evren-kod-border-error px-1 font-mono evren-kod-text-error shrink-0 font-medium">
+                                    Orkestratör
+                                  </span>
+                                ) : (
+                                  agent.tier && (
+                                    <span className="text-2xs uppercase font-mono px-1 rounded evren-kod-bg-input evren-kod-text-muted border evren-kod-border-surface shrink-0">
+                                      {agent.tier}
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                              <div className="evren-kod-caption mt-0.5 line-clamp-2">{agent.description}</div>
+                            </div>
+                          </button>
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            {isCustomized && customAgentDef ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() => openFile(customAgentDef.path)}
+                                  title="Özelleştirilmiş ajan dosyasını aç ve kurallarını düzenle"
+                                  icon={<FileCode className="evren-kod-icon-xs" />}
+                                >
+                                  Düzenle
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() =>
+                                    vscode.postMessage({
+                                      type: 'RESET_BUILTIN_AGENT',
+                                      payload: { role: agent.role }
+                                    })
+                                  }
+                                  title="Yerleşik varsayılan ayarlara geri dön"
+                                  icon={<RotateCcw className="evren-kod-icon-xs" />}
+                                >
+                                  Sıfırla
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() =>
+                                  vscode.postMessage({
+                                    type: 'CUSTOMIZE_BUILTIN_AGENT',
+                                    payload: { role: agent.role }
+                                  })
+                                }
+                                title="Bu ajanın prompt, kural ve izinlerini .agents/ altında özelleştir"
+                                icon={<Wrench className="evren-kod-icon-xs" />}
+                              >
+                                Özelleştir
+                              </Button>
+                            )}
+                            <Button
+                              variant={launchRole === agent.role ? 'primary' : 'ghost'}
+                              size="xs"
+                              onClick={() => selectRole(agent.role)}
+                              icon={<Play className="evren-kod-icon-xs" />}
+                              title={`${agent.name} ile görev başlat`}
+                            >
+                              Görev
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </Section>
 
         <Button

@@ -10,6 +10,7 @@ export const architect: AgentDefinition = {
   uiDescription: 'Sistem tasarımı, mimari analizi ve uygulama planlaması',
   capability: 9,
   tier: 'core',
+  category: 'architecture',
   tags: ['core', 'design'],
   tools: [
     'read_file',

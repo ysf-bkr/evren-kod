@@ -1,4 +1,5 @@
 import { AgentDefinition, SubagentRoleInfo } from './types';
+import { ALL_SPECIALIST_DEFINITIONS } from './catalog';
 import { analyst } from './registry/analyst';
 import { architect } from './registry/architect';
 import { backend } from './registry/backend';
@@ -30,7 +31,8 @@ export {
   security
 };
 
-export const ALL_AGENT_DEFINITIONS: readonly AgentDefinition[] = [
+/** Şemsiye roller: yönlendirme kurallarının ve plan sahipliğinin temeli. */
+export const UMBRELLA_AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   manager,
   analyst,
   architect,
@@ -46,6 +48,16 @@ export const ALL_AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   security
 ];
 
+/**
+ * Tam kayıt: 13 şemsiye rol + 89 katalog uzmanı. `invoke_subagent` bu
+ * kayıttan rol çözer; yönlendirme kuralları şemsiye rollerde kalır,
+ * uzmanlar ekip seçimiyle görünür olur.
+ */
+export const ALL_AGENT_DEFINITIONS: readonly AgentDefinition[] = Object.freeze([
+  ...UMBRELLA_AGENT_DEFINITIONS,
+  ...ALL_SPECIALIST_DEFINITIONS
+]);
+
 export const AGENT_DEFINITIONS_MAP: Readonly<Record<string, AgentDefinition>> = Object.freeze(
   ALL_AGENT_DEFINITIONS.reduce<Record<string, AgentDefinition>>((acc, agent) => {
     acc[agent.name] = agent;
@@ -54,26 +66,47 @@ export const AGENT_DEFINITIONS_MAP: Readonly<Record<string, AgentDefinition>> = 
 );
 
 export function getAgentDefinition(name: string): AgentDefinition | undefined {
-  return AGENT_DEFINITIONS_MAP[name.toLowerCase()];
+  const key = String(name || '')
+    .trim()
+    .toLowerCase();
+  if (!key) return undefined;
+  // Alias'lar tek merkezde çözülür: invoke_subagent, plan sahibi ve UI
+  // aynı eşlemeyi görür; iki yerde ayrı alias tablosu bakım hatası üretir.
+  const resolved = ROLE_ALIASES[key] ?? key;
+  return AGENT_DEFINITIONS_MAP[resolved];
 }
 
-/** Geriye dönük uyumluluk için eski rol takma adları. */
+/** Geriye dönük uyumluluk ve katalog eşlemeleri için rol takma adları. */
 export const ROLE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   coder: 'backend',
   tester: 'quality',
-  reviewer: 'quality'
+  reviewer: 'quality',
+  // Kullanıcının ekip dilindeki "lead" adları şemsiye rollere bağlanır.
+  'master-orchestrator': 'manager',
+  'requirements-analyst': 'analyst',
+  'software-architect': 'architect',
+  'frontend-lead': 'frontend',
+  'backend-lead': 'backend',
+  'mobile-lead': 'mobile',
+  'desktop-lead': 'native',
+  'database-engineer': 'database',
+  'qa-lead': 'quality',
+  'security-lead': 'security',
+  'devops-lead': 'devops'
 });
 
 export const BUILT_IN_SUBAGENT_ROLES: readonly SubagentRoleInfo[] = Object.freeze(
-  // Tek doğruluk kaynağı kayıt defteridir (registry/*): UI rolleri türetilir,
-  // böylece ad, tier, yetenek ve etiketler iki yerde ayrı ayrı bakım görmez.
+  // Tek doğruluk kaynağı kayıt defteridir (registry/* + catalog/*): UI rolleri
+  // türetilir, böylece ad, tier, yetenek ve etiketler iki yerde ayrı bakım görmez.
   ALL_AGENT_DEFINITIONS.map((agent) => ({
     role: agent.name,
     name: agent.displayName,
     description: agent.uiDescription,
     tier: agent.tier,
     capability: agent.capability,
-    tags: agent.tags
+    tags: agent.tags,
+    category: agent.category,
+    stacks: agent.stacks
   }))
 );
 

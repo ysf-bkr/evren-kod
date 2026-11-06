@@ -17,6 +17,8 @@ import { VerificationManager } from '@evren-kod/core/core/verification/Verificat
 import { GitManager } from '@evren-kod/core/core/git/GitManager';
 import { ProjectMemoryManager } from '@evren-kod/core/core/memory/ProjectMemoryManager';
 import { TaskPlanner } from '@evren-kod/core/core/plan/TaskPlanner';
+import { resolveProfile } from '@evren-kod/core/core/project/ProjectProfiler';
+import { formatTeamContext, selectActiveTeam } from '@evren-kod/core/shared/agents/team';
 import { ContextManager } from '@evren-kod/core/core/context/ContextManager';
 import {
   collapseRepetition,
@@ -87,6 +89,19 @@ export interface CliOptions {
   maxSteps: number;
   yes: boolean;
   readOnly: boolean;
+}
+
+/**
+ * CLI için aktif ekip bloğu: profil okunur, ekip seçilir. Depolanmış
+ * profil bayatlamışsa taze bir tarama yapılır; hâl durumu sessiz kalır.
+ */
+async function buildCliTeamContext(workspace: string): Promise<string> {
+  try {
+    const profile = await resolveProfile(workspace);
+    return formatTeamContext(selectActiveTeam(profile), profile);
+  } catch {
+    return '';
+  }
 }
 
 function usage(): string {
@@ -284,7 +299,9 @@ async function main(): Promise<void> {
     'code',
     '',
     '',
-    planner.formatForPrompt()
+    planner.formatForPrompt(),
+    undefined,
+    await buildCliTeamContext(options.workspace)
   );
   const messages: ProviderMessage[] = [{ role: 'system', content: systemPrompt }];
   const context: ToolExecutionContext = {

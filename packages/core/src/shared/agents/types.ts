@@ -1,6 +1,7 @@
-import type { ToolName } from '../types';
+import type { AgentCategory, StackId, ToolName } from '../types';
 
 export type AgentTier = 'supreme' | 'core' | 'recon';
+export type { AgentCategory, StackId };
 
 export type AgentTag =
   | 'core'
@@ -48,6 +49,13 @@ export interface AgentDefinition {
   capability: 10 | 9 | 8;
   tier: AgentTier;
   tags: AgentTag[];
+  /** Katalog grubu (A–L); UI gruplaması ve ekip seçimi bunu kullanır. */
+  category: AgentCategory;
+  /**
+   * Bu uzmanın uzmanlaştığı teknolojiler. Proje profilinin stack'leriyle
+   * eşleşen uzmanlar aktif ekibe alınır.
+   */
+  stacks?: StackId[];
   /**
    * Ajanın kullanabileceği araçlar. Tek doğruluk kaynağı burasıdır:
    * `SubagentManager` bu listeyi doğrudan kayıt defterine eşler.
@@ -64,4 +72,6 @@ export interface SubagentRoleInfo {
   tier?: AgentTier;
   capability?: 10 | 9 | 8;
   tags?: readonly AgentTag[];
+  category?: AgentCategory;
+  stacks?: readonly StackId[];
 }

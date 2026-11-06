@@ -171,6 +171,7 @@ describe('SkillManager: custom agent and skill discovery', () => {
         displayName: 'Mimar',
         description: 'Sistem mimarı',
         uiDescription: 'Sistem tasarımı ve uygulama planlaması',
+        category: 'architecture',
         capability: 9,
         tier: 'core',
         tags: ['core', 'design'],

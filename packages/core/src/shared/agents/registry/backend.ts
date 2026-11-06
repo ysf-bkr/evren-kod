@@ -10,6 +10,7 @@ export const backend: AgentDefinition = {
   uiDescription: 'API rotaları, servisler, iş mantığı ve sunucu kodları',
   capability: 9,
   tier: 'core',
+  category: 'backend',
   tags: ['core', 'logic'],
   tools: [
     'read_file',

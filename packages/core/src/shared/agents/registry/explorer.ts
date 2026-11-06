@@ -10,6 +10,7 @@ export const explorer: AgentDefinition = {
   uiDescription: 'Kod tabanı taraması, bağımlılık haritalama ve derin keşif',
   capability: 8,
   tier: 'recon',
+  category: 'recon',
   tags: ['core', 'recon'],
   tools: [
     'read_file',

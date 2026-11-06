@@ -10,6 +10,7 @@ export const security: AgentDefinition = {
   uiDescription: 'Kimlik doğrulama, şifreleme ve güvenlik politikası denetimi',
   capability: 10,
   tier: 'supreme',
+  category: 'security',
   tags: ['core', 'security'],
   tools: [
     'read_file',

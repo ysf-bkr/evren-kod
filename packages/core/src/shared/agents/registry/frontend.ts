@@ -10,6 +10,7 @@ export const frontend: AgentDefinition = {
   uiDescription: 'Kullanıcı arayüzü, React/Next.js, bileşenler ve durum yönetimi',
   capability: 9,
   tier: 'core',
+  category: 'frontend',
   tags: ['core', 'ui'],
   tools: [
     'read_file',

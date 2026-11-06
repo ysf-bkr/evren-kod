@@ -44,7 +44,8 @@ async function renderAgentsView(): Promise<Array<{ type: string; payload?: unkno
   };
 
   render(<AgentsView />);
-  await waitFor(() => assert.ok(screen.getByText('devops-engineer')));
+  // Katalog 100+ kart render eder; paralel test yükünde mesaj turu gecikebilir.
+  await waitFor(() => assert.ok(screen.getByText('devops-engineer')), { timeout: 15000 });
   return sent;
 }
 
@@ -163,5 +164,24 @@ describe('AgentsView: yerleşik ajanlar ve görev başlatma', () => {
 
     const customizeMsg = sent.find((m) => m.type === 'CUSTOMIZE_BUILTIN_AGENT');
     assert.ok(customizeMsg, 'CUSTOMIZE_BUILTIN_AGENT mesajı gönderilmeli');
+  });
+
+  it('katalog kategori gruplarıyla listelenir ve arama ile süzülür', async () => {
+    await renderAgentsView();
+
+    // Grup başlıkları ve katalog uzman kartları görünür.
+    assert.ok(screen.getByText('Yönetim ve Analiz'));
+    assert.ok(screen.getByText('Yapay Zekâ'));
+    assert.ok(screen.getByText('React / Next.js Geliştiricisi'));
+
+    // Arama yalnızca eşleşen uzmanları bırakır.
+    const search = screen.getByLabelText('Yerleşik ajan ara');
+    fireEvent.change(search, { target: { value: 'flutter' } });
+    await waitFor(() => assert.ok(screen.getByText('Flutter Geliştiricisi')));
+    assert.ok(!screen.queryByText('React / Next.js Geliştiricisi'));
+
+    // Eşleşmeyen sorgu boş durum gösterir.
+    fireEvent.change(search, { target: { value: 'yok-boyle-bir-ajan' } });
+    await waitFor(() => assert.ok(screen.getByText('Aramayla eşleşen uzman ajan yok.')));
   });
 });
