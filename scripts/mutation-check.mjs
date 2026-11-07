@@ -124,6 +124,20 @@ const SABOTAGES = [
     from: 'if (anchor.headHash !== GENESIS_HASH && !present.has(anchor.headHash)) {',
     to: 'if (false) {',
     tests: ['test/unit/audit_anchor.test.ts']
+  },
+  {
+    name: '[DONE] görmeden kapanan akış yine başarılı sayılsın (yarım yanıt = yanlış başarı)',
+    file: 'packages/core/src/providers/openai.ts',
+    from: 'if (!streamDone) {',
+    to: 'if (false) {',
+    tests: ['test/unit/provider_resilience.test.ts']
+  },
+  {
+    name: '429/5xx geçici hata sınıfı kaldırılsın (tek denemede pes, geri çekilme yok)',
+    file: 'packages/core/src/providers/openai.ts',
+    from: 'const isTransient = response.status === 429 || (response.status >= 500 && response.status <= 504);',
+    to: 'const isTransient = false;',
+    tests: ['test/unit/provider_resilience.test.ts', 'test/unit/provider.test.ts']
   }
 ];
 

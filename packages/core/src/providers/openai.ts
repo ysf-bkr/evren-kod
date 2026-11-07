@@ -573,6 +573,17 @@ export class OpenAICompatibleProvider implements ModelProvider {
       if (buffer.trim()) handleEvent(buffer);
       buffer = '';
 
+      // Fail-closed: akış [DONE] görmeden kapandıysa metin/argümanlar YARIMDIR.
+      // Yarım tamamlamayı başarılı saymak yanlış başarıdır (INVARIANTS 8) ve
+      // yarım tool-call argümanları aşağıda sessizce {raw:…} çöpüne dönerdi.
+      // Kesinti muhasebesi (kullanılmış token) yine taşınır.
+      if (!streamDone) {
+        throw new StreamInterruptedError(
+          'Model stream ended before completion (no [DONE] received); the response may be truncated.',
+          interruptedUsage()
+        );
+      }
+
       const finalToolCalls = Array.from(toolCallsMap.values())
         .filter((tc) => tc.name.trim().length > 0)
         .map((tc) => {

@@ -90,9 +90,14 @@ agent-facing, so it is written in English like `AGENTS.md`.
 
 - Code: `machineCheckPass` turns an optimistic "pass" claim into BLOCK when the
   spec, criteria, verification or ledger checks fail; verification status comes
-  from the CommandRunner, not from model narration.
+  from the CommandRunner, not from model narration. The provider layer applies
+  the same rule: a stream that closes without `[DONE]` raises
+  `StreamInterruptedError` instead of returning the truncated completion as if
+  it were complete.
 - Tests: `test/unit/mutation_gate.test.ts` (each sabotage input must produce a
-  rejection), `test/unit/release_gate.test.ts`, `test/unit/workflow_criteria.test.ts`.
+  rejection), `test/unit/release_gate.test.ts`, `test/unit/workflow_criteria.test.ts`,
+  `test/unit/provider_resilience.test.ts` (truncated-stream-as-success is the
+  sabotage target).
 
 ### 9. Rollback must never destroy pre-existing user changes. — 🟡
 
