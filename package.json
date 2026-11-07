@@ -243,6 +243,7 @@
     "test": "tsx --import ./test/support/register-vscode.mjs --test test/unit/**/*.test.ts && npm run test:ui",
     "test:coverage": "node --experimental-test-coverage --import tsx --import ./test/support/register-vscode.mjs --test test/unit/**/*.test.ts",
     "check:coverage": "node scripts/check-coverage.mjs",
+    "check:mutation": "node scripts/mutation-check.mjs",
     "test:ui": "npm --prefix webview-ui run test",
     "build:e2e": "node scripts/build-e2e.mjs",
     "test:e2e": "npm run build && npm run build:e2e && tsx test/e2e/runTest.ts",

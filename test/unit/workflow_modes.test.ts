@@ -55,6 +55,11 @@ describe('Workflow: stages by mode', () => {
   it('plan mode can go directly from plan to done with plan approval', () => {
     assert.strictEqual(canTransition('plan', 'done', 'plan').allowed, true);
     assert.strictEqual(canTransition('plan', 'build', 'plan').allowed, false);
+    // Kör nokta kapatması (sabotaj koşusu #11): sıra kontrolü KOD modunda da
+    // aşama atlamayı reddetmeli — uydurma istekle intake → done olamaz.
+    assert.strictEqual(canTransition('build', 'done', 'code').allowed, false);
+    assert.match(String(canTransition('build', 'done', 'code').reason), /one stage at a time/);
+    assert.strictEqual(canTransition('intake', 'verify', 'code').allowed, false);
   });
 
   it('plan mode only needs plan for done', () => {

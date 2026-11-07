@@ -96,8 +96,9 @@ describe('Commit güven sınırı: gate atlatılarak commit oluşturulamaz', () 
 
     const before = head(root);
     const out = await commitToolResult(core, root);
-    assert.match(out, /COMMIT REDDEDILDI/);
-    assert.match(out, /yayın kapısı/i);
+    // Somut katıt: reddi İKİNCİ katman değil, birinci kapı muhafızı üretmeli
+    // (savunma derinliği varsa bile her katmanın kendi testi olmalı).
+    assert.match(out, /COMMIT REDDEDILDI \(yayın kapısı\)/);
     assert.equal(head(root), before, 'reddedilen commit HEADi oynatmamalı');
     assert.match(porcelain(root), /a\.ts/, 'değişiklik stiller yerinde durmalı');
   });

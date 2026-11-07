@@ -111,3 +111,7 @@ agent-facing, so it is written in English like `AGENTS.md`.
 - Every new claim in README/ARCHITECTURE must map to an invariant and its test.
 - Success metric for the proof layer is the number of prevented false PASSes —
   measure with sabotage (guard) tests, not with feature counts.
+- Proof is executed, not asserted: `npm run check:mutation` temporarily
+  sabotages each critical guard in source, requires the test suite to fail,
+  and restores. A guard whose sabotage survives testing is a blind spot and
+  blocks the release.
