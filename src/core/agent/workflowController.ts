@@ -221,7 +221,17 @@ export class WorkflowController {
    * dosya değişse karar bayatlar ve kapı yeniden koşar.
    */
   public readonly releaseGatePort: ReleaseGatePort = {
-    record: (input) => this.recordReleaseGate(input)
+    record: (input) => this.recordReleaseGate(input),
+    evaluate: () => this.evaluateGate(),
+    preCommitGuard: () => {
+      // Aktif görevi olan iş akışında commit yalnız taze PASS ile geçer;
+      // görev dışı (specsiz) hızlı commit'ler kapı kapsamı dışındadır ama
+      // araç sonucu dürüstçe "gate dışı" diye etiketlenir.
+      const workflow = this.getWorkflow();
+      if (!workflow.specId) return { required: false, ok: true };
+      const res = this.evaluateGate();
+      return { required: true, ok: res.ok, reason: res.reason };
+    }
   };
 
   /** Kapı kararının damgalandığı dünya görünümü. */

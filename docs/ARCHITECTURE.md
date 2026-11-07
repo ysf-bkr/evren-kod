@@ -173,6 +173,17 @@ doğrulama taze geçmemişse kayıt BLOCK'a döner. Doğrulama geçtiği hâlde 
 yoksa iş akışı `build`'e geri dönmez; `verify`'de kalır ve modele `@release-gate`
 denetimini isteyen sistem talimatı yazılır. Planlama modu kapıdan muaftır.
 
+**Commit güven sınırı (`tools/git.ts`):** Aktif görevi olan bir iş akışında
+`git_commit` atomik bir doğrulama sınırından geçer: kapı muhafızı → stage →
+snapshot'ın yeniden doğrulanması (port eksikse commit yapılmaz, fail closed) →
+indeks ağacının kimliğinin buzlanması (`write-tree`) → commit → HEAD ağacının
+buzlanmış anlık görüntüyle karşılaştırılması. Karar ile commit arasında dünya
+değişirse commit reddedilir; commit'lenen ağaç buzlanmış görüntüyle birebir
+eşleşmek zorundadır — eşleşme "teslim edilen, doğrulanan içeriğin ta kendisi"
+makine kanıtıdır. Kullanıcının eşzamanlı değişiklikleri asla ezilmez; görev
+dışı commit'ler serbest ama "kapı dışı" etiketiyle işaretlidir. `prepare_pr`
+PR gövdesinin başına kapı durumunu dürüstçe yazar.
+
 **Denetim defteri (`core/gate/ReviewLedger.ts`):** Her dosya yazımı (ana ajanın
 `write_file`/`edit_file`'ı ve alt ajanların ana ağaca dokunan yazmaları — konağa
 `SubagentPorts.onSubagentWrite` ile bildirilir) `WorkflowState.reviewLedger`
@@ -229,8 +240,8 @@ denetim turunun ölçülemezlik kanıtıyla kapanır.
 | `npm run compile`              | Yalnızca extension bundle'ını esbuild ile derler.                                                            |
 | `npm run build:ui`             | Yalnızca webview uygulamasını Vite ile derler.                                                               |
 | `npm run build:cli`            | Yalnızca CLI bundle'ını derler.                                                                              |
-| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                   |
-| `npm run audit:verify`         | `.evren-kod/audit.log` hash zincirini doğrular (`-- --workspace <path>`).                                          |
+| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                  |
+| `npm run audit:verify`         | `.evren-kod/audit.log` hash zincirini doğrular (`-- --workspace <path>`).                                    |
 | `npm run cli`                  | Başsız (headless) terminal CLI'ını kaynaktan çalıştırır.                                                     |
 | `npm run test:e2e`             | Derler ve gerçek bir VS Code penceresinde uçtan uca testleri çalıştırır.                                     |
 

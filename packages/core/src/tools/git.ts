@@ -126,10 +126,52 @@ export const gitCommitTool: ToolDefinition = {
     // `argBoolean` yalnızca boolean/"true" kabul eder; `!== false` karşılaştırması
     // "false" dizesini her şeyi stage'lemek olarak yorumluyordu.
     const stageAll = args.stageAll === undefined ? true : argBoolean(args.stageAll);
-    if (stageAll) {
-      await ctx.gitManager.stage(ctx.workspaceRoot);
+    const root = ctx.workspaceRoot;
+    // Adım İki — commit atomik güven sınırı: doğrulanmamış PASS olmadan commit
+    // yok. Akış: hazırla → dondur → kapı → yeniden doğrula → commit → tree doğrula.
+    const guard = ctx.releaseGate?.preCommitGuard?.();
+    if (guard?.required && !guard.ok) {
+      return (
+        'COMMIT REDDEDILDI (yayın kapısı): ' +
+        (guard.reason || 'Kapının taze PASS kararı yok.') +
+        ' Commit önce bağımsız inceleme tamamlanmalı ve @release-gate kararı kaydedilmelidir.'
+      );
     }
-    return ctx.gitManager.commit(ctx.workspaceRoot, argString(args.message));
+    if (stageAll) {
+      await ctx.gitManager.stage(root);
+    }
+    // Snapshot dondurma çift kontrolü: kapı PASS'ı ile commit arasında dünya
+    // değiştiyse (eşzamanlı düzenleme, yeni yazma) eski PASS geçersizdir.
+    // Yeniden doğrulama yapılamıyorsa commit YAPILMAZ (fail closed).
+    if (guard?.required) {
+      const evaluate = ctx.releaseGate?.evaluate;
+      if (!evaluate) {
+        return 'COMMIT REDDEDILDI: snapshot yeniden doğrulaması yapılamıyor (kapı portu eksik).';
+      }
+      const frozen = evaluate();
+      if (!frozen.ok) {
+        return (
+          'COMMIT REDDEDILDI (snapshot yeniden doğrulama): commit hazırlığı sırasında dünya değişti. ' +
+          (frozen.reason || '')
+        );
+      }
+    }
+    // Buzlanmış anlık görüntü: indeksin ağaç kimliği. Commit sonrası HEAD
+    // ağacıyla karşılaştırılır; eşleşme, commit'lenen içeriğin doğrulanmış
+    // anlık görüntüyle birebir aynı olduğunun makine kanıtıdır.
+    const preTree = await ctx.gitManager.treeHash(root).catch(() => '');
+    const result = await ctx.gitManager.commit(root, argString(args.message));
+    const headTree = await ctx.gitManager.headTreeHash(root).catch(() => '');
+    let treeNote = '';
+    if (preTree && headTree) {
+      treeNote =
+        headTree === preTree
+          ? "\nAğaç doğrulaması: commit'lenen ağaç doğrulanan anlık görüntüyle birebir aynı."
+          : "\nAĞAÇ DOĞRULAMASI BAŞARISIZ: commit'lenen ağaç buzlanmış anlık görüntüden farklı; eşzamanlı değişiklik araya girmiş olabilir — yeniden inceleme gerekir.";
+    }
+    const offGate =
+      guard && !guard.required ? '\nNot: bu commit görev kapısı dışındadır (aktif spec yok).' : '';
+    return result + treeNote + offGate;
   }
 };
 
@@ -148,11 +190,21 @@ export const preparePrTool: ToolDefinition = {
   },
   execute: async (args, ctx) => {
     if (!ctx.gitManager || !ctx.workspaceRoot) throw new Error('Git manager is not ready.');
-    return ctx.gitManager.preparePrBody(ctx.workspaceRoot, {
+    const body = await ctx.gitManager.preparePrBody(ctx.workspaceRoot, {
       title: argString(args.title),
       summary: argString(args.summary),
       tests: argString(args.tests)
     });
+    // PR gövdesi yayınlanmadan önce kapı durumu dürüstçe başa yazılır:
+    // taze PASS yoksa teslimat zincirine "doğrulanmamış" girer.
+    const guard = ctx.releaseGate?.preCommitGuard?.();
+    if (guard?.required) {
+      const state = ctx.releaseGate?.evaluate?.();
+      return state?.ok
+        ? 'Yayın kapısı: taze PASS ✓\n\n' + body
+        : `Yayın kapısı: TAZE PASS YOK — ${state?.reason ?? 'kapı doğrulanamadı'}\n\n${body}`;
+    }
+    return body;
   }
 };
 

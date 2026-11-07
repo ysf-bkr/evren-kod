@@ -103,6 +103,19 @@ export class GitManager {
     return (await git(['status', '--short'], workspaceRoot)) || 'Working tree is clean.';
   }
 
+  /**
+   * Buzlanmış indeks ağacının kimliği (`git write-tree`). Commit öncesi anlık
+   * görüntü ile commit sonrası HEAD ağacı karşılaştırılabilsin diye döner.
+   */
+  public async treeHash(workspaceRoot: string): Promise<string> {
+    return (await git(['write-tree'], workspaceRoot)).trim();
+  }
+
+  /** HEAD'e commit'lenmiş ağacın kimliği; doğrulama eşleştirme anahtarı. */
+  public async headTreeHash(workspaceRoot: string): Promise<string> {
+    return (await git(['rev-parse', 'HEAD^{tree}'], workspaceRoot)).trim();
+  }
+
   public async diff(workspaceRoot: string, options: GitDiffOptions = {}): Promise<string> {
     if (options.statOnly) {
       return this.diffStat(workspaceRoot, options.staged);

@@ -50,12 +50,19 @@ agent-facing, so it is written in English like `AGENTS.md`.
   (file changed after reviewer read → debt re-appears; tampered record → debt;
   deleted file → no ghost debt).
 
-### 5. No commit can be created without a valid gate decision. — ⏳
+### 5. No commit can be created without a valid gate decision. — ✅
 
-- Planned (step "İki"): re-check the gate at `git_commit`/`prepare_pr`, verify
-  the committed tree equals the verified snapshot, and never clobber concurrent
-  user changes. Until this lands, the gate guards DONE transitions, not the
-  commit boundary.
+- Code: `gitCommitTool` (`packages/core/src/tools/git.ts`) enforces the atomic
+  boundary: guard → stage → re-evaluate snapshot (fail closed when the
+  re-check port is missing) → freeze index tree (`write-tree`) → commit →
+  verify committed tree equals the frozen snapshot. `prepare_pr` honestly
+  prefixes the gate state. Scope: enforced whenever a task spec is active;
+  off-task quick commits are allowed but explicitly labelled as gate-outside.
+- Tests: `test/unit/commit_gate.test.ts` (no-PASS rejection with untouched
+  HEAD, fresh-PASS tree equality proof, post-PASS tamper rejection,
+  missing-recheck sabotage, tree-hash discriminating power).
+- Known scope limit: the CLI has no gate wired yet; the guarantee covers the
+  agent tool surface of the extension host.
 
 ### 6. Untrusted repository content cannot override system policies. — 🟡
 

@@ -43,7 +43,7 @@ export type VerificationPort = Pick<VerificationManager, 'verify' | 'formatForPr
 /** Depo işlemleri. */
 export type GitPort = Pick<
   GitManager,
-  'createBranch' | 'stage' | 'commit' | 'preparePrBody' | 'diff' | 'status'
+  'createBranch' | 'stage' | 'commit' | 'preparePrBody' | 'diff' | 'status' | 'treeHash' | 'headTreeHash'
 >;
 
 /** Geçmiş görev hafızası. */
@@ -100,6 +100,13 @@ export interface ReleaseGatePort {
     risks: string[];
     rollback: string;
   }): Promise<string>;
+  /** Taze PASS kararı var mı? Commit sınırı bu cevabı sorar. */
+  evaluate?(): { ok: boolean; reason?: string };
+  /**
+   * Commit öncesi muhafız: aktif bir görev (spec) varsa commit gate PASS
+   * ister (`required: true`); görev dışı hızlı commit'ler işaretli geçer.
+   */
+  preCommitGuard?(): { required: boolean; ok: boolean; reason?: string };
 }
 
 /** Çağrı haritası durumu (salt-okunur). */
