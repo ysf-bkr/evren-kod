@@ -28,22 +28,27 @@ agent-facing, so it is written in English like `AGENTS.md`.
   `src/core/agent/workflowController.ts` `completeReviewerRun`).
 - Tests: `test/unit/mutation_gate.test.ts`, `test/unit/review_ledger_flow.test.ts`.
 
-### 3. A review is valid only for the exact content snapshot inspected. — 🟡
+### 3. A review is valid only for the exact content snapshot inspected. — ✅
 
-- Code: `computeChangesDigest` stamps the decision with the file set, criteria,
-  verification status and ledger debt; `evaluateReleaseGate` rejects any digest
-  or spec mismatch.
-- Tests: `test/unit/release_gate.test.ts`, `test/unit/mutation_gate.test.ts`.
-- Gap: the digest is path-level, not content-hash level. A same-path content
-  change after review is detected via the git worktree digest for tracked
-  paths, but per-file content-hash evidence is planned (step "Bir").
+- Code: `ReviewedFileEvidence` (path + sha256 contentHash + size + snapshotId,
+  captured at read time); `markReviewed` attaches it,
+  `verifyLedgerFreshness` fails closed (evidence-less "reviewed" records are
+  treated as debt); `computeChangesDigest` stamps the decision with per-file
+  content hashes, so a silent same-path edit invalidates the verdict too.
+- Tests: `test/unit/release_gate.test.ts`, `test/unit/mutation_gate.test.ts`,
+  `test/unit/review_ledger_flow.test.ts` (real AgentCore wiring).
+- Note: mtime is never evidence and there is no mtime cache — content hashes
+  are recomputed from disk at every gate evaluation.
 
-### 4. Any post-review modification invalidates the approval. — 🟡
+### 4. Any post-review modification invalidates the approval. — ✅
 
-- Code: `recordWrites` re-opens ledger debt on every rewrite; digest mismatch
-  blocks the stored gate decision.
-- Tests: `test/unit/mutation_gate.test.ts`, `test/unit/review_ledger_flow.test.ts`.
-- Gap: same as invariant 3 (content-hash freshness, step "Bir").
+- Code: `recordWrites` re-opens ledger debt on every tracked rewrite;
+  `reconcileLedger` (run before every gate evaluation/decision) re-hashes the
+  ledger's files and re-opens debt when content or size drifted; deletions
+  drop ghost debt, new untracked paths open `unattributed` debt.
+- Tests: `test/unit/mutation_gate.test.ts`, `test/unit/review_ledger_flow.test.ts`
+  (file changed after reviewer read → debt re-appears; tampered record → debt;
+  deleted file → no ghost debt).
 
 ### 5. No commit can be created without a valid gate decision. — ⏳
 

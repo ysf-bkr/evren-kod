@@ -5,7 +5,10 @@
  * Kapılar `@core/workflow/TaskWorkflow` içindeki saf fonksiyonlardan gelir;
  * bu sınıf yalnızca yan etkileri (durum, kalıcılık, arayüz) uygular.
  */
-import { ToolCall, ReleaseGateRecord } from '@evren-kod/core/shared/types';
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ToolCall, ReleaseGateRecord, ReviewedFileEvidence } from '@evren-kod/core/shared/types';
 import {
   canTransition,
   createWorkflowState,
@@ -32,7 +35,11 @@ import {
   markReviewed,
   normalizeFile,
   recordWrites,
-  unreviewedFiles
+  unreviewedFiles,
+  verifyLedgerFreshness,
+  computeWorldSnapshotId,
+  SHADOW_REVIEW_HASH,
+  type FileFingerprint
 } from '@evren-kod/core/core/gate/ReviewLedger';
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
@@ -221,12 +228,75 @@ export class WorkflowController {
   private currentGateWorld(): GateWorldSnapshot {
     const specId = this.getWorkflow().specId;
     const spec = specId ? this.host.specStore.get(specId) : undefined;
+    const ledger = this.getWorkflow().reviewLedger ?? [];
+    const worldPaths = new Set<string>([
+      ...(this.host.state.stats.filesModified ?? []).map(normalizeFile),
+      ...ledger.map((entry) => entry.file)
+    ]);
+    const world = this.fingerprintPaths(worldPaths);
     return {
       files: this.host.state.stats.filesModified ?? [],
+      fileContents: [...world.entries()].map(([file, fp]) => ({ path: file, ...fp })),
       criteriaDone: (spec?.acceptanceCriteria ?? []).filter((c) => c.done).map((c) => c.id),
       verificationStatus: this.host.state.stats.verification?.status ?? 'not_run',
-      unreviewed: unreviewedFiles(this.getWorkflow().reviewLedger ?? [])
+      unreviewed: unreviewedFiles(ledger)
     };
+  }
+
+  /** Hash'i ölçülemeyecek kadar büyük dosyalar için ortak işaret. */
+  private static readonly TOO_LARGE = 'too-large';
+  private static readonly MAX_HASH_BYTES = 32 * 1024 * 1024;
+
+  /**
+   * Verilen yolların İÇERİK parmak izleri (path → sha256+size). Kanıt
+   * üretiminde ve kapı doğrulamasında tek kaynak; mtime kullanılmaz —
+   * önbellek de yoktur: aynı mtime'a touch'lanmış değişmiş içerik burada
+   * yakalanır. Okunamayan/silinmiş dosyalar haritada YER ALMAZ; bulunmama
+   * sinyalinin kendisi doğrulama için bilgidir.
+   */
+  private fingerprintPaths(paths: Iterable<string>): Map<string, FileFingerprint> {
+    const out = new Map<string, FileFingerprint>();
+    if (!getActiveWorkspaceRoot()) return out;
+    for (const raw of paths) {
+      const file = normalizeFile(raw);
+      if (!file || file.startsWith('command:') || out.has(file)) continue;
+      const fp = this.fingerprintFile(file);
+      if (fp) out.set(file, fp);
+    }
+    return out;
+  }
+
+  /**
+   * Defteri dünyayla yüzleştirir (fail closed): kanıtsız inceleme kaydı ve
+   * içeriği değişmiş inceleme borca döner; diskten düşen yol (geri alınan
+   * değişiklik) defterden düşer; defterde izi olmayan değişmiş yol
+   * "unattributed" borcu açar. Her kapı değerlendirmesi ve reviewer
+   * kapanışı öncesi koşar. Kök yoksa (depolama dışı oturum) varlık/hash
+   * denetimi atlanır; kanıtsız kayıt denetimi yine çalışır.
+   */
+  private reconcileLedger(): string[] {
+    const workflow = this.getWorkflow();
+    const ledger = workflow.reviewLedger ?? [];
+    if (ledger.length === 0) return [];
+    const hasRoot = Boolean(getActiveWorkspaceRoot());
+    const ledgerPaths = ledger.map((entry) => entry.file).filter((f) => !f.startsWith('command:'));
+    const currentFiles = hasRoot ? this.fingerprintPaths(ledgerPaths) : undefined;
+    const result = verifyLedgerFreshness(ledger, currentFiles);
+    let next = result.ledger;
+    // Defterde izi olmayan değişmiş yol: ölçülememiş bir yan etki ya da
+    // eski sürüm kaydıdır; kim yazmış olursa olsun bağımsız inceleme borcudur.
+    if (hasRoot) {
+      const tracked = new Set(next.map((entry) => entry.file));
+      const touched = this.fingerprintPaths(this.host.state.stats.filesModified ?? []);
+      const untrackedPaths = [...touched.keys()].filter((p) => !tracked.has(p));
+      if (untrackedPaths.length > 0) {
+        next = recordWrites(next, 'unattributed', untrackedPaths);
+      }
+    }
+    if (result.changed || next !== ledger) {
+      workflow.reviewLedger = next;
+    }
+    return result.reasons;
   }
 
   /**
@@ -243,19 +313,95 @@ export class WorkflowController {
    * Bağımsız reviewer turunun tamamlandığını deftere işler. Yalnızca
    * incelemeye yetkili kategoriler (kalite/güvenlik/mimari) sayılır ve
    * kapsama kanıtı şarttır: reviewer yalnızca GERÇEKTEN okuduğu dosyaların
-   * borcunu kapatır. `seenFiles` reviewer'ın bu turda okuduğu yollardır.
+   * borcunu kapatır. Bu genel giriş kanıtı kanıttan üretir: dosyalar o an
+   * diskte nasıl görülüyorsa hash'i odur; okunamayan dosya kanıtsız kalır
+   * ve borcu kapanmaz (fail closed).
    */
   public recordLedgerReview(reviewer: string, seenFiles: readonly string[]): void {
-    const workflow = this.getWorkflow();
     const role = (ROLE_ALIASES[reviewer.toLowerCase()] || reviewer).toLowerCase();
-    workflow.reviewLedger = markReviewed(workflow.reviewLedger ?? [], role, seenFiles);
+    const prints = new Map<string, FileFingerprint>();
+    for (const file of seenFiles) {
+      const fp = this.fingerprintFile(file);
+      if (fp) prints.set(normalizeFile(file), fp);
+    }
+    this.attachReviewerRun(role, prints);
+  }
+
+  /** Tek dosyanın içerik parmak izi; okunamayan/çok büyük dosya undefined. */
+  private fingerprintFile(relPath: string): FileFingerprint | undefined {
+    const root = getActiveWorkspaceRoot();
+    if (!root) return undefined;
+    const file = normalizeFile(relPath);
+    if (!file || file.startsWith('command:')) return undefined;
+    try {
+      const stat = fs.statSync(path.join(root, file));
+      if (!stat.isFile()) return undefined;
+      if (stat.size > WorkflowController.MAX_HASH_BYTES) {
+        // Ölçülemez ama boyu bilinen dosya: işaret her iki tarafta da aynı
+        // üretildiği için kanıt/denetim karşılaştırması tutarlı kalır.
+        return { contentHash: WorkflowController.TOO_LARGE, size: stat.size };
+      }
+      const hash = crypto
+        .createHash('sha256')
+        .update(fs.readFileSync(path.join(root, file)))
+        .digest('hex');
+      return { contentHash: hash, size: stat.size };
+    } catch {
+      return undefined;
+    }
   }
 
   /**
-   * Alt ajan okumalarını oturan kanıt seti. Kalıcı değildir: yalnızca
-   * o an koşan tur için anlamlıdır ve tüketildiğinde silinir.
+   * Kanıt setini deftere işler: okunan her dosya okuma anındaki parmak iziyle
+   * damgalanır; tüm kanıtlar aynı dünya snapshot'ına bağlanır. Ölçülemeyen
+   * komut borçları (command:*) yalnız tur GERÇEKTEN bir şey okuduysa kapanır.
    */
-  private readonly subagentReads = new Map<string, Set<string>>();
+  private attachReviewerRun(reviewer: string, prints: ReadonlyMap<string, FileFingerprint>): void {
+    const workflow = this.getWorkflow();
+    this.reconcileLedger();
+    const worldPaths = new Set<string>([
+      ...(this.host.state.stats.filesModified ?? []),
+      ...(workflow.reviewLedger ?? []).map((entry) => entry.file),
+      ...prints.keys()
+    ]);
+    const world = this.fingerprintPaths(worldPaths);
+    const snapshotId = computeWorldSnapshotId(world);
+    const at = new Date().toISOString();
+    const evidence: ReviewedFileEvidence[] = [];
+    for (const [file, fp] of prints) {
+      evidence.push({
+        path: file,
+        contentHash: fp.contentHash,
+        size: fp.size,
+        reviewedAt: at,
+        reviewerId: reviewer,
+        snapshotId
+      });
+    }
+    if (prints.size > 0) {
+      for (const entry of workflow.reviewLedger ?? []) {
+        if (entry.file.startsWith('command:') && !entry.reviewedBy && entry.writer !== reviewer) {
+          evidence.push({
+            path: entry.file,
+            contentHash: SHADOW_REVIEW_HASH,
+            size: 0,
+            reviewedAt: at,
+            reviewerId: reviewer,
+            snapshotId
+          });
+        }
+      }
+    }
+    workflow.reviewLedger = markReviewed(workflow.reviewLedger ?? [], reviewer, evidence);
+  }
+
+  /**
+   * Alt ajan okumalarının oturum-üstü kanıt seti. Kalıcı değildir: yalnızca
+   * o an koşan tur için anlamlıdır ve tüketildiğinde silinir. Parmak izi
+   * OKUMA ANINDA alınır — yazar okumadan sonra dosyayı değiştirirse kanıt
+   * eski içeriği gösterir ve kapı doğrulaması incelemeyi bayat sayar.
+   */
+  private readonly subagentReads = new Map<string, Map<string, FileFingerprint>>();
 
   /** Alt uzmanın okuduğu dosyayı inceleme kanıtı olarak biriktirir. */
   public recordLedgerRead(role: string, file: string): void {
@@ -264,28 +410,40 @@ export class WorkflowController {
     if (!reads) {
       // Bellek güvenliği: tek rolün okuma kanıtı sınırsız büyümez.
       if (this.subagentReads.size > 32) this.subagentReads.clear();
-      reads = new Set();
+      reads = new Map();
       this.subagentReads.set(key, reads);
     }
-    if (reads.size < 500) reads.add(normalizeFile(file));
+    const normalized = normalizeFile(file);
+    const fp = this.fingerprintFile(normalized);
+    if (reads.size < 500) {
+      if (fp) reads.set(normalized, fp);
+      // Okunamayan dosya kanıtsız kalır: borç kapanmaz (fail closed).
+    }
   }
 
   /** Reviewer turu bitti: okuma kanıtını tüketir ve borcu kapsama göre kapatır. */
   public completeReviewerRun(reviewer: string): string[] {
     const key = (ROLE_ALIASES[reviewer.toLowerCase()] || reviewer).toLowerCase();
-    const seen = [...(this.subagentReads.get(key) ?? [])];
+    const reads = this.subagentReads.get(key);
     this.subagentReads.delete(key);
-    this.recordLedgerReview(key, seen);
+    const seen = [...(reads?.keys() ?? [])];
+    this.attachReviewerRun(key, reads ?? new Map());
     return seen;
   }
 
   /** İnceleme bekleyen dosyalar; kapı makine denetimi ve talimat metni bunu sorar. */
   public unreviewedChanges(): string[] {
+    // Borç listesi sorulurken defter dünyayla tazelenir: kanıtı bayatlamış
+    // inceleme burada yeniden borca döner.
+    this.reconcileLedger();
     return unreviewedFiles(this.getWorkflow().reviewLedger ?? []);
   }
 
   /** Taze PASS kararı var mı? `done` kapısı bu cevabı sorar. */
   public evaluateGate(): { ok: boolean; reason?: string } {
+    // Önce defteri dünyayla yüzleştir: bayat/kanıtsız inceleme borca döner,
+    // borç digest'i kırdığı için eski karar kendiliğinden bayatlar.
+    this.reconcileLedger();
     const workflow = this.getWorkflow();
     return evaluateReleaseGate(workflow.releaseGate, {
       currentSpecId: workflow.specId,
@@ -310,8 +468,11 @@ export class WorkflowController {
     if (!specId) {
       return 'Yayın kapısı kaydedilemedi: bu iş akışında aktif bir spec yok.';
     }
+    // Kanıt tazeliği karar anında yeniden doğrulanır: bayat inceleme borca
+    // döner ve gerekçesi BLOCK satırlarına işlenir.
+    const staleReasons = this.reconcileLedger();
     let verdict = input.verdict;
-    const reasons = [...input.reasons];
+    const reasons = [...input.reasons, ...staleReasons];
     if (verdict === 'pass') {
       const failures = machineCheckPass({
         hasSpec: this.host.specStore.get(specId)?.status === 'approved',
@@ -360,7 +521,7 @@ export class WorkflowController {
   public requestReleaseGate(reason?: string): void {
     const workflow = this.getWorkflow();
     workflow.blockedReason = reason || 'Yayın kapısı kararı bekleniyor.';
-    const unreviewed = unreviewedFiles(workflow.reviewLedger ?? []);
+    const unreviewed = this.unreviewedChanges();
     const reviewHint =
       unreviewed.length > 0
         ? `Önce bağımsız inceleme zorunlu: denetim defterinde ${unreviewed.length} kayıt incelemesiz ` +

@@ -9,7 +9,31 @@ import {
 import { gateForStage, createWorkflowState } from '@evren-kod/core/core/workflow/TaskWorkflow';
 import { recordReleaseGateTool } from '@evren-kod/core/tools/gate';
 import { recordWrites, markReviewed, unreviewedFiles } from '@evren-kod/core/core/gate/ReviewLedger';
-import type { ReleaseGateRecord } from '@evren-kod/core/shared/types';
+import type { ReleaseGateRecord, ReviewedFileEvidence } from '@evren-kod/core/shared/types';
+
+/** Saf defter testi için sahte ama biçimce geçerli okuma kanıtı. */
+function ev(...paths: string[]): ReviewedFileEvidence[] {
+  return paths.map((path) => ({
+    path,
+    contentHash: `hash:${path}`,
+    size: 10,
+    reviewedAt: '2026-01-01T00:00:00.000Z',
+    reviewerId: 'reviewer',
+    snapshotId: 'snap-1'
+  }));
+}
+
+/** Ölçülemeyen komut kaydı için gölge kanıt. */
+function shadow(path: string): ReviewedFileEvidence {
+  return {
+    path,
+    contentHash: 'shadow',
+    size: 0,
+    reviewedAt: '2026-01-01T00:00:00.000Z',
+    reviewerId: 'reviewer',
+    snapshotId: 'snap-1'
+  };
+}
 
 const WORLD = {
   files: ['src/a.ts', 'src/b.ts'],
@@ -228,35 +252,39 @@ describe('Denetim defteri: yazan uzman bağımsız reviewer görmeden kapı geç
     let ledger = recordWrites([], 'backend', ['src/api.ts', 'src/db.ts']);
     assert.deepEqual(unreviewedFiles(ledger), ['src/api.ts', 'src/db.ts']);
     // Bağımsızlık makine kuralıdır: okumuş olsa bile yazar rolü kapatamaz.
-    ledger = markReviewed(ledger, 'backend', ['src/api.ts', 'src/db.ts']);
+    ledger = markReviewed(ledger, 'backend', ev('src/api.ts', 'src/db.ts'));
     assert.deepEqual(unreviewedFiles(ledger), ['src/api.ts', 'src/db.ts']);
   });
 
   test('kapsama kuralı: reviewer yalnızca okuduğu dosyanın borcunu kapatır', () => {
     let ledger = recordWrites([], 'backend', ['src/api.ts', 'src/db.ts']);
-    ledger = markReviewed(ledger, 'quality', ['src/api.ts']);
+    ledger = markReviewed(ledger, 'quality', ev('src/api.ts'));
     assert.deepEqual(unreviewedFiles(ledger), ['src/db.ts']);
-    ledger = markReviewed(ledger, 'security', ['src/db.ts']);
+    ledger = markReviewed(ledger, 'security', ev('src/db.ts'));
     assert.deepEqual(unreviewedFiles(ledger), []);
     // Okuma yolu normalize edilir: Windows ayracı ve ./ öneki eşleşmeyi bozmaz.
     ledger = recordWrites(ledger, 'backend', ['src/db.ts']);
-    ledger = markReviewed(ledger, 'quality', ['src\\db.ts']);
+    ledger = markReviewed(ledger, 'quality', ev('src\\db.ts'));
     assert.deepEqual(unreviewedFiles(ledger), []);
   });
 
-  test('ölçülemeyen komutun gölge borcu dosya okumayla değil, denetim turuyla kapanır', () => {
+  test('ölçülemeyen komutun gölge borcu denetim kanıtıyla kapanır; yazar kapatamaz', () => {
     let ledger = recordWrites([], 'manager', ['command:call_9']);
     assert.deepEqual(unreviewedFiles(ledger), ['command:call_9']);
-    // Dosyayı "okumak" anlamsız: kapsama kanıtı aransa borç hiç kapanmazdı.
-    ledger = markReviewed(ledger, 'manager', []);
-    assert.deepEqual(unreviewedFiles(ledger), ['command:call_9'], 'yazar yine kapatamaz');
+    // Hiçbir şey okumayan tur gölge borcu da kapatamaz (denetim sayılmaz).
     ledger = markReviewed(ledger, 'quality', []);
+    assert.deepEqual(unreviewedFiles(ledger), ['command:call_9']);
+    // Yazarın kendi turu hiç kapatamaz.
+    ledger = markReviewed(ledger, 'manager', [shadow('command:call_9')]);
+    assert.deepEqual(unreviewedFiles(ledger), ['command:call_9'], 'yazar yine kapatamaz');
+    // Bağımsız denetim turu ölçülemezlik kanıtıyla kapatır.
+    ledger = markReviewed(ledger, 'quality', [shadow('command:call_9')]);
     assert.deepEqual(unreviewedFiles(ledger), []);
   });
 
   test('incelemeden sonra yeniden yazma kararı düşürür', () => {
     let ledger = recordWrites([], 'backend', ['src/api.ts']);
-    ledger = markReviewed(ledger, 'quality', ['src/api.ts']);
+    ledger = markReviewed(ledger, 'quality', ev('src/api.ts'));
     assert.deepEqual(unreviewedFiles(ledger), []);
     ledger = recordWrites(ledger, 'backend', ['src/api.ts']);
     assert.deepEqual(unreviewedFiles(ledger), ['src/api.ts']);

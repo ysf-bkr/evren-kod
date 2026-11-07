@@ -212,9 +212,28 @@ describe('AgentCore: gerçek reviewer turu yalnızca okunan dosyanın borcunu ka
     });
     assert.match(blocked, /BLOCK/);
     assert.match(blocked, /b\.ts/);
-    // Kapanış kanıtı: okunan a.ts'nin borcunu kapatan aynı markReviewed
-    // yoludur — birim test (release_gate.test.ts) ve uçtan uca kapı testi
-    // (workflow_progression.test.ts) kapanan tarafı zaten sınamaktadır.
+
+    // Kanıt tazeliği saldırıları — hepsi aynı gerçek kablo üzerinden:
+    // 1) reviewer okuduktan SONRA dosya değişirse inceleme bayatlar.
+    await fs.writeFile(path.join(root, 'a.ts'), 'export const a = 999; // sinsi değişiklik\n');
+    assert.ok(
+      core.workflow.unreviewedChanges().includes('a.ts'),
+      'okumadan sonra değişen dosyanın borcu yeniden doğmalı'
+    );
+    // 2) kanıtsız "incelendi" kaydı (defter tahrifi) borca döner.
+    const wf = core.getState().workflow!;
+    wf.reviewLedger = (wf.reviewLedger ?? []).map((e) =>
+      e.file === 'b.ts' ? { ...e, reviewedBy: 'quality', review: undefined } : e
+    );
+    assert.ok(
+      core.workflow.unreviewedChanges().includes('b.ts'),
+      'kanıtsız inceleme kaydı güvenilmezdir (fail closed)'
+    );
+    // 3) dosya silinirse hayalet borç kalmaz; yol geri gelirse yazım yeniden borç açar.
+    await fs.rm(path.join(root, 'a.ts'));
+    const remaining = core.workflow.unreviewedChanges();
+    assert.ok(!remaining.includes('a.ts'), 'silinen dosya hayalet borç üretmemeli');
+    assert.ok(remaining.includes('b.ts'));
   });
 });
 
@@ -264,7 +283,11 @@ describe('AgentCore: ölçülemeyen komut gölge borcu doğurur', () => {
     });
     assert.match(blocked, /BLOCK/);
 
-    // Gölge borç dosya okumaz; herhangi bir tamamlanmış bağımsız tur kapatır.
+    // Gölge borç dosya okumayla değil, bir ŞEY okumuş bağımsız denetim
+    // turunun ölçülemezlik kanıtıyla kapanır; boş tur denetim sayılmaz.
+    core.workflow.completeReviewerRun('security');
+    assert.ok(core.workflow.unreviewedChanges().length > 0, 'boş tur gölge borcu kapatamaz');
+    core.workflow.recordLedgerRead('quality', 'generated.txt');
     core.workflow.completeReviewerRun('quality');
     assert.deepEqual(core.workflow.unreviewedChanges(), []);
   });

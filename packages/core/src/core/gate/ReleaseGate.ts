@@ -14,6 +14,12 @@ import type { ReleaseGateRecord } from '../../shared/types';
 export interface GateWorldSnapshot {
   /** Tura göreli değişen dosya yolları. */
   files: readonly string[];
+  /**
+   * Değişen dosyaların içerik parmak izleri (varsa). YOL listesi yetmez:
+   * aynı yolda sessizce değişen içerik kararı bayatlatmalı — digest bunu
+   * kanıtlar. Bilinemiyorsa boş bırakılır (ör. yola erişim yok).
+   */
+  fileContents?: readonly { path: string; contentHash: string; size: number }[];
   /** İşaretlenmiş kabul kriteri kimlikleri. */
   criteriaDone: readonly string[];
   /** Doğrulama durumu (passed/skipped/not_run/…). */
@@ -26,6 +32,9 @@ export interface GateWorldSnapshot {
 export function computeChangesDigest(world: GateWorldSnapshot): string {
   const canonical = JSON.stringify({
     files: [...new Set(world.files)].sort(),
+    contents: [...new Map((world.fileContents ?? []).map((f) => [f.path, f])).values()]
+      .map((f) => `${f.path}:${f.contentHash}:${f.size}`)
+      .sort(),
     criteriaDone: [...new Set(world.criteriaDone)].sort(),
     verificationStatus: world.verificationStatus,
     unreviewed: [...new Set(world.unreviewed)].sort()

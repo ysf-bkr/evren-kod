@@ -182,6 +182,15 @@ turundaki başarılı tamamlama kendinden önceki ve kendinden farklı rollerin
 yazmalarını "incelendi" işaretler — yazar kendi yazdığını inceleyemez. Defter
 durumu kapı digest'ine girer ve `machineCheckPass` inceleme borcu olan dünyada
 "pass"ı reddeder. Aynı dosyanın yeniden yazılması eski inceleme kararını düşürür.
+Kapanış beyan değil PARMAK İZİDİR: her okuma olayında dosyanın sha256 içerik
+hash'i, boyu ve dünya snapshot kimliği (`ReviewedFileEvidence`) kanıt olarak
+bağlanır; mtime hiçbir yerde kanıt sayılmaz ve önbelleklenmez. Her kapı
+değerlendirmesi öncesi `reconcileLedger` defteri diskle yüzleştirir
+(`verifyLedgerFreshness`, fail closed): içeriği değişmiş inceleme bayatlayıp
+borca döner, kanıtsız "incelendi" kaydı güvenilmez sayılır, silinen dosyanın
+hayalet borcu düşer, deftersiz değişmiş yol `unattributed` borcu açar. Ölçülemeyen
+komut yan etkileri `command:*` gölge borcu olur ve yalnız bir şey okumuş bağımsız
+denetim turunun ölçülemezlik kanıtıyla kapanır.
 
 ## 5. Güvenilirlik ve Güvenlik Sözleşmeleri
 

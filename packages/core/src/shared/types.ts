@@ -648,6 +648,26 @@ export interface WorkflowState {
   reviewLedger?: ReviewLedgerEntry[];
 }
 
+/**
+ * Reviewer kanıtı: bir dosyanın İNCELENEN ANKI içeriğinin parmak izi.
+ * mtime kanıt değildir — yalnızca içerik hash'i, boyu ve bağlı snapshot
+ * kimliği, incelemenin hangi içeriğe ait olduğunu tartışılamaz kılar.
+ */
+export interface ReviewedFileEvidence {
+  /** Çalışma alanına göreli dosya yolu. */
+  path: string;
+  /** İnceleme anındaki dosya içeriğinin sha256'sı; ölçülemeyen komut kaydında 'shadow'. */
+  contentHash: string;
+  /** İnceleme anındaki dosya boyu (bayt). */
+  size: number;
+  /** Kanıtın üretildiği an (ISO). */
+  reviewedAt: string;
+  /** İncelemeyi tamamlayan rol kimliği. */
+  reviewerId: string;
+  /** Reviewer'ın incelediği dünya anlık görüntüsünün kimliği. */
+  snapshotId: string;
+}
+
 /** Denetim defteri girişi: bir dosyanın kim tarafından yazıldığı ve kimin incelediği. */
 export interface ReviewLedgerEntry {
   /** Çalışma alanına göreli dosya yolu. */
@@ -656,6 +676,11 @@ export interface ReviewLedgerEntry {
   writer: string;
   /** Bağımsız incelemeyi tamamlayan rol; tanımsızsa değişiklik hâlâ inceleme bekliyor. */
   reviewedBy?: string;
+  /**
+   * İnceleme kanıtı. `reviewedBy` var ama kanıt yoksa kayıt güvenilmezdir
+   * (eski sürüm ya da tahrif): kapı denetimi borcu yeniden açar (fail closed).
+   */
+  review?: ReviewedFileEvidence;
   /** Kayıt anı (ISO). */
   at: string;
 }
