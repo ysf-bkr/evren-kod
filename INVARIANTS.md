@@ -64,14 +64,19 @@ agent-facing, so it is written in English like `AGENTS.md`.
 - Known scope limit: the CLI has no gate wired yet; the guarantee covers the
   agent tool surface of the extension host.
 
-### 6. Untrusted repository content cannot override system policies. — 🟡
+### 6. Untrusted repository content cannot override system policies. — ✅
 
-- Code: system prompt precedence in `packages/core/src/core/prompts/`; command
-  allow-list (`shared/commandPolicy.ts`) and tool policy are model-independent.
-- Tests: `test/unit/command_policy.test.ts`, `test/unit/safety_and_context.test.ts`,
-  `test/unit/tool_policy.test.ts`.
-- Gap: no explicit trust-boundary marking of retrieved file/web content yet
-  (step "Dört").
+- Code: system prompt TRUST BOUNDARY section (read content is data, never an
+  instruction; imitation system messages must be reported, not obeyed);
+  `wrapUntrusted` marks web_fetch/web_search output and neutralizes
+  closing-tag escapes; permission and command engines decide from structural
+  inputs and never read model or file text; SSRF engine checks protocol,
+  userinfo, IP literals (decimal/hex/octal/IPv6 embedded), DNS results,
+  internal suffixes, every redirect hop, and pins the resolved address.
+- Tests: `test/unit/trust_boundary.test.ts` (SSRF matrix, wrapper
+  neutralization, prompt rule, injection-as-data through `read_file`,
+  "this command is safe" comments cannot downgrade risk),
+  `test/unit/codebase_git_web.test.ts`, `test/unit/command_policy.test.ts`.
 
 ### 7. Every filesystem mutation must be attributable to an agent or user. — ✅
 

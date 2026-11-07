@@ -209,6 +209,7 @@ denetim turunun ölçülemezlik kanıtıyla kapanır.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **İptal ve Zaman Aşımı** | Streaming yanıtın tamamı anında iptal edilebilir; 2 dakika veri akışı durursa bağlantı zaman aşımına uğrar.                                 |
 | **Token Sayacı**         | Streaming isteklerinde `include_usage` bayrağı ile sağlayıcıdan kesin token sayısı alınır.                                                  |
+| **Güven Sınırı**     | Okunan her içerik (repo dosyaları, araç çıktıları, web) VERİDİR; sistem isteminin TRUST BOUNDARY bölümü içerik içi talimat taklidini yasaklar, `web_fetch`/`web_search` çıktıları `untrusted_content` sarmalayıcısıyla ve kapanış-etiketi nötrleştirmesiyle taşınır. İzin/komut motorları metin okumaz, yapısal girdiyle karar verir. |
 | **Audit Log**            | Komutlar kaydedilirken `Bearer`, `sk-`, `api_key=` gibi hassas anahtar kalıpları maskelenir.                                                |
 | **Docker Sandbox**       | Sandbox modu seçiliyse boş imajla ana makineye sessizce düşülmez; hata fırlatılır.                                                          |
 | **Editör Bağlamı**       | Yalnızca çalışma alanı **içindeki** aktif dosya ve seçimler prompt bağlamına eklenir.                                                       |
