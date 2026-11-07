@@ -5,10 +5,7 @@ görsel varlıkları barındırır.
 
 ## 1. Temel Eklenti Varlıkları (VS Code)
 
-| Dosya | Boyut / Format | Kullanım Alanı |
-| ----- | -------------- | -------------- |
-
-Amblem: stilize **E** harfi; orta kolonda örgü **�örgü düğümü** (elmas) ve üç çubuğun ucunda **çağrı grafiği düğümleri**. Renkler marka gradyanıyla birebir: mavi (#0092FA→#003CCD), altın düğüm (#f59e0b).
+Amblem: stilize **E** harfi; orta kolonda zanaat disiplinini temsil eden **örgü düğümü** (elmas) ve üç çubuğun ucunda **çağrı grafiği düğümleri**. Renkler marka gradyanıyla birebir: derin uzay ve elektrik mavisi (#38BDF8→#0092FA→#0051F1→#00299E), altın örgü düğümü (#FDE68A→#F59E0B→#D97706).
 
 | Dosya            | Boyut / Format                        | Kullanım Alanı                                            |
 | ---------------- | ------------------------------------- | --------------------------------------------------------- |
@@ -25,7 +22,7 @@ Sosyal medya, bülten, dokümantasyon ve sunumlar için:
 
 - `logo-light-1800.png` / `logo-light-2700.png`: Açık renk zeminler için koyu yazılı yüksek çözünürlüklü logolar (1800px ve 2700px yükseklik 1063/1594).
 - `logo-dark-1800.png` / `logo-dark-2700.png`: Koyu renk zeminler için açık yazılı yüksek çözünürlüklü logolar (1800px ve 2700px yükseklik 1063/1594).
-- `logo-safe.png` / `logo-safe-1800.png`: Tema-nötr varyant — yazı marka mavisiyle (#0073f9) çizilir ve hem açık hem koyu zeminde okunur. README başlığı bu logoyu `raw.githubusercontent.com` üzerinden MUTLAK bir adresle gösterir: VS Code Marketplacesi `<picture>` etiketini siler ve göreli yolları çözümleyemediği için tek güvenilir çözüm budur.
+- `logo-safe.png` / `logo-safe-1800.png`: Tema-nötr varyant — yazı marka mavisiyle (#0073F9) çizilir ve hem açık hem koyu zeminde okunur. README başlığı bu logoyu `raw.githubusercontent.com` üzerinden MUTLAK bir adresle gösterir: VS Code Marketplacesi `<picture>` etiketini siler ve göreli yolları çözümleyemediği için tek güvenilir çözüm budur.
 - `icon-256.png` / `icon-512.png` / `icon-1024.png`: Yüksek çözünürlüklü uygulama ve mağaza simgeleri.
 
 ## 3. Web ve Favicon Varlıkları

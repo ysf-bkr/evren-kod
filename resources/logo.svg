@@ -1,30 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 921" width="1560" height="921">
-  <g transform="translate(48,240) scale(0.85)">
-  <!-- Evren Vector Brand Icon (Full Color): mavi marka gradyanı + �örgü düğümü (altın) + grafi düğümleri -->
   <defs>
-    <linearGradient id="logoBrand" x1="88" y1="88" x2="408" y2="424" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0092fa" />
-      <stop offset="0.55" stop-color="#0051f1" />
-      <stop offset="1" stop-color="#003ccd" />
+    <linearGradient id="logoBrand" x1="80" y1="80" x2="416" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="20%" stop-color="#0092fa" />
+      <stop offset="65%" stop-color="#0051f1" />
+      <stop offset="100%" stop-color="#00299e" />
     </linearGradient>
-    <linearGradient id="logoKnot" x1="148" y1="192" x2="276" y2="320" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f59e0b" />
-      <stop offset="1" stop-color="#ea580c" />
+    <linearGradient id="logoKnot" x1="176" y1="232" x2="224" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fde68a" />
+      <stop offset="40%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
     </linearGradient>
   </defs>
-  <!-- E gövdesi; ortadaki elmas boşluk �örgü düğümünün örgüsüdür -->
-  <path fill="url(#logoBrand)" fill-rule="evenodd" d="M 88 88 L 408 88 L 408 168 L 168 168 L 168 216 L 352 216 L 352 296 L 168 296 L 168 344 L 408 344 L 408 424 L 88 424 Z M 212 192 L 276 256 L 212 320 L 148 256 Z" />
-  <!-- �örgü düğümü: boşluğun içine oturan altın elmas (örgü hissi) -->
-  <path fill="url(#logoKnot)" d="M 212 212 L 256 256 L 212 300 L 168 256 Z" />
-  <!-- Çağrı grafiği düğümleri -->
-  <rect x="408" y="121" width="24" height="14" fill="#0073f9" />
-  <circle cx="456" cy="128" r="24" fill="#0092fa" />
-  <rect x="352" y="249" width="24" height="14" fill="#d97706" />
-  <circle cx="400" cy="256" r="24" fill="#f59e0b" />
-  <rect x="408" y="377" width="24" height="14" fill="#003ccd" />
-  <circle cx="456" cy="384" r="24" fill="#0051f1" />
-</g>
-  <text x="560" y="560" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="190" font-weight="700" letter-spacing="-6" fill="#f8fafc">Evren Kod</text>
-  <text x="568" y="664" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#67bdfa">Zanaat disipliniyle kodlayan,</text>
-  <text x="568" y="720" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="40" fill="#67bdfa">kanıtla doğrulayan otonom VS Code ajanı.</text>
+  <g transform="translate(60, 200) scale(0.95)">
+    <path fill="url(#logoBrand)" fill-rule="evenodd" d="M 116 80 L 380 80 A 36 36 0 0 1 380 152 L 176 152 A 24 24 0 0 0 152 176 L 152 196 A 24 24 0 0 0 176 220 L 330 220 A 36 36 0 0 1 330 292 L 176 292 A 24 24 0 0 0 152 316 L 152 336 A 24 24 0 0 0 176 360 L 380 360 A 36 36 0 0 1 380 432 L 116 432 A 36 36 0 0 1 80 396 L 80 116 A 36 36 0 0 1 116 80 Z M 200 222 L 234 256 L 200 290 L 166 256 Z" />
+    <path fill="url(#logoKnot)" d="M 200 232 L 224 256 L 200 280 L 176 256 Z" />
+    <polygon points="200,250 206,256 200,262 194,256" fill="#ffffff" opacity="0.95" />
+
+    <circle cx="380" cy="116" r="18" fill="#38bdf8" opacity="0.85" />
+    <circle cx="380" cy="116" r="8" fill="#ffffff" />
+
+    <circle cx="330" cy="256" r="18" fill="#fbbf24" opacity="0.85" />
+    <circle cx="330" cy="256" r="8" fill="#ffffff" />
+
+    <circle cx="380" cy="396" r="18" fill="#818cf8" opacity="0.85" />
+    <circle cx="380" cy="396" r="8" fill="#ffffff" />
+  </g>
+  <text x="570" y="420" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="172" font-weight="800" letter-spacing="-3" fill="#f8fafc">Evren <tspan fill="#0092fa">Kod</tspan></text>
+  <text x="576" y="515" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="500" fill="#94a3b8">Zanaat disipliniyle kodlayan,</text>
+  <text x="576" y="575" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="500" fill="#94a3b8">kanıtla doğrulayan otonom VS Code ajanı.</text>
 </svg>

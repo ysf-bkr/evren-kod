@@ -14,22 +14,32 @@ export interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({ className = 'evren-kod-icon-md', colored = false }) => {
   const uid = `evren-kod-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
-  // E gövdesi + �örgü düğümünün elmas boşluğu.
-  const bodyPath =
-    'M 88 88 L 408 88 L 408 168 L 168 168 L 168 216 L 352 216 L 352 296 L 168 296 L 168 344 L 408 344 L 408 424 L 88 424 Z M 212 192 L 276 256 L 212 320 L 148 256 Z';
-  // Düğüm bağlantıları ve daireler tek yolda birleşir (currentColor mirası).
-  const nodesPath =
-    'M 408 121 h 24 v 14 h -24 Z M 456 104 a 24 24 0 1 0 0.1 0 Z M 352 249 h 24 v 14 h -24 Z M 400 232 a 24 24 0 1 0 0.1 0 Z M 408 377 h 24 v 14 h -24 Z M 456 360 a 24 24 0 1 0 0.1 0 Z';
-  const knotPath = 'M 212 212 L 256 256 L 212 300 L 168 256 Z';
+  const bodyPath = colored
+    ? 'M 116 80 L 380 80 A 36 36 0 0 1 380 152 L 176 152 A 24 24 0 0 0 152 176 L 152 196 A 24 24 0 0 0 176 220 L 330 220 A 36 36 0 0 1 330 292 L 176 292 A 24 24 0 0 0 152 316 L 152 336 A 24 24 0 0 0 176 360 L 380 360 A 36 36 0 0 1 380 432 L 116 432 A 36 36 0 0 1 80 396 L 80 116 A 36 36 0 0 1 116 80 Z M 200 222 L 234 256 L 200 290 L 166 256 Z'
+    : 'M 116 80 L 380 80 A 36 36 0 0 1 380 152 L 176 152 A 24 24 0 0 0 152 176 L 152 196 A 24 24 0 0 0 176 220 L 330 220 A 36 36 0 0 1 330 292 L 176 292 A 24 24 0 0 0 152 316 L 152 336 A 24 24 0 0 0 176 360 L 380 360 A 36 36 0 0 1 380 432 L 116 432 A 36 36 0 0 1 80 396 L 80 116 A 36 36 0 0 1 116 80 Z M 200 222 L 234 256 L 200 290 L 166 256 Z M 200 232 L 224 256 L 200 280 L 176 256 Z';
+  const knotPath = 'M 200 232 L 224 256 L 200 280 L 176 256 Z';
 
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden="true" role="presentation">
       {colored && (
         <defs>
-          <linearGradient id={`${uid}-blue`} x1="0" y1="0" x2="0.8" y2="1">
-            <stop offset="0%" stopColor="#0092FA" />
-            <stop offset="50%" stopColor="#0073F9" />
-            <stop offset="100%" stopColor="#0051F1" />
+          <linearGradient id={`${uid}-blue`} x1="80" y1="80" x2="416" y2="432" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#38BDF8" />
+            <stop offset="20%" stopColor="#0092FA" />
+            <stop offset="65%" stopColor="#0051F1" />
+            <stop offset="100%" stopColor="#00299E" />
+          </linearGradient>
+          <linearGradient
+            id={`${uid}-knot`}
+            x1="176"
+            y1="232"
+            x2="224"
+            y2="280"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#FDE68A" />
+            <stop offset="40%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#D97706" />
           </linearGradient>
         </defs>
       )}
@@ -41,13 +51,27 @@ export const Logo: React.FC<LogoProps> = ({ className = 'evren-kod-icon-md', col
       />
       {colored ? (
         <>
-          <path d={knotPath} fill="#f59e0b" />
-          <path d="M 408 121 h 24 v 14 h -24 Z M 456 104 a 24 24 0 1 0 0.1 0 Z" fill="#0092FA" />
-          <path d="M 352 249 h 24 v 14 h -24 Z M 400 232 a 24 24 0 1 0 0.1 0 Z" fill="#f59e0b" />
-          <path d="M 408 377 h 24 v 14 h -24 Z M 456 360 a 24 24 0 1 0 0.1 0 Z" fill="#0051F1" />
+          <path d={knotPath} fill={`url(#${uid}-knot)`} />
+          <polygon points="200,250 206,256 200,262 194,256" fill="#FFFFFF" opacity="0.95" />
+
+          {/* Üst çağrı grafiği düğümü: mimari ve keşif */}
+          <circle cx="380" cy="116" r="18" fill="#38BDF8" opacity="0.85" />
+          <circle cx="380" cy="116" r="8" fill="#FFFFFF" />
+
+          {/* Orta çağrı grafiği düğümü: akıl yürütme ve planlama */}
+          <circle cx="330" cy="256" r="18" fill="#FBBF24" opacity="0.85" />
+          <circle cx="330" cy="256" r="8" fill="#FFFFFF" />
+
+          {/* Alt çağrı grafiği düğümü: yürütme ve doğrulama */}
+          <circle cx="380" cy="396" r="18" fill="#818CF8" opacity="0.85" />
+          <circle cx="380" cy="396" r="8" fill="#FFFFFF" />
         </>
       ) : (
-        <path d={nodesPath} fill="currentColor" />
+        <>
+          <circle cx="380" cy="116" r="14" fill="currentColor" />
+          <circle cx="330" cy="256" r="14" fill="currentColor" />
+          <circle cx="380" cy="396" r="14" fill="currentColor" />
+        </>
       )}
     </svg>
   );
