@@ -1,0 +1,44 @@
+name: Weekly regression
+
+permissions:
+  contents: read
+
+# Haftalık regresyon denetimi (kullanıcı isteği): tam kontrol hattı + hedefli
+# sabotaj koşusu + denetim zinciri doğrulaması. PR'lardaki hızlı CI'ın (ci.yml)
+# koşmadığı derin kanıtlar burada, planlı olarak yavaş ama eksiksiz koşar.
+on:
+  schedule:
+    - cron: '15 6 * * 1' # Pazartesi 06:15 UTC
+  workflow_dispatch:
+
+jobs:
+  deep-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix webview-ui ci
+
+      - name: Full check (format, typecheck, lint, language, tests, coverage)
+        run: npm run check
+
+      - name: Targeted mutation sabotage run
+        run: npm run check:mutation
+
+      - name: Audit chain verification
+        run: npm run audit:verify
+
+      - name: Webview UI tests
+        run: npm --prefix webview-ui test

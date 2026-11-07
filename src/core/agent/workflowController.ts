@@ -41,6 +41,7 @@ import {
   SHADOW_REVIEW_HASH,
   type FileFingerprint
 } from '@evren-kod/core/core/gate/ReviewLedger';
+import { addAnchor } from '@evren-kod/core/core/audit/Anchors';
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import type { TaskSpec } from '@evren-kod/core/core/spec/SpecStore';
@@ -518,6 +519,17 @@ export class WorkflowController {
     this.syncProgressToState();
     await this.host.saveCurrentState();
     this.host.emitState();
+    // Kanıt anı harici çapalanır: denetim zincirinin bugünkü ucu depo dışı
+    // ikinci alana damgalanır. Gelecekte "log silinip yeniden kurulmuşsa"
+    // bu çapa yakalar. Anahtar kapı kararı olduğu için çapalama noktası odur.
+    const anchorRoot = getActiveWorkspaceRoot();
+    if (anchorRoot) {
+      try {
+        await addAnchor(anchorRoot);
+      } catch (err) {
+        logWarning('audit anchor failed', errorMessage(err));
+      }
+    }
     return formatGateRecord(record);
   }
 

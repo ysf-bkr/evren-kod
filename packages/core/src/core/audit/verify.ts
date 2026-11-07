@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { AuditLog } from './AuditLog';
+import { verifyWithAnchors } from './Anchors';
 
 /**
  * CLI giriş noktası: `npm run audit:verify -- [--workspace <yol>]`.
@@ -20,9 +20,10 @@ async function main(): Promise<void> {
     }
   }
 
-  const result = await AuditLog.verify(workspace);
+  const result = await verifyWithAnchors(workspace);
   if (result.ok) {
     process.stdout.write(`${result.message}\n`);
+    process.stdout.write(`Anchors: ${result.anchors.message}\n`);
     if (result.headHash) process.stdout.write(`Head hash: ${result.headHash}\n`);
     return;
   }

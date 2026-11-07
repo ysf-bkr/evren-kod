@@ -17,7 +17,7 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.106-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml/badge.svg)](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-990%20passing-2ea44f)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/tests-996%20passing-2ea44f)](./docs/DEVELOPMENT.md)
 
 **Geliştirici:** Yusuf BEKAR · **E-posta:** [ybekar@msn.com](mailto:ybekar@msn.com)
 

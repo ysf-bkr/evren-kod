@@ -239,4 +239,46 @@ export class AuditLog {
       headHash
     };
   }
+
+  /**
+   * Doğrulanmış zincirdeki tüm kayıt hash'leri (sıra ile). Harici çapalar
+   * "çapalanmış uç bu zincirin parçası mı?" sorusunu bu listeyle cevaplar.
+   * Bozuk kayıtta durur; dönen kısım doğrulanmış ön ektir.
+   */
+  public static async chainHashes(workspaceRoot: string): Promise<{ hashes: string[]; ok: boolean }> {
+    const filePath = auditFilePath(workspaceRoot);
+    let raw: string;
+    try {
+      raw = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      return { hashes: [], ok: true };
+    }
+    const hashes: string[] = [];
+    let expectedPrev = GENESIS_HASH;
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (!line.includes('\t')) {
+        try {
+          const entry = JSON.parse(line) as AuditEntry;
+          const recomputed = computeHash({
+            timestamp: entry.timestamp,
+            decision: entry.decision,
+            tool: entry.tool,
+            args: entry.args,
+            prevHash: entry.prevHash
+          });
+          if (recomputed === entry.hash && entry.prevHash === expectedPrev) {
+            hashes.push(entry.hash);
+            expectedPrev = entry.hash;
+            continue;
+          }
+        } catch {
+          // düşülecek bozuk satır
+        }
+      }
+      return { hashes, ok: false };
+    }
+    return { hashes, ok: true };
+  }
 }

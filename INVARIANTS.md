@@ -102,12 +102,20 @@ agent-facing, so it is written in English like `AGENTS.md`.
 - Gap: concurrent user-edit races during bulk rollback are not fully covered
   by scenarios yet.
 
-### 10. An audit record must be verifiable independently. — 🟡
+### 10. An audit record must be verifiable independently. — ✅
 
-- Code: hash-chained AuditLog (`prevHash`), export/verify tooling.
-- Tests: `test/unit/audit_log.test.ts`, `test/unit/approval_chain.test.ts`.
-- Gap: no external anchor yet (step "Beş"): a local attacker who deletes the
-  whole chain and restarts it cannot currently be detected.
+- Code: hash-chained AuditLog (`prevHash`, `verify`), plus external anchoring
+  (`core/audit/Anchors.ts`): every release-gate decision stamps the current
+  chain head into two trust domains — the repo (`.evren-kod/audit-anchors.log`,
+  becomes remote-witnessed once pushed) and the user's home
+  (`~/.evren-kod/anchors/<id>.log`). Anchors chain themselves
+  (`prevAnchorHash`). `verifyWithAnchors` asks the decisive question the local
+  chain cannot answer alone: does today's log still contain the anchored
+  past? A deleted-and-rebuilt log verifies green locally yet fails against
+  the anchor. CLI: `npm run audit:verify`; CI: weekly workflow runs it.
+- Tests: `test/unit/audit_log.test.ts`, `test/unit/audit_anchor.test.ts`
+  (delete-and-rebuild attack, truncation, anchor-chain tampering, refusal to
+  anchor a broken chain).
 
 ## Meta rules
 

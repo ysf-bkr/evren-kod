@@ -59,6 +59,8 @@ Evren Kod, yüksek kod kalitesi ve test izolasyonu için kapsamlı kontrol scrip
 | `npm run check:version`        | `package.json`, lockfile'lar ve `version.ts` sürümlerinin tutarlılığını denetler.                                                                              |
 | `npm run check:test-isolation` | Testlerin geçici dosyaları `os.tmpdir()` altında yalıttığını doğrular.                                                                                         |
 | `npm run check:language`       | Ajan belgelerinin (`AGENTS.md`, `.agents/**`) İngilizce, kaynak kod yorumlarının Türkçe olduğunu doğrular.                                                     |
+| `npm run check:mutation`       | Hedefli sabotaj koşucusu: kritik koruyucuları kaynakta bilerek bozar, ilgili testlerin BAŞARISIZ olmasını bekler, kaynağı geri yükler. Yalnız kalan sabotaj kör noktadır.   |
+| `npm run audit:verify`         | Denetim zincirini (hash zinciri + harici çapalar) doğrular; bozuklukta 1 koduyla çıkar. Haftalık CI'da da koşar.                                              |
 | `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                                                                                |
 | `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular; ölçüm Node birim test kümesi (`test/unit/**`) üzerinden yapılır, webview UI testleri ayrı koşar ve eşiğe dâhil değildir. |
 | `npm run check`                | Tam kalite kapısı: format + tip + lint + dil + test + kapsam.                                                                                                  |
