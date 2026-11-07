@@ -47,99 +47,66 @@ export interface AgentNotification {
   message: string;
 }
 
-/** Ajan çekirdeğinin denetleyicilere açtığı yüzey. */
-export interface AgentHost {
+/**
+ * Tüm denetleyicilerin paylaştığı asgari yüzey.
+ *
+ * Denetleyiciler tek bir dev `AgentHost` yerine yalnızca kendi ihtiyaçlarını
+ * taşıyan bir portla bağlanır. Böylece "bu denetleyici neye bağımlı?"
+ * sorusunun cevabı imzada okunur; yeni bir bağımlılık sessizce eklenemez.
+ */
+export interface AgentHostBase {
   /** VS Code eklenti bağlamı (depolama, sırlar). */
   context: vscode.ExtensionContext;
-
   state: TaskState;
   settings: UserSettings;
-  provider: ModelProvider;
-
-  permissionManager: PermissionManager;
-  historyManager: HistoryManager;
-  mcpHub: McpHub;
-  subagentManager: SubagentManager;
-  skillManager: SkillManager;
-  lspClient: LspClient;
-  hookManager: HookManager;
-  contextManager: ContextManager;
-  /** "Aynı dosyayı tekrar okuma" döngüsünü engelleyen bekçi. */
-  readDeduper: ReadDeduper;
-  /** Bilgi tabanını görev başında arka planda ısıtır (yalnızca yerel tarama). */
-  warmKnowledgeBase(workspaceRoot: string): void;
-  projectMemory: ProjectMemoryManager;
-  planner: TaskPlanner;
-  /** Kod yazmadan önce çıkarılan katmanlı modül haritası. */
-  modulePlanner: ModulePlanner;
-  verificationManager: VerificationManager;
-  modelRouter: ModelRouter;
-  worktreeManager: WorktreeManager;
-  gitManager: GitManager;
-  workspaceRules: WorkspaceRuleManager;
-  knowledgeStore: KnowledgeStore;
-  specStore: SpecStore;
-  callGraphManager: CallGraphManager;
-  knowledgeCurator: {
-    maybeSummarizeFile(path: string, workspaceRoot?: string): void;
-    enrichWithLsp(workspaceRoot: string): void;
-    needsOnboardingDraft(): boolean;
-    onboardingNudge(): string;
-    taskEndInstruction(): string;
-  };
-
-  /** Oturum/kök başına geri alma kayıtları. */
-  persistence: SessionPersistence;
-  snapshotManager: SnapshotManager;
-  checkpointManager: CheckpointManager;
-
-  embeddingIndex?: EmbeddingIndex;
-  vectorMemory: VectorMemory;
-  commandCheckpoints: Map<string, CommandCheckpoint>;
-  lastVerificationSkip: string;
-  changedFilesInLastTurn: boolean;
-  /** Ardışık aynı araç+hata imzası sayacı (döngü koruması). */
-  lastToolFailure: { key: string; count: number } | undefined;
-  activePlanStepId: string | undefined;
-  baselineCaptured: boolean;
-  repairAttempts: number;
-  /** Otonom modda yapılan otomatik devam sayısı. */
-  autoContinuations: number;
-  memoryRecordedForTask: boolean;
-
   isCancelled: boolean;
   runGeneration: number;
-  messageSeq: number;
   activeAbortController?: AbortController;
-  /** Şu an işlenen turun kimliği; asistan mesajları bu kimliği devralır. */
-  currentTurnId?: string;
-  pendingResolver?: (approved: boolean, reason?: string) => void;
-  pendingQuestionResolver?: (answer: string) => void;
-
-  onStateUpdate: (state: TaskState) => void;
   notify: (notification: AgentNotification) => void;
-  onStreamChunk?: (messageId: string, chunk: string) => void;
-
-  /** Denetleyiciler (karşılıklı çağrılar için). */
-  workflow: WorkflowPort;
-  session: SessionPort;
-  tools: ToolPipelinePort;
-  verification: VerificationPort;
-  verificationController: VerificationPort;
-  toolPipeline: ToolPipelinePort;
-
-  // --- Yardımcılar ---
-  getWorkflow(): WorkflowState;
-  getInitialState(mode?: AgentMode): TaskState;
-  nextMessageId(): string;
   emitState(): void;
   saveCurrentState(): Promise<void>;
   isBusy(): boolean;
-  isTaskCompleted(): boolean;
-  getSandboxConfig(workspaceRoot?: string): SandboxConfig | undefined;
+  nextMessageId(): string;
+}
+
+/** İş akışı denetleyicisinin gördüğü yüzey (şartname, plan, kapı). */
+export interface WorkflowHost extends AgentHostBase {
+  planner: TaskPlanner;
+  modulePlanner: ModulePlanner;
+  specStore: SpecStore;
+  knowledgeStore: KnowledgeStore;
+  verificationManager: VerificationManager;
+  callGraphManager: CallGraphManager;
+  persistence: SessionPersistence;
+  /** Doğrulama istatistiklerine yazılan onarım denemesi sayısı. */
+  repairAttempts: number;
+  closeRemainingToolCalls(calls: ToolCall[], exceptId: string, reason: string): void;
+  handleSendMessage(text: string, mode?: AgentMode, options?: { internal?: boolean }): Promise<void>;
+}
+
+/** Oturum yaşam döngüsünün gördüğü yüzey (kayıt, geri alma, geçmiş). */
+export interface SessionHost extends AgentHostBase {
+  historyManager: HistoryManager;
+  hookManager: HookManager;
+  snapshotManager: SnapshotManager;
+  checkpointManager: CheckpointManager;
+  persistence: SessionPersistence;
+  planner: TaskPlanner;
+  modulePlanner: ModulePlanner;
+  readDeduper: ReadDeduper;
+  gitManager: GitManager;
+  verificationManager: VerificationManager;
+  commandCheckpoints: Map<string, CommandCheckpoint>;
+  lastVerificationSkip: string;
+  baselineCaptured: boolean;
+  repairAttempts: number;
+  autoContinuations: number;
+  currentTurnId?: string;
+  pendingResolver?: (approved: boolean, reason?: string) => void;
+  pendingQuestionResolver?: (answer: string) => void;
+  getInitialState(mode?: AgentMode): TaskState;
   normalizeRestoredState(saved: TaskState): TaskState;
   rebuildPersistenceDependents(): void;
-  closeRemainingToolCalls(calls: ToolCall[], exceptId: string, reason: string): void;
   markInterruptedToolCalls(reason: string): Promise<void>;
   recordProjectMemory(
     turnId: string,
@@ -148,12 +115,125 @@ export interface AgentHost {
     summary: string | undefined,
     workspaceRoot: string | undefined
   ): Promise<void>;
+  handleSendMessage(text: string, mode?: AgentMode, options?: { internal?: boolean }): Promise<void>;
+}
+
+/** Araç hattının gördüğü yüzey (izin, snapshot, alt ajan, bilgi tabanı). */
+export interface ToolPipelineHost extends AgentHostBase {
+  permissionManager: PermissionManager;
+  hookManager: HookManager;
+  contextManager: ContextManager;
+  snapshotManager: SnapshotManager;
+  checkpointManager: CheckpointManager;
+  subagentManager: SubagentManager;
+  readDeduper: ReadDeduper;
+  gitManager: GitManager;
+  lspClient: LspClient;
+  projectMemory: ProjectMemoryManager;
+  knowledgeStore: KnowledgeStore;
+  knowledgeCurator: {
+    maybeSummarizeFile(path: string, workspaceRoot?: string): void;
+    enrichWithLsp(workspaceRoot: string): void;
+    needsOnboardingDraft(): boolean;
+    onboardingNudge(): string;
+    taskEndInstruction(): string;
+  };
+  vectorMemory: VectorMemory;
+  embeddingIndex?: EmbeddingIndex;
+  planner: TaskPlanner;
+  modulePlanner: ModulePlanner;
+  specStore: SpecStore;
+  callGraphManager: CallGraphManager;
+  verificationManager: VerificationManager;
+  worktreeManager: WorktreeManager;
+  workflow: WorkflowPort;
+  commandCheckpoints: Map<string, CommandCheckpoint>;
+  activePlanStepId: string | undefined;
+  pendingResolver?: (approved: boolean, reason?: string) => void;
+  pendingQuestionResolver?: (answer: string) => void;
   auditTool(tc: ToolCall, workspaceRoot: string | undefined, decision: string): Promise<void>;
+  getSandboxConfig(workspaceRoot?: string): SandboxConfig | undefined;
   openDiffPreview(filePath: string, proposedContent: string): Promise<void>;
   openFileInEditor(filePath: string, workspaceRoot?: string): Promise<void>;
   runInIntegratedTerminal(command: string, workspaceRoot: string, signal?: AbortSignal): Promise<string>;
+}
+
+/** ReAct döngüsünün gördüğü yüzey (sağlayıcı, bağlam, denetleyiciler). */
+export interface AgentLoopHost extends AgentHostBase {
+  provider: ModelProvider;
+  permissionManager: PermissionManager;
+  hookManager: HookManager;
+  contextManager: ContextManager;
+  readDeduper: ReadDeduper;
+  mcpHub: McpHub;
+  skillManager: SkillManager;
+  workspaceRules: WorkspaceRuleManager;
+  projectMemory: ProjectMemoryManager;
+  knowledgeStore: KnowledgeStore;
+  knowledgeCurator: ToolPipelineHost['knowledgeCurator'];
+  vectorMemory: VectorMemory;
+  planner: TaskPlanner;
+  modulePlanner: ModulePlanner;
+  specStore: SpecStore;
+  callGraphManager: CallGraphManager;
+  verificationManager: VerificationManager;
+  modelRouter: ModelRouter;
+  workflow: WorkflowPort;
+  toolPipeline: ToolPipelinePort;
+  verificationController: VerificationPort;
+  changedFilesInLastTurn: boolean;
+  lastToolFailure: { key: string; count: number } | undefined;
+  baselineCaptured: boolean;
+  memoryRecordedForTask: boolean;
+  onStreamChunk?: (messageId: string, chunk: string) => void;
+  auditTool(tc: ToolCall, workspaceRoot: string | undefined, decision: string): Promise<void>;
+  getSandboxConfig(workspaceRoot?: string): SandboxConfig | undefined;
+  warmKnowledgeBase(workspaceRoot: string): void;
   ensureSessionPersistence(workspaceRoot: string): Promise<void>;
-  handleSendMessage(text: string, mode?: AgentMode, options?: { internal?: boolean }): Promise<void>;
+  recordProjectMemory(
+    turnId: string,
+    prompt: string,
+    status: ProjectMemoryStatus,
+    summary: string | undefined,
+    workspaceRoot: string | undefined
+  ): Promise<void>;
+}
+
+/** Doğrulama denetleyicisinin gördüğü yüzey. */
+export interface VerificationHost extends AgentHostBase {
+  verificationManager: VerificationManager;
+  projectMemory: ProjectMemoryManager;
+  vectorMemory: VectorMemory;
+  repairAttempts: number;
+  lastVerificationSkip: string;
+}
+
+/** Ajan çekirdeğinin denetleyicilere açtığı tam yüzey (portların birleşimi). */
+export interface AgentHost
+  extends AgentHostBase,
+    WorkflowHost,
+    SessionHost,
+    ToolPipelineHost,
+    AgentLoopHost,
+    VerificationHost {
+  historyManager: HistoryManager;
+  mcpHub: McpHub;
+  subagentManager: SubagentManager;
+  skillManager: SkillManager;
+  lspClient: LspClient;
+  modelRouter: ModelRouter;
+  worktreeManager: WorktreeManager;
+  gitManager: GitManager;
+  workspaceRules: WorkspaceRuleManager;
+  embeddingIndex?: EmbeddingIndex;
+  messageSeq: number;
+  currentTurnId?: string;
+  onStateUpdate: (state: TaskState) => void;
+  session: SessionPort;
+  tools: ToolPipelinePort;
+  verification: VerificationPort;
+  getWorkflow(): WorkflowState;
+  isTaskCompleted(): boolean;
   createNewSession(mode?: AgentMode): Promise<void>;
 }
 

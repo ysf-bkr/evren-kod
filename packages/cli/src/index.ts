@@ -29,7 +29,11 @@ import { ProviderMessage } from '@evren-kod/core/providers/base';
 import { ModelProviderType, ToolName, UserSettings } from '@evren-kod/core/shared/types';
 import { errorMessage } from '@evren-kod/core/shared/errors';
 
-const CLI_TOOLS = new Set<ToolName>([
+/**
+ * CLI'ın yürütebileceği araçlar. Testler bu listeyi araç kayıt defteriyle
+ * karşılaştırır: yeni bir araç eklendiğinde sessizce CLI dışında kalmasın.
+ */
+export const CLI_TOOLS = new Set<ToolName>([
   'read_file',
   'write_file',
   'edit_file',
@@ -62,7 +66,7 @@ const CLI_TOOLS = new Set<ToolName>([
   'web_search'
 ]);
 
-const READ_ONLY_TOOLS = new Set<ToolName>([
+export const READ_ONLY_TOOLS = new Set<ToolName>([
   'read_file',
   'search_files',
   'list_directory',

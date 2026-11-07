@@ -3,7 +3,25 @@
 Bu dosya kullanıcıları etkileyen önemli değişiklikleri kaydeder.
 Proje sürümlemesi 0.1.0 ile burada başlar.
 
-## [Yayınlanmadı] - 2026-11-06
+## [0.1.2] - 2026-11-07
+
+### Düzeltildi
+
+- **Türkçe dosya adları denetimden kaçmıyor:** Git porcelain çıktısı artık `-z` (NUL ayraçlı, tırnaksız) biçimde okunur ve eski satır biçimindeki octal kaçışlar da çözülür. Önceki hâlde `git status --porcelain` Türkçe adları `"\303\247..."` diye tırnaklıyor, denetim defteri var olmayan bir yol kaydediyor ve gerçek değişiklik "incelenmemiş" borca düşmüyordu. Ayrıca temiz ağaçta `Working tree is clean.` cümlesi porcelain sanılıp hayalet bir dosya üretiyordu.
+- **Test kapısı yanlış pozitif vermiyor:** `check:test-isolation`, `createWorkspaceTracker` kullanan testleri artık tanır; sarmalayıcının kendisinin `os.tmpdir()`/`mkdtemp` kullandığı da doğrulanır. Böylece `npm test` ve CI yeniden test koşar hâle geldi.
+- **Taze kurulumda Ollama ile sohbet:** Yerel Ollama, `isConfigured` bayrağı beklenmeden çalışır; README'deki "hiçbir ayar yapmadan başlayın" sözü artık kodla örtüşür. Bulut sağlayıcıları açık yapılandırma/kimlik bilgisi olmadan kilitli kalır.
+- **Ayar değişikliği tüm sohbetlere uygulanıyor:** `settings.json` üzerinden yapılan model/otonomi değişikliği artık yalnızca görünen çekirdeğe değil, arka planda çalışan oturumlara da geçer.
+- **Otomatik onaylı yazmalardaki yapay 800 ms bekleme kaldırıldı:** Her dosya yazımında turu geciktiren sabit uyku silindi.
+- **Kullanıcıya görünen hatalar Türkçeleşti:** Uygulamanın ürettiği araç ve sağlayıcı hataları arayüzde Türkçe karşılığıyla gösterilir; işletim sistemi/üçüncü taraf serbest metinleri "Teknik ayrıntı" etiketiyle ham kalır.
+- **Çıkış kodu bilinmeyen komut "başarılı" sayılmıyor:** Tümleşik terminal çıkış kodunu bildirmezse sonuç "doğrulanmadı" olarak işaretlenir.
+- **Test temizliği yarışı giderildi:** Arka plan indeksleme yazarken `after` silme adımının `ENOTEMPTY` ile düşmesi engellendi.
+- **CLI araç kapsamı korunuyor:** Yeni bir araç eklendiğinde sessizce CLI dışında kalmasını önleyen kapsam testi eklendi.
+- **Dokümanlar gerçek yerleşimle hizalandı:** Geliştirici ağacı güncel `packages/core` yollarını gösterir; test sayısı ve CLI kapsam iddiaları düzeltildi; `docs/AUDIT.md` denetim kimliklerini açıklar.
+
+### Değiştirildi
+
+- **Ajan çekirdeği dar portlara bölündü:** Denetleyiciler artık tek bir dev `AgentHost` yerine yalnızca kendi ihtiyaçlarını taşıyan bir yüzeye bağlanır (`WorkflowHost`, `SessionHost`, `ToolPipelineHost`, `AgentLoopHost`, `VerificationHost`; hepsi `AgentHostBase` üzerine kurulu). `AgentHost` bu portların birleşimidir; `AgentCore` davranışı değişmeden hepsini uygular. Hangi denetleyicinin neye bağımlı olduğu artık imzada okunur, yeni bir bağımlılık sessizce eklenemez. `architecture.test.ts` bu sınırı kilitler; private alanlara bracket erişimi (`core['...']`) kaldırıldı.
+- **Kanıt koşuları tamamlandı:** Hedefli sabotaj koşucusu 17/17 yakalama ile geçti; uçtan uca VS Code entegrasyon testleri de yeşil.
 
 ### Eklendi
 

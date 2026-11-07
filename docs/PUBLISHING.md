@@ -72,13 +72,20 @@ yayını geri alınması zor bir işlemdir; publisher ve sürüm bilgilerini ön
 
 ## 4. GitHub Actions ile yayın
 
-1. Değişiklikleri ve sürüm numarasını kontrol edip `package.json`, `package-lock.json` ve
-   `webview-ui/package.json` sürümlerini birlikte güncelleyin.
+1. Sürümü tek komutla yükseltin; betik manifesti, iki lockfile'ı, workspace paketlerini,
+   `version.ts` sabitini ve dokümanlardaki paket/etiket örneklerini birlikte günceller,
+   eski VSIX'leri siler:
+
+   ```bash
+   npm run version:bump 0.1.2 --release   # --release CHANGELOG başlığını da sabitler
+   npm run check:version
+   ```
+
 2. Sürüm numarasıyla aynı etiketi oluşturup gönderin. Örnek:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 3. `v<package.json sürümü>` biçimiyle eşleşen etiket, `.github/workflows/marketplace.yml`
@@ -98,7 +105,7 @@ Aynı VSIX paketini Open VSX'e yayınlamak için:
 1. `open-vsx.org` üzerinde bir hesap açıp `ysf-bkr` adında bir namespace (yayıncı) oluşturun.
 2. Access Token üreterek yerel ortamda şu komutla yayınlayabilirsiniz:
    ```bash
-   npx ovsx publish out/evren-kod-0.1.1.vsix -p <OVSX_TOKEN>
+   npx ovsx publish out/evren-kod-0.1.2.vsix -p <OVSX_TOKEN>
    ```
 3. Çift yayın (Marketplace + Open VSX), iş akışına `OVSX_PAT` secret'ı ve bir Open VSX adımı eklenerek otomatikleştirilebilir. Mevcut `.github/workflows/marketplace.yml` yalnızca Visual Studio Marketplace'e yayınlar; bu adım henüz bağlı değildir.
 

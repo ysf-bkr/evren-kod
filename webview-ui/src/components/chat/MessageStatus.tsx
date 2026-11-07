@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, Loader2, Sparkles, Wrench } from 'lucide-react';
 import { ChatMessage, ToolCall } from '@shared/types';
+import { humanizeErrorMessage } from '../../utils/toolErrors';
 
 export type MessagePhase = 'thinking' | 'writing' | 'working' | 'done' | 'error';
 
@@ -130,11 +131,18 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({ message }) => {
 };
 
 /** Hata metnini içeren genişletilmiş hata bloğu. */
-export const MessageError: React.FC<{ error: string }> = ({ error }) => (
-  <div className="flex items-start gap-1.5 rounded-md border evren-kod-border-error evren-kod-bg-error px-2.5 py-1.5">
-    <AlertCircle className="evren-kod-icon-xs mt-0.5 shrink-0 evren-kod-text-error" />
-    <span className="text-2xs whitespace-pre-wrap break-words leading-relaxed evren-kod-text-fg">
-      {error}
-    </span>
-  </div>
-);
+export const MessageError: React.FC<{ error: string }> = ({ error }) => {
+  // Sağlayıcı/araç hatası çoğu zaman İngilizce teknik metindir. Bilinen
+  // mesajlar Türkçeye çevrilir; çevrilemeyen serbest metin ham ve etiketli
+  // kalır, böylece kullanıcı ne okuduğunu bilir.
+  const humanized = humanizeErrorMessage(error);
+  return (
+    <div className="flex items-start gap-1.5 rounded-md border evren-kod-border-error evren-kod-bg-error px-2.5 py-1.5">
+      <AlertCircle className="evren-kod-icon-xs mt-0.5 shrink-0 evren-kod-text-error" />
+      <span className="text-2xs whitespace-pre-wrap break-words leading-relaxed evren-kod-text-fg">
+        {humanized?.technical && <span className="evren-kod-text-muted">Teknik ayrıntı: </span>}
+        {humanized?.text ?? error}
+      </span>
+    </div>
+  );
+};

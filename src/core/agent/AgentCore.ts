@@ -183,7 +183,7 @@ export class AgentCore implements AgentHost {
   /** Görev sonu bilgi kaydı talimatının görev başına yalnızca bir kez çalışmasını sağlar. */
   public memoryRecordedForTask = false;
 
-  private hasCustomProvider = false;
+  private customProviderInjected = false;
   /** Paylaşılan servislerin ömrünü bu çekirdek yönetiyor mu (tek oturumlu kullanım)? */
   private readonly ownsShared: boolean;
 
@@ -196,7 +196,7 @@ export class AgentCore implements AgentHost {
     dependencies: AgentCoreDependencies = {}
   ) {
     this.settings = settings;
-    this.hasCustomProvider = Boolean(dependencies.provider);
+    this.customProviderInjected = Boolean(dependencies.provider);
     this.ownsShared = !dependencies.shared;
     this.provider = dependencies.provider ?? createModelProvider(settings);
     this.permissionManager = new PermissionManager(settings);
@@ -604,6 +604,14 @@ export class AgentCore implements AgentHost {
 
   private canAutoRunVerificationCommand(command: string): boolean {
     return canAutoRunVerificationCommand(this, command);
+  }
+
+  /**
+   * Sağlayıcı test/CLI tarafından enjekte edildi mi? Ayarlar kapısı bu
+   * durumda atlanır. Bracket erişimi (`core['alan']`) yerine açık yüzey.
+   */
+  public get hasInjectedProvider(): boolean {
+    return this.customProviderInjected;
   }
 
   /** Durumu bir metot üzerinden okur ki TypeScript eski bir daraltmayı (narrowing) tutmasın. */

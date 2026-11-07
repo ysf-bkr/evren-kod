@@ -26,10 +26,10 @@ import {
 } from '@evren-kod/core/shared/repetition';
 import { logWarning } from '@evren-kod/core/shared/logging';
 import { describeWorkflow, formatWorkflowForPrompt } from '@evren-kod/core/core/workflow/TaskWorkflow';
-import type { AgentHost } from './agentHost';
+import type { AgentLoopHost } from './agentHost';
 
 export class AgentLoop {
-  constructor(private host: AgentHost) {}
+  constructor(private host: AgentLoopHost) {}
 
   public async run(turnId: string, userPrompt: string) {
     const generation = this.host.runGeneration;

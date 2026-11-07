@@ -25,6 +25,7 @@ import { ToolCall, ToolName } from '@shared/types';
 import { Button, Disclosure } from '../ui';
 import { ApprovalActionButtons } from '../common/ApprovalActionButtons';
 import { TOOL_TITLES, subagentRoleName, toolStepDetail } from '../../utils/toolLabels';
+import { humanizeErrorMessage } from '../../utils/toolErrors';
 import { vscode } from '../../utils/vscode';
 
 interface ActionStepCardProps {
@@ -120,6 +121,10 @@ export const ActionStepCard: React.FC<ActionStepCardProps> = ({
         : (TOOL_TITLES[name] ?? name);
     return { icon: toolStepIcon(name), title, detail: toolStepDetail(toolCall) };
   })();
+
+  // Modelin gördüğü teknik hata İngilizce kalır; kullanıcıya Türkçe
+  // karşılığı gösterilir. Çevrilemeyen serbest metin ham ve etiketli kalır.
+  const toolError = humanizeErrorMessage(toolCall.error);
 
   const statusChip = (() => {
     switch (toolCall.status) {
@@ -238,11 +243,16 @@ export const ActionStepCard: React.FC<ActionStepCardProps> = ({
             </div>
           )}
 
-          {toolCall.error && (
+          {toolError && (
             <div className="p-2">
               <div className="mb-1 evren-kod-overline evren-kod-text-error">Hata</div>
+              {toolError.technical && (
+                <div className="mb-1 text-2xs evren-kod-text-muted">
+                  Teknik ayrıntı (işletim sistemi ya da araç çıktısı, çevrilmemiştir):
+                </div>
+              )}
               <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border evren-kod-border-error evren-kod-bg-input p-2 font-mono text-2xs leading-relaxed evren-kod-text-error">
-                {toolCall.error}
+                {toolError.text}
               </pre>
             </div>
           )}

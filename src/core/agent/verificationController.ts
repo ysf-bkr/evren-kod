@@ -5,7 +5,7 @@
  * Onarım bütçesi kararı saf `repairPolicy` modülünden gelir.
  */
 import { decideRepair } from '@evren-kod/core/core/verification/repairPolicy';
-import type { AgentHost } from './agentHost';
+import type { AgentHostBase, VerificationHost } from './agentHost';
 import type { ProjectMemoryStatus } from '@evren-kod/core/core/memory/ProjectMemoryManager';
 import type { VerificationManager } from '@evren-kod/core/core/verification/VerificationManager';
 
@@ -16,7 +16,7 @@ const PREEXISTING_NOTE_MARK = 'These errors existed before the changes';
 
 /** Doğrulama sonuç durumunu state'e yazar ve arayüzü senkronlar (tur sonu + görev sonu ortak). */
 export async function publishVerificationStats(
-  host: AgentHost,
+  host: AgentHostBase & { repairAttempts: number },
   verification: VerificationResult
 ): Promise<void> {
   host.state.stats.verification = {
@@ -31,7 +31,7 @@ export async function publishVerificationStats(
 }
 
 export class VerificationController {
-  constructor(private host: AgentHost) {}
+  constructor(private host: VerificationHost) {}
 
   /** Onarım denemesinin ortak adımı: bütçe, sistem mesajı, bildirim, kalıcılık. */
   private async injectRepairAttempt(

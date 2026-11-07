@@ -205,18 +205,18 @@ denetim turunun ölçülemezlik kanıtıyla kapanır.
 
 ## 5. Güvenilirlik ve Güvenlik Sözleşmeleri
 
-| Konu                     | Tasarım Tercihi ve Davranış                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **İptal ve Zaman Aşımı** | Streaming yanıtın tamamı anında iptal edilebilir; 2 dakika veri akışı durursa bağlantı zaman aşımına uğrar.                                 |
-| **Token Sayacı**         | Streaming isteklerinde `include_usage` bayrağı ile sağlayıcıdan kesin token sayısı alınır.                                                  |
-| **Güven Sınırı**     | Okunan her içerik (repo dosyaları, araç çıktıları, web) VERİDİR; sistem isteminin TRUST BOUNDARY bölümü içerik içi talimat taklidini yasaklar, `web_fetch`/`web_search` çıktıları `untrusted_content` sarmalayıcısıyla ve kapanış-etiketi nötrleştirmesiyle taşınır. İzin/komut motorları metin okumaz, yapısal girdiyle karar verir. |
-| **Audit Log**            | Komutlar kaydedilirken `Bearer`, `sk-`, `api_key=` gibi hassas anahtar kalıpları maskelenir. Kayıtlar `prevHash` ile hash zinciri oluşturur; ortadaki kayıt düzenleme/silme doğrulamayı bozar.
-| **Denetim Çapalama**     | Her yayın kapısı kararında zincirin uç hash'i iki güven alanına damgalanır: depo içi `.evren-kod/audit-anchors.log` (push'lanınca uzak depo tanık olur) ve `~/.evren-kod/anchors/<depo-kimliği>.log`. `verifyWithAnchors` "bugünkü log dışarıda damgalanmış geçmişini hâlâ içeriyor mu?" diye sorar; sil-yeniden-kur saldırısı `ANCHOR VIOLATION` verir.                                                |
-| **Docker Sandbox**       | Sandbox modu seçiliyse boş imajla ana makineye sessizce düşülmez; hata fırlatılır.                                                          |
-| **Editör Bağlamı**       | Yalnızca çalışma alanı **içindeki** aktif dosya ve seçimler prompt bağlamına eklenir.                                                       |
-| **Araç Kilidi**          | Plan modunda yazma/komut araçları şemadan çıkarılır; model çağırırsa işlem reddedilir.                                                      |
-| **Oturum İzolasyonu**    | Yeni oturum başladığında snapshot/checkpoint dizinleri sıfırlanır, oturumlar karışmaz.                                                      |
-| **Plan İlerlemesi**      | Başlatılan adım `in_progress` işaretlenir; dosya değişikliği, araç etkinliği ya da görev tamamlanması üreten turun sonunda adım tamamlanır. |
+| Konu                     | Tasarım Tercihi ve Davranış                                                                                                                                                                                                                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **İptal ve Zaman Aşımı** | Streaming yanıtın tamamı anında iptal edilebilir; 2 dakika veri akışı durursa bağlantı zaman aşımına uğrar.                                                                                                                                                                                                                                              |
+| **Token Sayacı**         | Streaming isteklerinde `include_usage` bayrağı ile sağlayıcıdan kesin token sayısı alınır.                                                                                                                                                                                                                                                               |
+| **Güven Sınırı**         | Okunan her içerik (repo dosyaları, araç çıktıları, web) VERİDİR; sistem isteminin TRUST BOUNDARY bölümü içerik içi talimat taklidini yasaklar, `web_fetch`/`web_search` çıktıları `untrusted_content` sarmalayıcısıyla ve kapanış-etiketi nötrleştirmesiyle taşınır. İzin/komut motorları metin okumaz, yapısal girdiyle karar verir.                    |
+| **Audit Log**            | Komutlar kaydedilirken `Bearer`, `sk-`, `api_key=` gibi hassas anahtar kalıpları maskelenir. Kayıtlar `prevHash` ile hash zinciri oluşturur; ortadaki kayıt düzenleme/silme doğrulamayı bozar.                                                                                                                                                           |
+| **Denetim Çapalama**     | Her yayın kapısı kararında zincirin uç hash'i iki güven alanına damgalanır: depo içi `.evren-kod/audit-anchors.log` (push'lanınca uzak depo tanık olur) ve `~/.evren-kod/anchors/<depo-kimliği>.log`. `verifyWithAnchors` "bugünkü log dışarıda damgalanmış geçmişini hâlâ içeriyor mu?" diye sorar; sil-yeniden-kur saldırısı `ANCHOR VIOLATION` verir. |
+| **Docker Sandbox**       | Sandbox modu seçiliyse boş imajla ana makineye sessizce düşülmez; hata fırlatılır.                                                                                                                                                                                                                                                                       |
+| **Editör Bağlamı**       | Yalnızca çalışma alanı **içindeki** aktif dosya ve seçimler prompt bağlamına eklenir.                                                                                                                                                                                                                                                                    |
+| **Araç Kilidi**          | Plan modunda yazma/komut araçları şemadan çıkarılır; model çağırırsa işlem reddedilir.                                                                                                                                                                                                                                                                   |
+| **Oturum İzolasyonu**    | Yeni oturum başladığında snapshot/checkpoint dizinleri sıfırlanır, oturumlar karışmaz.                                                                                                                                                                                                                                                                   |
+| **Plan İlerlemesi**      | Başlatılan adım `in_progress` işaretlenir; dosya değişikliği, araç etkinliği ya da görev tamamlanması üreten turun sonunda adım tamamlanır.                                                                                                                                                                                                              |
 
 ---
 
@@ -236,13 +236,14 @@ denetim turunun ölçülemezlik kanıtıyla kapanır.
 | `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                              |
 | `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular.                                                                        |
 | `npm run check:version`        | `package.json`, lockfile ve `version.ts` tutarlılığını doğrular.                                             |
+| `npm run version:bump <x.y.z>` | Sürümü tüm manifest, lockfile ve dokümanlarda yükseltir; eski VSIX'leri temizler.                            |
 | `npm run check:test-isolation` | Testlerin geçici dosyaları `os.tmpdir()` altında tuttuğunu doğrular.                                         |
 | `npm run check:language`       | Ajan dosyalarının (`AGENTS.md`, `.agents/**`) İngilizce ve kaynak kod yorumlarının Türkçe olduğunu doğrular. |
 | `npm run build`                | Tüm kapılar + webview derleme + minified extension ve CLI bundle'ı üretir.                                   |
 | `npm run compile`              | Yalnızca extension bundle'ını esbuild ile derler.                                                            |
 | `npm run build:ui`             | Yalnızca webview uygulamasını Vite ile derler.                                                               |
 | `npm run build:cli`            | Yalnızca CLI bundle'ını derler.                                                                              |
-| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                  |
+| `npm run package`              | `out/evren-kod-0.1.2.vsix` paketini üretir.                                                                  |
 | `npm run audit:verify`         | `.evren-kod/audit.log` hash zincirini doğrular (`-- --workspace <path>`).                                    |
 | `npm run cli`                  | Başsız (headless) terminal CLI'ını kaynaktan çalıştırır.                                                     |
 | `npm run test:e2e`             | Derler ve gerçek bir VS Code penceresinde uçtan uca testleri çalıştırır.                                     |
@@ -300,7 +301,7 @@ ve hangi modülün işlendiği tek bakışta izlenir.
 
 ## 9. Test Mimarisi ve Kapsam
 
-Test süiti hâlihazırda 646 testten (542 çekirdek + 104 webview) oluşur ve üç katmanda icra edilir:
+Test süiti hâlihazırda 1025 testten (871 çekirdek + 154 webview) oluşur ve üç katmanda icra edilir:
 
 1. **Birim Testleri (`test/unit/`):** Node.js yerleşik test runner'ı (`node:test`) ve sahte VS Code köprüsü (`test/support/vscode-stub.ts`) ile harici bağımlılık olmadan milisaniyeler içinde çalışır.
 2. **Webview UI Testleri (`webview-ui/test/`):** JSDOM ortamında React Testing Library benzeri yapıyla tüm ekran ve bileşen etkileşimlerini simüle eder.

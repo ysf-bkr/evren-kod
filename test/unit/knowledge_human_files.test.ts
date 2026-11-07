@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, after } from 'node:test';
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -15,10 +15,6 @@ import { KnowledgeStore } from '@evren-kod/core/core/knowledge/KnowledgeStore';
  */
 describe('KnowledgeStore: .evren-kod insan dosyaları', () => {
   const roots: string[] = [];
-
-  before(() => {
-    assert.ok(true);
-  });
 
   after(async () => {
     await Promise.all(roots.map((dir) => fs.rm(dir, { recursive: true, force: true })));

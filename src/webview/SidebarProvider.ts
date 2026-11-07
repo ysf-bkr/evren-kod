@@ -454,7 +454,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     if (!settingsDiffer(next, this._settings)) return;
 
     this._settings = next;
-    this._agentCore?.updateSettings(this._settings);
+    // Ayar yalnızca görünen çekirdeğe değil, arka planda çalışan tüm
+    // oturumlara uygulanır; aksi hâlde `settings.json` değişikliği arka
+    // plandaki sohbetleri eski model/otonomiyle çalıştırmaya devam ederdi.
+    this._registry?.updateSettings(this._settings);
     this.postMessage({ type: 'SETTINGS_LOADED', payload: this.getSafeSettingsForWebview() });
   }
 

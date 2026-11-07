@@ -17,7 +17,7 @@ export async function runAgentTurn(
   options: SendMessageOptions = {}
 ): Promise<void> {
   // Model ayarı henüz yapılmadıysa veya sağlayıcı gereksinimleri eksikse mesajı reddet.
-  if (!options.internal && !core['hasCustomProvider'] && !isChatConfigured(core.settings)) {
+  if (!options.internal && !core.hasInjectedProvider && !isChatConfigured(core.settings)) {
     core.notify({
       level: 'warning',
       message: 'Sohbeti başlatmak için lütfen önce Ayarlar bölümünden bir model sağlayıcısı yapılandırın.'
@@ -74,7 +74,7 @@ export async function runAgentTurn(
     core.state.id = `session_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     core.state.prompt = text;
     core.state.messages = [];
-    await core['context'].workspaceState.update('evren_kod_active_session_id', core.state.id);
+    await core.context.workspaceState.update('evren_kod_active_session_id', core.state.id);
   }
 
   if (workspaceRoot) {

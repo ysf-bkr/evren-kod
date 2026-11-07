@@ -15,8 +15,34 @@
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+// `new URL(...).pathname` Windows'ta `/C:/...` üretip yolu bozar; platform
+// bağımsız çözüm fileURLToPath'tir.
+const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
+
+/**
+ * Kaynağı sabotajlı bırakmadan çıkış: koşu ortasında Ctrl+C ya da SIGTERM
+ * gelirse o anda değiştirilmiş dosya birebir geri yazılır. Aksi hâlde ölü
+ * bir koşu, depoda bozuk kaynak bırakabilirdi.
+ */
+let active = undefined;
+function restoreActive() {
+  if (!active) return;
+  try {
+    writeFileSync(active.file, active.original);
+  } catch (err) {
+    process.stderr.write(`Could not restore ${active.file}: ${String(err)}\n`);
+  }
+  active = undefined;
+}
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    restoreActive();
+    process.stderr.write(`\n${signal}: sabotaj geri alındı, koşu durduruldu.\n`);
+    process.exit(130);
+  });
+}
 
 /** @type {{name:string,file:string,from:string,to:string,tests:string[]}[]} */
 const SABOTAGES = [
@@ -163,12 +189,13 @@ for (const [index, s] of SABOTAGES.entries()) {
     survived++;
     continue;
   }
+  active = { file: abs, original };
   writeFileSync(abs, original.replace(s.from, s.to));
   let caught;
   try {
     caught = runTests(s.tests);
   } finally {
-    writeFileSync(abs, original);
+    restoreActive();
   }
   if (caught) {
     results.push(`✅ ${index + 1}. ${s.name} → testler sabotajı YAKALADI`);

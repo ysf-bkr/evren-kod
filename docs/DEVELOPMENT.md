@@ -28,12 +28,12 @@ Evren Kod, üç paket ve eklenti konağından oluşan tek depolu bir npm
 workspace'idir. Kökte çalıştırılan `npm ci` tüm workspace'leri tek seferde
 bağlar.
 
-| Yol              | Paket            | Görev                                                                                                                                            |
-| ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `packages/core/` | `@evren-kod/core`  | vscode'dan bağımsız motor: sağlayıcılar, araçlar, izinler, bağlam, bilgi tabanı, çağrı grafiği, çoklu ajan. `vscode` modülünü asla import etmez. |
-| `packages/cli/`  | `@evren-kod/cli`   | `evren-kod` terminal ajanı. Yalnızca `@evren-kod/core` üzerine kurulu (VS Code yok).                                                                 |
-| `src/`           | eklenti konağı   | `vscode` API'sine değen her dosya (aktivasyon, webview, AgentCore çalışma zamanı, gerçek LSP istemcisi).                                         |
-| `webview-ui/`    | React uygulaması | Sohbet webview'ı.                                                                                                                                |
+| Yol              | Paket             | Görev                                                                                                                                            |
+| ---------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/core/` | `@evren-kod/core` | vscode'dan bağımsız motor: sağlayıcılar, araçlar, izinler, bağlam, bilgi tabanı, çağrı grafiği, çoklu ajan. `vscode` modülünü asla import etmez. |
+| `packages/cli/`  | `@evren-kod/cli`  | `evren-kod` terminal ajanı. Yalnızca `@evren-kod/core` üzerine kurulu (VS Code yok).                                                             |
+| `src/`           | eklenti konağı    | `vscode` API'sine değen her dosya (aktivasyon, webview, AgentCore çalışma zamanı, gerçek LSP istemcisi).                                         |
+| `webview-ui/`    | React uygulaması  | Sohbet webview'ı.                                                                                                                                |
 
 İçe aktarma sözleşmesi `test/unit/architecture.test.ts` ile kilitlenir:
 `@evren-kod/core`, `vscode`'u veya eklentinin `src/` katmanını import edemez;
@@ -46,26 +46,27 @@ biçimi yapısal olarak karşılar. Terminal ajanını kaynaktan
 
 Evren Kod, yüksek kod kalitesi ve test izolasyonu için kapsamlı kontrol scriptlerine sahiptir:
 
-| Komut                          | Açıklama                                                                                                                                                       |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                  | Extension'ı derler ve test amaçlı yeni bir VS Code Extension Development Host açar.                                                                            |
-| `npm test`                     | Çekirdek ve arayüz birim testlerini (`test/unit/**` ve `webview-ui/test/**`) çalıştırır.                                                                       |
-| `npm run test:ui`              | Yalnızca webview (React) testlerini JSDOM ortamında çalıştırır.                                                                                                |
-| `npm run typecheck`            | Extension TypeScript tip kontrolü (`tsc --noEmit`).                                                                                                            |
-| `npm run typecheck:test`       | Test dosyalarının tip kontrolü (`tsconfig.test.json`).                                                                                                         |
-| `npm run lint`                 | ESLint ile statik kod analizini çalıştırır.                                                                                                                    |
-| `npm run format`               | Prettier ile tüm dosyaları biçimlendirir.                                                                                                                      |
-| `npm run format:check`         | Prettier kurallarına uyumu doğrular.                                                                                                                           |
-| `npm run check:version`        | `package.json`, lockfile'lar ve `version.ts` sürümlerinin tutarlılığını denetler.                                                                              |
-| `npm run check:test-isolation` | Testlerin geçici dosyaları `os.tmpdir()` altında yalıttığını doğrular.                                                                                         |
-| `npm run check:language`       | Ajan belgelerinin (`AGENTS.md`, `.agents/**`) İngilizce, kaynak kod yorumlarının Türkçe olduğunu doğrular.                                                     |
-| `npm run check:mutation`       | Hedefli sabotaj koşucusu: kritik koruyucuları kaynakta bilerek bozar, ilgili testlerin BAŞARISIZ olmasını bekler, kaynağı geri yükler. Yalnız kalan sabotaj kör noktadır.   |
-| `npm run audit:verify`         | Denetim zincirini (hash zinciri + harici çapalar) doğrular; bozuklukta 1 koduyla çıkar. Haftalık CI'da da koşar.                                              |
-| `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                                                                                |
-| `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular; ölçüm Node birim test kümesi (`test/unit/**`) üzerinden yapılır, webview UI testleri ayrı koşar ve eşiğe dâhil değildir. |
-| `npm run check`                | Tam kalite kapısı: format + tip + lint + dil + test + kapsam.                                                                                                  |
-| `npm run package`              | `out/evren-kod-0.1.1.vsix` paketini üretir.                                                                                                                     |
-| `npm run install:ext`          | VSIX paketini üretip yerel VS Code ortamına kurar/günceller.                                                                                                   |
+| Komut                          | Açıklama                                                                                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                  | Extension'ı derler ve test amaçlı yeni bir VS Code Extension Development Host açar.                                                                                        |
+| `npm test`                     | Çekirdek ve arayüz birim testlerini (`test/unit/**` ve `webview-ui/test/**`) çalıştırır.                                                                                   |
+| `npm run test:ui`              | Yalnızca webview (React) testlerini JSDOM ortamında çalıştırır.                                                                                                            |
+| `npm run typecheck`            | Extension TypeScript tip kontrolü (`tsc --noEmit`).                                                                                                                        |
+| `npm run typecheck:test`       | Test dosyalarının tip kontrolü (`tsconfig.test.json`).                                                                                                                     |
+| `npm run lint`                 | ESLint ile statik kod analizini çalıştırır.                                                                                                                                |
+| `npm run format`               | Prettier ile tüm dosyaları biçimlendirir.                                                                                                                                  |
+| `npm run format:check`         | Prettier kurallarına uyumu doğrular.                                                                                                                                       |
+| `npm run check:version`        | `package.json`, lockfile'lar ve `version.ts` sürümlerinin tutarlılığını denetler.                                                                                          |
+| `npm run version:bump 0.1.2`   | Sürümü manifest, iki lockfile, workspace paketleri, `version.ts` ve dokümanlarda tek komutta yükseltir; eski VSIX'leri siler. `--release` CHANGELOG başlığını da sabitler. |
+| `npm run check:test-isolation` | Testlerin geçici dosyaları `os.tmpdir()` altında yalıttığını doğrular.                                                                                                     |
+| `npm run check:language`       | Ajan belgelerinin (`AGENTS.md`, `.agents/**`) İngilizce, kaynak kod yorumlarının Türkçe olduğunu doğrular.                                                                 |
+| `npm run check:mutation`       | Hedefli sabotaj koşucusu: kritik koruyucuları kaynakta bilerek bozar, ilgili testlerin BAŞARISIZ olmasını bekler, kaynağı geri yükler. Yalnız kalan sabotaj kör noktadır.  |
+| `npm run audit:verify`         | Denetim zincirini (hash zinciri + harici çapalar) doğrular; bozuklukta 1 koduyla çıkar. Haftalık CI'da da koşar.                                                           |
+| `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                                                                                            |
+| `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular; ölçüm Node birim test kümesi (`test/unit/**`) üzerinden yapılır, webview UI testleri ayrı koşar ve eşiğe dâhil değildir.             |
+| `npm run check`                | Tam kalite kapısı: format + tip + lint + dil + test + kapsam.                                                                                                              |
+| `npm run package`              | `out/evren-kod-0.1.2.vsix` paketini üretir.                                                                                                                                |
+| `npm run install:ext`          | VSIX paketini üretip yerel VS Code ortamına kurar/günceller.                                                                                                               |
 
 ---
 
@@ -73,33 +74,52 @@ Evren Kod, yüksek kod kalitesi ve test izolasyonu için kapsamlı kontrol scrip
 
 Evren Kod modüler ve tek yönlü veri akışına dayalı bir katman mimarisine sahiptir:
 
+`vscode` API'sine değmeyen her şey motor paketindedir; `src/` yalnızca konak
+katmanıdır. Aşağıdaki ağaç gerçek yerleşimi gösterir:
+
 ```text
-src/
-├── extension.ts                  # VS Code aktivasyon noktası ve komut kayıtları
-├── shared/                       # Webview ve Extension arasında paylaşılan tipler ve sabitler
+packages/core/src/                # @evren-kod/core — vscode import etmez
+├── shared/                       # Tipler, sabitler, sürüm, komut politikası, maskeleme
 │   ├── types.ts                  # İki yönlü postMessage protokolü ve veri modelleri
 │   ├── constants.ts              # Dizin yolları, zaman aşımları, varsayılan URL'ler
 │   ├── version.ts                # Sürüm tek kaynağı (Single source of truth)
 │   ├── commandPolicy.ts          # Terminal komut risk analizi (blocked/risky/safe)
-│   ├── languageMap.ts            # VS Code söz dizimi renklendirme ve dil haritası
+│   ├── languageMap.ts            # Söz dizimi renklendirme ve dil haritası
 │   └── redaction.ts              # Hassas anahtar/parola maskeleme
-├── providers/                    # LLM Sağlayıcı adaptörleri (Ollama, EVREN, OpenRouter, OpenAI)
-├── tools/                        # Ajan araçları (dosya, terminal, git, lsp, web)
-│   ├── file.ts                   # Dosya okuma, yazma, düzenleme
-│   ├── shell.ts                  # Terminal komutu, test ve linter yürütme
-│   ├── git.ts                    # Git durumu, diff, log, commit
-│   ├── lsp.ts                    # VS Code dil sunucusu (tanılar, tanımlar, semboller)
-│   └── pathSafety.ts             # Path traversal ve symlink kaçış koruması
-├── webview/                      # Webview yönetimi (SidebarProvider, settingsStore, apiKeys)
-└── core/                         # Ajan çekirdeği (ReAct döngüsü, hafıza, denetim, güvenlik)
-    ├── agent/                    # AgentCore, AgentLoop, Autonomy, Workflow
-    ├── permission/               # İzin yöneticisi ve onay kuralları
-    ├── audit/                    # SHA-256 hash zincirli denetim günlüğü
+├── providers/                    # LLM adaptörleri (Ollama, EVREN, OpenRouter, OpenAI)
+├── tools/                        # Ajan araçları: file, shell, git, lsp, web, gate, graph
+├── feedback/                     # Opt-in GitHub hata bildiricisi
+└── core/                         # Motor servisleri
+    ├── agent/                    # Autonomy, mod araçları, oturum kalıcılığı, turn derleme
+    ├── permission/               # İzin yöneticisi, onay politikası, desen eşleme
+    ├── audit/                    # SHA-256 hash zinciri + harici çapalar
+    ├── gate/                     # Yayın kapısı ve denetim defteri
     ├── snapshot/                 # Dosya anlık görüntüleri ve diff geri alma
     ├── checkpoint/               # Tur bazlı durum geri sarma
     ├── callgraph/                # Çağrı haritası ve kod ilişkileri
-    ├── graph/                    # Birleşik bilgi grafı: çağrı + import + kararlar (packages/core)
+    ├── graph/                    # Birleşik bilgi grafı: çağrı + import + kararlar
+    ├── knowledge/                # Proje bilgi tabanı ve embedding indeksi
+    ├── memory/                   # Proje belleği, oturum arşivi, vektör bellek
+    ├── multiagent/               # Alt ajan yöneticisi ve paralel zamanlayıcı
+    ├── plan/                     # Görev ve modül planlayıcıları
+    ├── project/                  # Uygulama türü ve teknoloji yığını algılama
+    ├── spec/                     # Şartname deposu
+    ├── verification/             # Test/lint/tip doğrulaması ve onarım politikası
+    ├── workflow/                 # Aşama kapıları ve iş akışı durumu
     └── mcp/                      # Model Context Protocol istemcisi
+
+src/                              # VS Code konak katmanı
+├── extension.ts                  # Aktivasyon noktası ve komut kayıtları
+├── shared/diffContentProvider.ts # Fark içerik sağlayıcısı
+├── webview/                      # SidebarProvider, settingsStore, apiKeys, paneller
+└── core/
+    ├── agent/                    # AgentCore, döngü, araç hattı, oturum kaydı
+    ├── lsp/                      # Gerçek dil sunucusu istemcisi
+    ├── mcp/                      # MCP hub (mesajlaşma köprüsü)
+    ├── memory/                   # Workspace kalıcılığı
+    └── workspace/                # Aktif editör/çalışma alanı çözümlemesi
+
+packages/cli/src/index.ts         # `evren-kod` terminal ajanı (yalnızca @evren-kod/core)
 ```
 
 ---

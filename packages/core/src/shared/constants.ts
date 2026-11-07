@@ -164,15 +164,24 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
 
 /**
  * Sohbetin etkinleşmesi için gereken minimum ayarların yapılıp yapılmadığını denetler.
- * Kullanıcı henüz ayarları kaydetmediyse veya seçili sağlayıcının zorunlu
- * alanları eksikse sohbet kilitli kalır.
+ *
+ * Yerel Ollama hesap/anahtar istemez; README'deki "hiçbir ayar yapmadan
+ * başlayın" sözü ancak bu sağlayıcı `isConfigured` kapısından muaf tutulursa
+ * doğru olur. Bulut sağlayıcıları açık yapılandırma ya da kimlik bilgisi
+ * olmadan kilitli kalır; yanlışlıkla uzak bir uca istek gitmesin.
  */
 export function isChatConfigured(settings?: Partial<UserSettings>): boolean {
-  if (!settings || settings.isConfigured !== true) {
+  if (!settings) {
     return false;
   }
   const provider = settings.selectedProvider;
   if (!provider) {
+    return false;
+  }
+  if (provider === 'ollama') {
+    return Boolean(settings.selectedModel?.trim());
+  }
+  if (settings.isConfigured !== true) {
     return false;
   }
   if (provider === 'evren') {
@@ -186,9 +195,6 @@ export function isChatConfigured(settings?: Partial<UserSettings>): boolean {
       (settings.openAiCompatibleBaseUrl?.trim() || settings.customBaseUrl?.trim()) &&
         settings.selectedModel?.trim()
     );
-  }
-  if (provider === 'ollama') {
-    return Boolean(settings.selectedModel?.trim());
   }
   return true;
 }

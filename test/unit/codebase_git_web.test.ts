@@ -221,6 +221,28 @@ describe('GitManager: status ayrıştırma', () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it('Türkçe dosya adını octal kaçıştan çözerek arayüze doğru verir', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'evren-kod-git-turkish-'));
+    try {
+      await execFileAsync('git', ['init', '-q'], { cwd: root });
+      await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd: root });
+      await execFileAsync('git', ['config', 'user.name', 'Test'], { cwd: root });
+      const turkish = 'çalışma dosyası.txt';
+      await fs.writeFile(path.join(root, turkish), 'ilk\n', 'utf-8');
+      await execFileAsync('git', ['add', '.'], { cwd: root });
+      await execFileAsync('git', ['commit', '-q', '-m', 'ilk'], { cwd: root });
+      await fs.writeFile(path.join(root, turkish), 'değişti\n', 'utf-8');
+
+      const changes = await new GitManager().listChanges(root);
+      assert.deepStrictEqual(
+        changes.map((item) => item.path),
+        [turkish]
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('GitManager: komut geri alma (checkpoint)', () => {

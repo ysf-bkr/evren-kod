@@ -375,3 +375,59 @@ describe('Module graph: layering rules', () => {
     assert.deepEqual(escapees, [], `CLI eklenti konağına bağımlı: ${escapees.join(', ')}`);
   });
 });
+
+/**
+ * Denetleyiciler tek bir dev `AgentHost` yerine kendi dar portlarına bağlanır.
+ * Bu test, refactor'ın sessizce geri dönmesini engeller: bir denetleyici
+ * yeniden `AgentHost` import ederse imza genişler ve bağımlılık görünmez olur.
+ */
+describe('Agent host portları: her denetleyici kendi dar yüzeyine bağlı', () => {
+  const EXPECTED: Array<[file: string, port: string]> = [
+    ['src/core/agent/workflowController.ts', 'WorkflowHost'],
+    ['src/core/agent/sessionController.ts', 'SessionHost'],
+    ['src/core/agent/toolPipelineController.ts', 'ToolPipelineHost'],
+    ['src/core/agent/verificationController.ts', 'VerificationHost'],
+    ['src/core/agent/agentLoop.ts', 'AgentLoopHost']
+  ];
+
+  it('denetleyiciler AgentHost yerine kendi portunu import eder', () => {
+    for (const [file, port] of EXPECTED) {
+      const source = read(file);
+      assert.match(
+        source,
+        new RegExp(`import type \\{[^}]*\\b${port}\\b[^}]*\\} from '\\./agentHost'`),
+        `${file} ${port} import etmeli`
+      );
+      assert.doesNotMatch(
+        source,
+        /import type \{[^}]*\bAgentHost\b[^}]*\} from '\.\/agentHost'/,
+        `${file} yeniden tam AgentHost import etmemeli`
+      );
+    }
+  });
+
+  it('AgentHost portların birleşimidir; portlar ortak tabandan türer', () => {
+    const source = read('src/core/agent/agentHost.ts');
+    for (const port of [
+      'WorkflowHost',
+      'SessionHost',
+      'ToolPipelineHost',
+      'AgentLoopHost',
+      'VerificationHost'
+    ]) {
+      assert.match(
+        source,
+        new RegExp(`export interface ${port} extends AgentHostBase`),
+        `${port} tabandan türemeli`
+      );
+    }
+    assert.match(source, /export interface AgentHost\s+extends[\s\S]*?WorkflowHost[\s\S]*?VerificationHost/);
+  });
+
+  it('denetleyicilerde bracket ile private alan erişimi kalmaz', () => {
+    const offenders = EXPECTED.map(([file]) => file).filter((file) =>
+      /\bcore\['[a-zA-Z]+'\]|host\['[a-zA-Z]+'\]/.test(read(file))
+    );
+    assert.deepEqual(offenders, [], `Bracket erişimi kalan dosyalar: ${offenders.join(', ')}`);
+  });
+});

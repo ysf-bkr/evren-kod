@@ -1,6 +1,6 @@
 {
   "name": "@evren-kod/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Evren terminal ajanı: tek dosyalık `evren-kod` komutu (ağırlıksız ReAct döngüsü).",
   "main": "./src/index.ts",

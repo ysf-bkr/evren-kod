@@ -24,7 +24,7 @@ import {
 } from '@evren-kod/core/tools/parsers';
 import { logWarning } from '@evren-kod/core/shared/logging';
 import { isReadOnlyMode } from '@evren-kod/core/core/agent/modeTools';
-import type { AgentHost } from './agentHost';
+import type { ToolPipelineHost } from './agentHost';
 import { ReadDeduper } from '@evren-kod/core/core/agent/readDeduper';
 import type { SubagentTaskParams } from '@evren-kod/core/core/multiagent/SubagentManager';
 import {
@@ -39,9 +39,10 @@ import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { MAX_INTAKE_QUESTIONS } from '@evren-kod/core/core/workflow/TaskWorkflow';
 import { describeWorkflow } from '@evren-kod/core/core/workflow/TaskWorkflow';
 import { toolArgString, toolArgBoolean } from './toolPipelineHelpers';
+import { unquoteGitPath } from '@evren-kod/core/core/git/porcelainPath';
 
 export class ToolPipelineController {
-  constructor(private host: AgentHost) {}
+  constructor(private host: ToolPipelineHost) {}
 
   /**
    * Tek bir araç çağrısı için yürütme öncesi kapı zinciri: aşama/mod kilidi,
@@ -140,11 +141,6 @@ export class ToolPipelineController {
           // kontrolleriyle devam eder; yine de nedeni görünür olsun.
           logWarning('Diff önizlemesi oluşturulamadı', diffErr);
         }
-      }
-
-      if (showDiff && !tc.requiresApproval) {
-        // Kullanıcının yapılan değişikliği (diff) ekranda net bir şekilde görebilmesi için insani inceleme süresi
-        await new Promise((resolve) => setTimeout(resolve, 800));
       }
     }
 
@@ -773,7 +769,9 @@ export class ToolPipelineController {
   /** Ölçüm amaçlı `git status` anlık görüntüsü; Git yoksa undefined. */
   private async porcelainSnapshot(workspaceRoot: string): Promise<string | undefined> {
     try {
-      return await this.host.gitManager.status(workspaceRoot);
+      // Ham `-z` biçimi: Türkçe dosya adları kaçışa düşmez ve temiz ağaç
+      // boş dizge döner. Eski `status()` cümlesi porcelain sanılıyordu.
+      return await this.host.gitManager.statusPorcelainRaw(workspaceRoot);
     } catch {
       return undefined;
     }
@@ -840,16 +838,38 @@ export class ToolPipelineController {
  */
 export function parsePorcelainStatus(status: string): Map<string, string> {
   const map = new Map<string, string>();
+  // `-z` biçimi: kayıtlar NUL ile ayrılır, yollar tırnaklanmaz. Yeniden
+  // adlandırma/kopyalamada birinci yol YENİ, ikinci yol ESKİ yoldur.
+  if (status.includes('\0')) {
+    const tokens = status.split('\0');
+    for (let index = 0; index < tokens.length; index++) {
+      const token = tokens[index];
+      if (!token || token.length < 4) continue;
+      const code = token.slice(0, 2);
+      if (!isPorcelainCode(code)) continue;
+      const file = token.slice(3);
+      if (code.startsWith('R') || code.startsWith('C')) index++;
+      if (file) map.set(normalizeFile(file), code);
+    }
+    return map;
+  }
   for (const line of status.split('\n')) {
     if (line.length < 4) continue;
     const code = line.slice(0, 2);
+    // "Working tree is clean." gibi insan cümleleri porcelain değildir.
+    if (!isPorcelainCode(code)) continue;
     let file = line.slice(3);
     const arrow = file.indexOf(' -> ');
     if (arrow >= 0) file = file.slice(arrow + 4);
-    file = file.replace(/^"|"$/g, '');
+    file = unquoteGitPath(file);
     if (file) map.set(normalizeFile(file), code);
   }
   return map;
+}
+
+/** `git status --porcelain` durum kodu: iki karakter, her biri bu kümeden. */
+function isPorcelainCode(code: string): boolean {
+  return /^[ MARCUDT?!]{2}$/.test(code);
 }
 
 /**

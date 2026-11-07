@@ -47,11 +47,11 @@ import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import type { TaskSpec } from '@evren-kod/core/core/spec/SpecStore';
 import { checkSpecCoverage } from '@evren-kod/core/core/spec/SpecStore';
 import type { TaskPlan } from '@evren-kod/core/shared/types';
-import type { AgentHost } from './agentHost';
+import type { WorkflowHost } from './agentHost';
 import { publishVerificationStats } from './verificationController';
 
 export class WorkflowController {
-  constructor(private host: AgentHost) {}
+  constructor(private host: WorkflowHost) {}
 
   /**
    * Onay kapısından çıkan ortak kapanış: bekleme temizlenir, ajan idle'a

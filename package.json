@@ -2,7 +2,7 @@
   "name": "evren-kod",
   "displayName": "Evren Kod",
   "description": "Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, planlama ve eğitim modlarıyla mimari analiz, kanıtsız değişikliği reddeden doğrulama, test desteği ve yeni başlayanlara sohbette adım adım rehberlik.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "ysf-bkr",
   "author": {
     "name": "Yusuf BEKAR",
@@ -250,6 +250,7 @@
     "test:e2e:only": "npm run build:e2e && tsx test/e2e/runTest.ts",
     "cli": "tsx packages/cli/src/index.ts",
     "check:version": "node scripts/check-version.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
     "clean": "node scripts/clean.mjs",
     "clean:cache": "node scripts/clean.mjs --cache",
     "clean:all": "node scripts/clean.mjs --all",

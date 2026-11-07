@@ -5,6 +5,7 @@ import * as path from 'path';
 import { errorMessage, isRecord } from '../../shared/errors';
 import { GitCommitSummary, GitFileChange } from '../../shared/types';
 import { formatAiDiff, AiDiffOptions } from '../../shared/aiDiff';
+import { unquoteGitPath } from './porcelainPath';
 
 export interface GitDiffOptions extends AiDiffOptions {
   path?: string;
@@ -23,11 +24,18 @@ const execFileAsync = promisify(execFile);
  * durum harfleridir ve baştaki boşluk anlamlıdır. `raw` seçeneği yalnızca
  * sondaki satır sonlarını temizler, böylece dosya adları kırpılmaz.
  */
-async function git(args: string[], cwd: string, options: { raw?: boolean } = {}): Promise<string> {
+async function git(
+  args: string[],
+  cwd: string,
+  options: { raw?: boolean; preserveWhitespace?: boolean } = {}
+): Promise<string> {
   const { stdout } = await execFileAsync('git', args, {
     cwd,
     maxBuffer: 16 * 1024 * 1024
   });
+  // `preserveWhitespace`: NUL ayraçlı porcelain çıktısı birebir korunur;
+  // sonda boşlukla biten gerçek bir dosya adı kesilmemeli.
+  if (options.preserveWhitespace) return stdout;
   return options.raw ? stdout.replace(/\s+$/, '') : stdout.trim();
 }
 
@@ -43,10 +51,9 @@ function parseGitStatusShort(output: string): GitFileChange[] {
     if (rawPath.includes(' -> ')) {
       rawPath = rawPath.split(' -> ').pop() || rawPath;
     }
-    // Tırnaklı yollar (ASCII dışı) --short çıktısında tırnaklarıyla kalır.
-    if (rawPath.startsWith('"') && rawPath.endsWith('"')) {
-      rawPath = rawPath.slice(1, -1);
-    }
+    // Tırnaklı yollar (ASCII dışı) --short çıktısında octal kaçışlı gelir;
+    // çözülmezse Türkçe adlı dosyalar arayüzde okunamaz hâle gelir.
+    rawPath = unquoteGitPath(rawPath);
     if (!rawPath) continue;
     changes.push({ path: rawPath, indexStatus, workTreeStatus });
   }
@@ -101,6 +108,20 @@ export class GitManager {
 
   public async status(workspaceRoot: string): Promise<string> {
     return (await git(['status', '--short'], workspaceRoot)) || 'Working tree is clean.';
+  }
+
+  /**
+   * Denetim/ölçüm için ham porcelain anlık görüntüsü.
+   *
+   * `-z`: yollar NUL ile ayrılır ve asla tırnaklanmaz; Türkçe/ASCII dışı
+   * adlar octal kaçışa dönmez. `--untracked-files=all`: yeni dosyalar dizin
+   * olarak daralmaz. Temiz ağaç boş dizgedir — "Working tree is clean."
+   * gibi bir cümle porcelain sanılıp hayalet dosya üretmemeli.
+   */
+  public async statusPorcelainRaw(workspaceRoot: string): Promise<string> {
+    return git(['status', '--porcelain', '-z', '--untracked-files=all'], workspaceRoot, {
+      preserveWhitespace: true
+    });
   }
 
   /**

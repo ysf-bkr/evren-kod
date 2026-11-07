@@ -17,7 +17,7 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.106-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml/badge.svg)](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1009%20passing-2ea44f)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/tests-1025%20passing-2ea44f)](./docs/DEVELOPMENT.md)
 
 **Geliştirici:** Yusuf BEKAR · **E-posta:** [ybekar@msn.com](mailto:ybekar@msn.com)
 
@@ -48,11 +48,11 @@
 | **Geri Alma (Undo) ve Kontrol Noktaları**   | Her tur başında Git checkpoint'i alınır; istenmeyen değişiklikler tek tıkla eski haline döndürülür.                                                                                                                                                                                                                                                          |
 | **EVREN Kotası ve Model Çubuğu**            | Sohbet altındaki çubuk, EVREN günlük token kotasını (kullanılan / sınır / kalan) canlı gösterir ve sohbetten ayrılmadan model değiştirmeyi sağlar.                                                                                                                                                                                                           |
 | **Arka Planda Çalışan Sohbetler**           | Her sohbet kendi ajan çekirdeğinde çalışır: sohbet değiştirmek veya yeni sohbet açmak önceki görevi (ve alt ajanlarını) durdurmaz. Paylaşılan servisler sayesinde ikinci sohbet ucuzdur.                                                                                                                                                                     |
-| **Türkçe Belgeler ve Türkçe Arayüz**        | Proje belgeleri, rehberler ve arayüzdeki tüm hata mesajları, bildirimler ve plan adımları eksiksiz Türkçe.                                                                                                                                                                                                                                                   |
+| **Türkçe Belgeler ve Türkçe Arayüz**        | Proje belgeleri, rehberler, bildirimler, plan adımları ve uygulamanın ürettiği hata mesajları Türkçe. İşletim sistemi ya da üçüncü taraf araçlardan gelen serbest metinler çevrilemez; arayüz bunları "teknik ayrıntı" etiketiyle ham ve dürüstçe gösterir.                                                                                                                                                                                                                                                   |
 | **Bilgi Grafiği (Knowledge Graph)**         | Çağrı haritası, dosya import'ları, sembol imzaları ve kayıtlı mimari kararlar tek grafında: ajan bir görev için projeyi baştan okumak yerine hazır bağıntıları okur; her çıktı sabit token bütçesiyle döner. Arayüzde "Bilgi Grafiği" ekranında gezilebilir.                                                                                                 |
 | **Akıl Sağlığı Korumaları**                 | Model bir satıra kilitlenip aynı metni sonsuza dek tekrarladığında akış otomatik kesilir; aynı araç aynı argümanla üçüncü kez patlarsa tur duraklatılır. Uzun görevler sessizce kontrolden çıkamaz.                                                                                                                                                          |
 | **Bağlam Penceresi Ayarı**                  | Modelinin bağlam pencereyi ayarlardan bildir; sohbet geçmişi ve araç çıktıları gerçek sınıra göre budanır, istekler taşmaz.                                                                                                                                                                                                                                  |
-| **Terminal Arayüzü (`evren-kod`)**          | Aynı çekirdek terminalde: tek istemlik çalıştırma ya da `evren-kod` ile etkileşimli sohbet; onaylar, plan ve korumalar VS Code ile aynı.                                                                                                                                                                                                                     |
+| **Terminal Arayüzü (`evren-kod`)**          | Aynı çekirdek terminalde: tek istemlik çalıştırma ya da `evren-kod` ile etkileşimli sohbet. İzin, komut politikası ve araçlar VS Code ile aynı motordan gelir; yayın kapısı, şartname/plan onayı ve denetim defteri yalnızca VS Code konak katmanında çalışır (bkz. Bilinen Sınırlamalar).                                                                                                                                                                                                                     |
 
 ---
 
@@ -83,14 +83,14 @@ code --install-extension ysf-bkr.evren-kod
 ```
 
 Kaynaktan geliştirmek veya geliştirme sürümü kullanmak isterseniz yerel VSIX
-paketini (`out/evren-kod-0.1.1.vsix`) derleyip kurabilirsiniz:
+paketini (`out/evren-kod-0.1.2.vsix`) derleyip kurabilirsiniz:
 
 ```bash
 # Otomatik derleme, paketleme ve kurulum için:
 npm run install:ext
 
 # veya üretilen VSIX paketini doğrudan kurmak için:
-code --install-extension out/evren-kod-0.1.1.vsix --force
+code --install-extension out/evren-kod-0.1.2.vsix --force
 ```
 
 ### 2. Model Sağlayıcınızı Seçin
@@ -152,6 +152,7 @@ Evren Kod'un iç yapısı, modül katmanları, test çalıştırma ve katkı sa�
 
 - **[Geliştirici Kılavuzu (docs/DEVELOPMENT.md)](./docs/DEVELOPMENT.md):** Kaynaktan derleme, test çalıştırma, tasarım sistemi değişkenleri, MCP entegrasyonu ve katkı kuralları.
 - **[Mimari Dokümantasyonu (docs/ARCHITECTURE.md)](./docs/ARCHITECTURE.md):** Çekirdek ReAct döngüsü, araç zinciri, denetim katmanı ve LSP detayları.
+- **[Denetim Kimlikleri (docs/AUDIT.md)](./docs/AUDIT.md):** Kodda geçen `F07`, `m.13`, `M3` gibi kısa kimliklerin hangi sözleşmeyi koruduğu.
 - **[Gizlilik Bildirimi (docs/PRIVACY.md)](./docs/PRIVACY.md):** Veri güvenliği, yerel model ilkeleri ve telemetri politikası.
 
 ---
@@ -160,6 +161,8 @@ Evren Kod'un iç yapısı, modül katmanları, test çalıştırma ve katkı sa�
 
 - **Komut geri alma temiz Git ağacı ister:** `execute_command` bir Git checkpoint'i alır ve geri alınabilir; ancak bu yalnızca depoda bir `HEAD` varsa ve komut öncesi çalışma ağacı temizse çalışır. Git deposu olmayan alanlarda komut yan etkileri geri alınamaz; bu durumlar için Git'i kendiniz kullanın.
 - **Plan modu sandbox değil, araç kilididir:** plan modu yazma ve komut araçlarını şemadan çıkarır, ancak işletim sistemi düzeyinde yalıtım sağlamaz. Güvenilmeyen depolar için Dev Container kullanın.
+- **CLI'da yayın kapısı ve denetim defteri yok:** `evren-kod` terminal ajanı aynı araç, izin ve komut politikası motorunu kullanır; ancak şartname/plan onayı, denetim defteri, yayın kapısı ve otomatik doğrulama yalnızca VS Code eklentisinde bağlıdır. CLI'da "kapı geçti" iddiası üretilmez.
+- **Çıkış kodu bilinmeyen komut başarı sayılmaz:** tümleşik terminal kabuk entegrasyonu çıkış kodunu bildirmezse araç sonucu "doğrulanmadı" olarak işaretlenir; ajan bunu geçmiş test gibi sunmamalıdır.
 
 ---
 

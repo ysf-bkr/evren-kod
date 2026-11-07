@@ -170,7 +170,10 @@ export async function runInIntegratedTerminal(
   }
 
   const body = clean ? limitWithMarker(clean, MAX_TOOL_OUTPUT_CHARS) : 'Command completed with no output.';
-  return exitCode === undefined || exitCode === 0
-    ? body
-    : `Command failed (exit code: ${exitCode}).\n${body}`;
+  if (exitCode === undefined) {
+    // Çıkış kodu bilinmiyorsa komut "başarılı" değildir; "doğrulanmadı"dır.
+    // Sessizce başarı saymak, testlerin gerçekten geçtiği iddiasını bozar.
+    return `Command finished, but its exit code could not be determined; the result is unverified.\n${body}`;
+  }
+  return exitCode === 0 ? body : `Command failed (exit code: ${exitCode}).\n${body}`;
 }

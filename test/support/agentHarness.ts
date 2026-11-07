@@ -71,7 +71,22 @@ export function createWorkspaceTracker(prefix: string) {
       return root;
     },
     async cleanup(): Promise<void> {
-      await Promise.all(roots.map((dir) => fs.rm(dir, { recursive: true, force: true })));
+      // Arka plan indeksleme temizlik anında dosya üretmeye devam edebilir;
+      // `rm` bu yarışta ENOTEMPTY ile düşer ve testi haksız yere kırar.
+      // Birkaç kısa denemeyle yazma penceresini kapat.
+      await Promise.all(
+        roots.map(async (dir) => {
+          for (let attempt = 0; attempt < 4; attempt++) {
+            try {
+              await fs.rm(dir, { recursive: true, force: true });
+              return;
+            } catch (err) {
+              if (attempt === 3) throw err;
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+          }
+        })
+      );
     }
   };
 }

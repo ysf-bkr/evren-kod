@@ -9,10 +9,10 @@ import { getActiveWorkspaceRoot } from '../workspace/workspaceRoot';
 import { errorMessage } from '@evren-kod/core/shared/errors';
 import { stripInjectedContext } from '@evren-kod/core/shared/editorContext';
 import type { AgentMode } from '@evren-kod/core/shared/types';
-import type { AgentHost } from './agentHost';
+import type { SessionHost } from './agentHost';
 
 export class SessionController {
-  constructor(private host: AgentHost) {}
+  constructor(private host: SessionHost) {}
 
   public async ensureSessionPersistence(workspaceRoot: string): Promise<void> {
     if (!this.host.state.id) return;

@@ -9,6 +9,8 @@ import { ScriptedProvider, createWorkspaceTracker, stub } from '../support/agent
 import { SubagentManager } from '@evren-kod/core/core/multiagent/SubagentManager';
 import { ReleaseGatePort } from '@evren-kod/core/tools/contracts';
 import { parsePorcelainStatus, changedPathsBetween } from '../../src/core/agent/toolPipelineController';
+import { GitManager } from '@evren-kod/core/core/git/GitManager';
+import { execFileSync } from 'node:child_process';
 
 /**
  * Denetim defterinin KABLOLAMA testleri.
@@ -308,5 +310,46 @@ describe('porcelain ayrıştırma: komut ve merge sonrası gerçek değişiklik 
 
   it('boş ve çöp satırlar güvenle atlanır', () => {
     assert.deepEqual(changedPathsBetween('', '?? x.ts\n\n'), ['x.ts']);
+  });
+
+  it('temiz ağaç sentinel metni dosya adı sanılmaz', () => {
+    // Regresyon: GitManager.status() boş ağaçta "Working tree is clean."
+    // döndürüyordu; porcelain ayrıştırıcısı bunu 'king tree is clean.' adlı
+    // hayalet bir dosya olarak deftere yazıyordu.
+    assert.deepEqual(changedPathsBetween('', ' M a.ts\n'), ['a.ts']);
+    const parsed = parsePorcelainStatus('Working tree is clean.');
+    assert.equal(parsed.has('king tree is clean.'), false);
+  });
+
+  it('Türkçe/ASCII dışı yollar octal kaçışa düşmeden çözülür', () => {
+    const quoted = 'A  "\\303\\247al\\304\\261\\305\\237ma.txt"\n';
+    assert.deepEqual([...parsePorcelainStatus(quoted).keys()], ['çalışma.txt']);
+  });
+
+  it('NUL ayraçlı `git status -z` çıktısını ve yeniden adlandırmayı çözer', () => {
+    // `-z` biçiminde yeniden adlandırma satırı önce YENİ, sonra ESKİ yolu taşır.
+    // `-z` yolları tırnaklamaz; Türkçe ad doğrudan gelir.
+    const raw = ' M src/a.ts\0R  yeni.ts\0eski.ts\0?? çalışma dosyası.txt\0';
+    const map = parsePorcelainStatus(raw);
+    assert.deepEqual([...map.keys()].sort(), ['src/a.ts', 'yeni.ts', 'çalışma dosyası.txt'].sort());
+  });
+
+  it('gerçek depoda Türkçe dosya adı ham porcelain ile okunur (uçtan uca)', async () => {
+    const root = await workspace();
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+    git('init', '-q');
+    git('config', 'user.email', 'test@evren-kod.dev');
+    git('config', 'user.name', 'Evren Test');
+    const turkish = 'çalışma dosyası.txt';
+    await fs.writeFile(path.join(root, turkish), 'ilk\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'init');
+
+    await fs.writeFile(path.join(root, turkish), 'ikinci\n');
+    const raw = await new GitManager().statusPorcelainRaw(root);
+
+    assert.deepEqual([...parsePorcelainStatus(raw).keys()], [turkish]);
+    // Eski yol (`git status --short`) dosya adını octal kaçışla tırnaklardı.
+    assert.equal(raw.includes('\\303'), false);
   });
 });

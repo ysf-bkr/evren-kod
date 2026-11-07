@@ -70,11 +70,17 @@ describe('apiKeys: masking and merging', () => {
 });
 
 describe('isChatConfigured: sohbet kilit ve ayar denetimi', () => {
-  it('ayarlar yapılandırılmamışsa sohbet kilitlidir', () => {
+  it('ayarlar yoksa sohbet kilitlidir, ama yerel Ollama açık yapılandırma istemez', () => {
     assert.strictEqual(isChatConfigured(undefined), false);
     assert.strictEqual(isChatConfigured({ isConfigured: false }), false);
+    // README sözü: Ollama çalışıyorsa hiçbir ayar yapmadan başlanabilir.
     assert.strictEqual(
       isChatConfigured({ isConfigured: false, selectedProvider: 'ollama', selectedModel: 'llama3.1' }),
+      true
+    );
+    // Model kimliği olmadan yerel sağlayıcı da geçersizdir.
+    assert.strictEqual(
+      isChatConfigured({ isConfigured: false, selectedProvider: 'ollama', selectedModel: '' }),
       false
     );
   });
