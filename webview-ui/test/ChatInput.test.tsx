@@ -216,6 +216,14 @@ describe('ChatInput', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Görev modu: Eğitim' }));
     assert.deepEqual(modes, ['education']);
   });
+
+  it('hızlı modu seçicide yer alır ve seçim bildirilir', () => {
+    const modes: string[] = [];
+    render(<ChatInput state={createTaskState()} onSend={() => {}} onModeChange={(m) => modes.push(m)} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Görev modu: Hızlı' }));
+    assert.deepEqual(modes, ['fast']);
+  });
 });
 
 describe('TaskHeader menu', () => {

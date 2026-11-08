@@ -82,7 +82,7 @@ const EmptyState: React.FC<{
   isConfigured?: boolean;
   onOpenSettings?: () => void;
 }> = ({ onSuggestionClick, isConfigured = true, onOpenSettings }) => (
-  <div className="flex h-full flex-col justify-between gap-4 p-3">
+  <div className="flex h-full flex-col justify-between gap-4 px-[var(--evren-kod-pad-inline)] py-4">
     <div className="space-y-5 pt-2">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="evren-kod-avatar evren-kod-avatar-soft evren-kod-avatar--lg evren-kod-text-brand">
@@ -91,8 +91,8 @@ const EmptyState: React.FC<{
         <div>
           <h1 className="text-sm font-semibold tracking-tight evren-kod-text-fg">Evren Kod</h1>
           <p className="mt-0.5 max-w-[260px] text-sm leading-relaxed evren-kod-text-muted">
-            Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, planlama ve eğitim
-            modlarında çalışır.
+            Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, hızlı, planlama ve
+            eğitim modlarında çalışır.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-1">

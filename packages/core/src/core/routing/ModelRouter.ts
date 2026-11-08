@@ -41,6 +41,7 @@ const SIMPLE_PATTERNS = [
 export function classifyTask(prompt: string, mode: AgentMode = 'code'): TaskComplexity {
   const text = String(prompt || '');
   if (REVIEW_PATTERNS.some((pattern) => pattern.test(text))) return 'review';
+  if (mode === 'fast') return 'simple';
   if (mode !== 'code') return 'complex';
   if (COMPLEX_PATTERNS.some((pattern) => pattern.test(text))) return 'complex';
   if (text.length > 1_500) return 'complex';

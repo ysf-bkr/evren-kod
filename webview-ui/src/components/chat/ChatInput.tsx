@@ -21,6 +21,7 @@ interface ChatInputProps {
 
 const MODES: Array<{ id: AgentMode; label: string; icon: React.ReactNode }> = [
   { id: 'code', label: 'Kodlama', icon: <Code2 className="evren-kod-icon-xs" /> },
+  { id: 'fast', label: 'Hızlı', icon: <Zap className="evren-kod-icon-xs" /> },
   { id: 'plan', label: 'Planlama', icon: <Compass className="evren-kod-icon-xs" /> },
   { id: 'education', label: 'Eğitim', icon: <GraduationCap className="evren-kod-icon-xs" /> }
 ];
@@ -130,11 +131,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ? 'Ajanın sorusunu buraya yazıp Enter’a basın'
           : isRunning
             ? 'Ajan çalışıyor... Durdurmak için tıklayın'
-            : state.mode === 'plan'
-              ? 'Bir hedef tanımlayın veya soru sorun...'
-              : state.mode === 'education'
-                ? 'Öğrenmek istediğin konuyu yaz... (örn. "yineleme nedir?")'
-                : 'Soru sorun veya bir görev tanımlayın...';
+            : state.mode === 'fast'
+              ? 'Hızlı bir görev veya düzeltme tanımlayın... (örn. "X dosyasındaki hatayı gider")'
+              : state.mode === 'plan'
+                ? 'Bir hedef tanımlayın veya soru sorun...'
+                : state.mode === 'education'
+                  ? 'Öğrenmek istediğin konuyu yaz... (örn. "yineleme nedir?")'
+                  : 'Soru sorun veya bir görev tanımlayın...';
 
   return (
     <div className="evren-kod-composer">
@@ -170,6 +173,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           placeholder={placeholder}
           aria-label="Ajan için mesaj"
           rows={2}
+          variant="composer"
           className="evren-kod-composer__textarea"
         />
 

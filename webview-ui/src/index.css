@@ -182,6 +182,12 @@ body.vscode-light,
   --evren-kod-gold: #d97706;
   --evren-kod-copper: #ea580c;
 
+  --evren-kod-brand-700: var(--vscode-textLink-activeForeground, #00299e);
+  --evren-kod-brand-600: var(--vscode-textLink-foreground, #0051f1);
+  --evren-kod-brand-400: var(--vscode-textLink-foreground, #0051f1);
+  --evren-kod-brand-300: var(--vscode-textLink-activeForeground, #003ccd);
+  --evren-kod-brand-soft: color-mix(in srgb, var(--evren-kod-brand-400) 12%, transparent);
+
   --evren-kod-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
   --evren-kod-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
   --evren-kod-shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.2);
@@ -214,6 +220,8 @@ body.vscode-high-contrast-light,
 .vscode-high-contrast-light {
   --evren-kod-surface-border: var(--vscode-contrastBorder, #ffffff);
   --evren-kod-input-border: var(--vscode-contrastBorder, #ffffff);
+  --evren-kod-border: var(--vscode-contrastBorder, #ffffff);
+  --evren-kod-focus: var(--vscode-contrastBorder, #ffffff);
   --status-info-border: var(--vscode-contrastBorder, #ffffff);
   --status-success-border: var(--vscode-contrastBorder, #ffffff);
   --status-warning-border: var(--vscode-contrastBorder, #ffffff);

@@ -21,6 +21,7 @@ describe('systemPrompt: mode instructions', () => {
   it('plan and code modes keep their own instructions', async () => {
     assert.match(await generateSystemPrompt('/w', 'plan'), /=== PLANNING MODE ACTIVE ===/);
     assert.match(await generateSystemPrompt('/w', 'code'), /=== CODING \(AUTONOMOUS\) MODE ACTIVE ===/);
+    assert.match(await generateSystemPrompt('/w', 'fast'), /=== FAST \(QUICK PATCH\) MODE ACTIVE ===/);
   });
 });
 

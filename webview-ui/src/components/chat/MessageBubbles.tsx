@@ -93,9 +93,6 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message, checkpoints, 
   return (
     <div className="group/message flex flex-col items-end">
       <div className="evren-kod-bubble evren-kod-bubble--user">
-        <div className="evren-kod-overline mb-1 justify-end">
-          <span>Sen</span>
-        </div>
         <div className="whitespace-pre-wrap break-words evren-kod-text-fg">{visibleContent}</div>
       </div>
 
@@ -248,7 +245,7 @@ export const TurnBlock: React.FC<TurnBlockProps> = ({ turn, active, pendingToolC
     <div className="evren-kod-turn-card rounded-lg border evren-kod-border-surface evren-kod-bg-surface">
       <div className="evren-kod-turn-card__header flex items-center gap-2 px-2.5 py-1.5">
         <span className="evren-kod-avatar evren-kod-avatar-soft evren-kod-avatar--sm evren-kod-text-brand">
-          <Logo className="evren-kod-icon-xs" />
+          <Logo className="evren-kod-icon-xs" colored />
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-xs font-semibold evren-kod-text-fg">Evren Kod</span>

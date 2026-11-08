@@ -52,6 +52,44 @@ describe('Workflow: stages by mode', () => {
     assert.deepStrictEqual(ids, ['onboard', 'intake', 'review', 'plan', 'done']);
   });
 
+  it('fast mode includes only onboard, build, verify, done', () => {
+    const ids = stageOrderForMode('fast');
+    assert.deepStrictEqual(ids, ['onboard', 'build', 'verify', 'done']);
+    assert.strictEqual(canTransition('onboard', 'build', 'fast').allowed, true);
+    assert.strictEqual(canTransition('build', 'verify', 'fast').allowed, true);
+    assert.strictEqual(canTransition('verify', 'done', 'fast').allowed, true);
+    assert.strictEqual(canTransition('verify', 'build', 'fast').allowed, true);
+  });
+
+  it('fast mode build gate does not require spec or plan', () => {
+    const base = {
+      state: createWorkflowState({ stage: 'onboard' }),
+      hasApprovedSpec: false,
+      hasPlan: false,
+      hasModules: false,
+      criteriaMet: false,
+      verificationPassed: false,
+      releaseGatePassed: false
+    };
+    assert.strictEqual(gateForStage('build', base, 'fast').allowed, true);
+    assert.strictEqual(gateForStage('build', base, 'code').allowed, false);
+  });
+
+  it('fast mode done gate requires only verificationPassed', () => {
+    const base = {
+      state: createWorkflowState({ stage: 'verify' }),
+      hasApprovedSpec: false,
+      hasPlan: false,
+      hasModules: false,
+      criteriaMet: false,
+      verificationPassed: true,
+      releaseGatePassed: false
+    };
+    assert.strictEqual(gateForStage('done', base, 'fast').allowed, true);
+    assert.strictEqual(gateForStage('done', { ...base, verificationPassed: false }, 'fast').allowed, false);
+    assert.strictEqual(gateForStage('done', base, 'code').allowed, false);
+  });
+
   it('plan mode can go directly from plan to done with plan approval', () => {
     assert.strictEqual(canTransition('plan', 'done', 'plan').allowed, true);
     assert.strictEqual(canTransition('plan', 'build', 'plan').allowed, false);
@@ -95,6 +133,9 @@ describe('Workflow: stages by mode', () => {
     assert.strictEqual(normalizeStageForMode('verify', 'plan'), 'review');
     assert.strictEqual(normalizeStageForMode('plan', 'plan'), 'plan');
     assert.strictEqual(normalizeStageForMode('build', 'code'), 'build');
+    assert.strictEqual(normalizeStageForMode('intake', 'fast'), 'build');
+    assert.strictEqual(normalizeStageForMode('spec', 'fast'), 'build');
+    assert.strictEqual(normalizeStageForMode('plan', 'fast'), 'build');
   });
 });
 

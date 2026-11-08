@@ -161,6 +161,17 @@ export class ToolPipelineController {
     }
 
     if (tc.name === 'ask_followup_question') {
+      if (this.host.state.mode === 'fast') {
+        tc.status = 'completed';
+        tc.result =
+          `[Fast Mode] Hızlı modda soru sorulmaz; en makul varsayımla ilerle ve doğrudan görevi uygula. ` +
+          `Sorulmak istenen: ${toolArgString(tc.args, 'question')}`;
+        await this.host.auditTool(tc, workspaceRoot, 'auto_answered');
+        await this.host.saveCurrentState();
+        this.host.emitState();
+        return 'skip';
+      }
+
       // Soru bütçesi: her gerçek soru sayılır. Sınır aşıldığında ajan soru
       // sormaz, en makul varsayımla ilerler; böylece "en fazla 8 soru"
       // belgesi gerçekten uygulanır.
@@ -504,9 +515,10 @@ export class ToolPipelineController {
 
     if (tc.name === 'update_plan') {
       try {
+        const isFast = this.host.state.mode === 'fast';
         // Plan, modül haritasından türetilir: her adım bir modüle ve en az bir
         // kabul kriterine bağlı olmalı. Harita yoksa önce onu iste.
-        if (!this.host.modulePlanner.hasPlan()) {
+        if (!isFast && !this.host.modulePlanner.hasPlan()) {
           tc.status = 'error';
           tc.error =
             'No module map yet. Call update_module_plan first: split the work into layered modules ' +
@@ -520,7 +532,7 @@ export class ToolPipelineController {
           validation: {
             moduleIds,
             criteriaIds,
-            requireModule: true,
+            requireModule: !isFast,
             requireCriteria: criteriaIds.size > 0
           }
         });

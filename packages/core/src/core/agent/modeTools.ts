@@ -85,7 +85,7 @@ export function isDelegationTool(toolName: ToolName | string): boolean {
  * Planlama mimari çıkarmak, eğitim ise yeni başlayanlara öğretmek için yazar.
  */
 export function isReadOnlyMode(mode: AgentMode): boolean {
-  return mode !== 'code';
+  return mode !== 'code' && mode !== 'fast';
 }
 
 export function isToolAllowedInMode(toolName: ToolName | string, mode: AgentMode): boolean {

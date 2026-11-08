@@ -10,6 +10,7 @@ import { Badge, Button, IconButton, ListButton, Popover } from '../ui';
 /** Görev başlığındaki mod rozetinin Türkçe adları. */
 const MODE_LABELS: Record<AgentMode, string> = {
   code: 'Kodlama',
+  fast: 'Hızlı',
   plan: 'Planlama',
   education: 'Eğitim'
 };

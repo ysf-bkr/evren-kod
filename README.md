@@ -17,7 +17,7 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.106-007ACC?logo=visualstudiocode)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml/badge.svg)](https://github.com/ysf-bkr/evren-kod/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1025%20passing-2ea44f)](./docs/DEVELOPMENT.md)
+[![Tests](https://img.shields.io/badge/tests-1057%20passing-2ea44f)](./docs/DEVELOPMENT.md)
 
 **Geliştirici:** Yusuf BEKAR · **E-posta:** [ybekar@msn.com](mailto:ybekar@msn.com)
 
@@ -83,14 +83,14 @@ code --install-extension ysf-bkr.evren-kod
 ```
 
 Kaynaktan geliştirmek veya geliştirme sürümü kullanmak isterseniz yerel VSIX
-paketini (`out/evren-kod-0.1.2.vsix`) derleyip kurabilirsiniz:
+paketini (`out/evren-kod-0.1.3.vsix`) derleyip kurabilirsiniz:
 
 ```bash
 # Otomatik derleme, paketleme ve kurulum için:
 npm run install:ext
 
 # veya üretilen VSIX paketini doğrudan kurmak için:
-code --install-extension out/evren-kod-0.1.2.vsix --force
+code --install-extension out/evren-kod-0.1.3.vsix --force
 ```
 
 ### 2. Model Sağlayıcınızı Seçin

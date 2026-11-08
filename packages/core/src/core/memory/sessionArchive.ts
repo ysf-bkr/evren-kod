@@ -163,7 +163,7 @@ export function serializeSessionMarkdown(task: TaskState): string {
     '# Evren — Oturum',
     '',
     `- **Oturum:** \`${task.id}\``,
-    `- **Mod:** ${task.mode === 'plan' ? 'Planlama' : task.mode === 'education' ? 'Eğitim' : 'Kodlama'}`,
+    `- **Mod:** ${task.mode === 'plan' ? 'Planlama' : task.mode === 'education' ? 'Eğitim' : task.mode === 'fast' ? 'Hızlı' : 'Kodlama'}`,
     `- **Durum:** ${task.status}`,
     `- **Adım:** ${task.stats.stepsCount}`,
     `- **Token:** ${formatTokenStats(task)}`,
@@ -244,7 +244,10 @@ export function parseSessionArchive(raw: string): TaskState {
   }
 
   const stats = isRecord(taskSource.stats) ? taskSource.stats : {};
-  const mode = taskSource.mode === 'plan' || taskSource.mode === 'education' ? taskSource.mode : 'code';
+  const mode =
+    taskSource.mode === 'plan' || taskSource.mode === 'education' || taskSource.mode === 'fast'
+      ? taskSource.mode
+      : 'code';
   const filesModified = Array.isArray(stats.filesModified)
     ? stats.filesModified.filter((item): item is string => typeof item === 'string')
     : [];

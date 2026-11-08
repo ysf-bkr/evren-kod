@@ -4,7 +4,7 @@
 
 export type ModelProviderType = 'evren' | 'ollama' | 'openrouter' | 'openai-compatible';
 
-export type AgentMode = 'code' | 'plan' | 'education';
+export type AgentMode = 'code' | 'plan' | 'education' | 'fast';
 
 /**
  * Geliştirilen uygulama türü. Proje profili uzman ekip seçimini buna göre yapar.

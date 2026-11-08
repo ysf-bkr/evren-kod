@@ -3,6 +3,20 @@
 Bu dosya kullanıcıları etkileyen önemli değişiklikleri kaydeder.
 Proje sürümlemesi 0.1.0 ile burada başlar.
 
+## [0.1.3] - 2026-11-08
+
+### Eklendi
+
+- **Hızlı Mod (Fast Mode):** Bürokrasi (soru bütçesi, ön spec hazırlığı, katmanlı modül haritası) olmadan doğrudan okuma, hedefli düzeltme ve test doğrulamasıyla çalışan yeni ajan modu eklendi. Zanaat ve kanıt disiplini tam olarak korunur: değişiklikler test/lint doğrulaması geçmeden tamamlandı kabul edilmez.
+- **Hızlı Mod Test Paketi:** Aşama geçişleri, araç izinleri, kapı mantığı ve tamir döngüsünü kapsayan 14 yeni birim testi eklendi.
+
+### Düzeltildi
+
+- **Sohbet Tasarımı ve Arayüz Kontrastı:** Besteci (composer) iç içe çift kenarlık ve iç odak halkası kaldırıldı; durum çubuğu ve boş durum dolguları besteci hizasına çekildi; kullanıcı mesaj balonundaki fazlalık "Sen" başlığı kaldırıldı.
+- **Açık Tema Kontrast Uyumsuzlukları:** Bildirim ve uyarı kutularındaki düşük kontrastlı renkler tasarım jetonlarıyla (`evren-kod-border-warning`, `evren-kod-bg-warning`, `evren-kod-text-warning`) ve açık tema marka mavisiyle güncellendi.
+- **Logo ve Amblem Gösterimi:** Asistan mesaj balonundaki amblem renkli ve net hale getirildi.
+- **Dependabot ve Bağımlılık Yönetimi:** Uyumsuz Dependabot PR'ları kapatıldı; `@types/vscode`, motor ve TypeScript sürümleri için gruplandırılmış ve korumalı dependabot kuralları yapılandırıldı.
+
 ## [0.1.2] - 2026-11-07
 
 ### Düzeltildi

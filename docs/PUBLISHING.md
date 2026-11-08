@@ -84,8 +84,8 @@ yayını geri alınması zor bir işlemdir; publisher ve sürüm bilgilerini ön
 2. Sürüm numarasıyla aynı etiketi oluşturup gönderin. Örnek:
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 3. `v<package.json sürümü>` biçimiyle eşleşen etiket, `.github/workflows/marketplace.yml`
@@ -105,7 +105,7 @@ Aynı VSIX paketini Open VSX'e yayınlamak için:
 1. `open-vsx.org` üzerinde bir hesap açıp `ysf-bkr` adında bir namespace (yayıncı) oluşturun.
 2. Access Token üreterek yerel ortamda şu komutla yayınlayabilirsiniz:
    ```bash
-   npx ovsx publish out/evren-kod-0.1.2.vsix -p <OVSX_TOKEN>
+   npx ovsx publish out/evren-kod-0.1.3.vsix -p <OVSX_TOKEN>
    ```
 3. Çift yayın (Marketplace + Open VSX), iş akışına `OVSX_PAT` secret'ı ve bir Open VSX adımı eklenerek otomatikleştirilebilir. Mevcut `.github/workflows/marketplace.yml` yalnızca Visual Studio Marketplace'e yayınlar; bu adım henüz bağlı değildir.
 

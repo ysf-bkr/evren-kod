@@ -40,6 +40,9 @@ export const STAGE_ORDER: WorkflowStage[] = [
 /** Planlama modunun aşama sırası (yalnızca analiz ve planlama). */
 export const PLAN_MODE_STAGE_ORDER: WorkflowStage[] = ['onboard', 'intake', 'review', 'plan', 'done'];
 
+/** Hızlı modun aşama sırası (küçük düzeltmeler, doğrudan kod ve doğrulama). */
+export const FAST_MODE_STAGE_ORDER: WorkflowStage[] = ['onboard', 'build', 'verify', 'done'];
+
 /** Dosya yazımının spec çıktılarıyla sınırlı olduğu aşamalar. */
 const READ_ONLY_STAGES: ReadonlySet<WorkflowStage> = new Set<WorkflowStage>([
   'onboard',
@@ -51,6 +54,7 @@ const READ_ONLY_STAGES: ReadonlySet<WorkflowStage> = new Set<WorkflowStage>([
 const NO_COMMAND_STAGES: ReadonlySet<WorkflowStage> = new Set<WorkflowStage>(['onboard', 'intake', 'spec']);
 
 export function stageOrderForMode(mode: AgentMode): WorkflowStage[] {
+  if (mode === 'fast') return FAST_MODE_STAGE_ORDER;
   // Eğitim modu da planlama gibi analiz odaklıdır: build/verify aşaması yoktur.
   return isReadOnlyMode(mode) ? PLAN_MODE_STAGE_ORDER : STAGE_ORDER;
 }
@@ -93,6 +97,7 @@ export function stageIndex(stage: WorkflowStage, mode: AgentMode = 'code'): numb
  */
 export function normalizeStageForMode(stage: WorkflowStage, mode: AgentMode): WorkflowStage {
   if (stageOrderForMode(mode).includes(stage)) return stage;
+  if (mode === 'fast') return 'build';
   if (isReadOnlyMode(mode)) return 'review';
   return 'intake';
 }
@@ -154,6 +159,7 @@ export function gateForStage(
   mode: AgentMode = 'code'
 ): WorkflowGateResult {
   const planning = mode === 'plan';
+  const fast = mode === 'fast';
 
   switch (to) {
     case 'intake':
@@ -182,6 +188,9 @@ export function gateForStage(
     case 'build':
       if (planning) {
         return { allowed: false, reason: 'Planning mode has no build stage.' };
+      }
+      if (fast) {
+        return { allowed: true };
       }
       if (!context.hasApprovedSpec) {
         return { allowed: false, reason: 'The spec must be approved before code is written.' };
@@ -220,6 +229,12 @@ export function gateForStage(
         return context.hasPlan
           ? { allowed: true }
           : { allowed: false, reason: 'A plan with at least one step is required before finishing.' };
+      }
+      if (fast) {
+        if (!context.verificationPassed) {
+          return { allowed: false, reason: 'Verification must pass (or be explicitly skipped) before done.' };
+        }
+        return { allowed: true };
       }
       if (!context.criteriaMet) {
         return {
@@ -278,26 +293,35 @@ export function describeWorkflow(state: WorkflowState, mode: AgentMode = 'code')
 export function formatWorkflowForPrompt(state: WorkflowState, mode: AgentMode = 'code'): string {
   const snapshot = describeWorkflow(state, mode);
   const planning = mode === 'plan';
+  const fast = mode === 'fast';
   const rules = [
-    `Mode: ${planning ? 'planning (no file writes, no commands)' : 'coding'}.`,
+    `Mode: ${fast ? 'fast (quick patch/fix, direct implementation)' : planning ? 'planning (no file writes, no commands)' : 'coding'}.`,
     `Current stage: ${state.stage} (${snapshot.label}).`,
-    ...(planning
+    ...(fast
       ? [
-          '- Produce a concrete, ordered plan with dependencies and completion criteria.',
-          '- Do not write project files and do not run commands; this mode is analysis only.'
+          '- Read the relevant code before editing.',
+          '- Apply targeted changes with edit_file/write_file without requiring a spec or module plan.',
+          '- Verify changes with tests/lint before completing.'
         ]
-      : [
-          '- Do not write code before the spec and the plan are approved.',
-          '- After the plan is approved, implement it and verify with tests/lint.'
-        ]),
-    '- Ask a question instead of assuming; list assumptions in the spec.',
+      : planning
+        ? [
+            '- Produce a concrete, ordered plan with dependencies and completion criteria.',
+            '- Do not write project files and do not run commands; this mode is analysis only.'
+          ]
+        : [
+            '- Do not write code before the spec and the plan are approved.',
+            '- After the plan is approved, implement it and verify with tests/lint.'
+          ]),
+    ...(!fast ? ['- Ask a question instead of assuming; list assumptions in the spec.'] : []),
     '- Read a file before editing it.',
-    '- Never claim the task is done while an acceptance criterion is unchecked.'
+    ...(!fast
+      ? ['- Never claim the task is done while an acceptance criterion is unchecked.']
+      : ['- Never claim the task is done without verifying your changes.'])
   ];
   if (snapshot.readOnly) {
     rules.push('- This stage is read-only: only spec artifacts may be written and commands must not run.');
   }
-  if (snapshot.questionsRemaining === 0) {
+  if (!fast && snapshot.questionsRemaining === 0) {
     rules.push('- The question budget is exhausted; state assumptions explicitly and proceed.');
   }
   return `\n\n=== WORKFLOW ===\n${rules.join('\n')}\n=== END OF WORKFLOW ===`;

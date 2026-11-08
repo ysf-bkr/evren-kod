@@ -582,6 +582,7 @@ export class WorkflowController {
 
     const workflow = this.getWorkflow();
     const planning = isReadOnlyMode(this.host.state.mode);
+    const fast = this.host.state.mode === 'fast';
     const order = stageOrderForMode(this.host.state.mode);
     if (workflow.stage === 'done') return;
 
@@ -589,6 +590,15 @@ export class WorkflowController {
       // Planlama modunda plan yoksa sohbet turu plan aşaması gibi görünmemeli.
       if (!this.host.planner.hasPlan()) return;
       if (workflow.stage !== 'review' && workflow.stage !== 'plan') return;
+    } else if (fast) {
+      // Hızlı modda spec ve plan onay kapıları yoktur; aşamalar doğrudan akar.
+      const verificationRan = (this.host.state.stats.verification?.status ?? 'not_run') !== 'not_run';
+      if (workflow.stage === 'build' && !context.changedFiles && !verificationRan) {
+        workflow.blockedReason =
+          'Uygulama aşamasında değişiklik yapılmadı; ilerlemek için bir görev gönderin.';
+        this.host.emitState();
+        return;
+      }
     } else {
       // Plan onaylanmadan önce aşamalar spec/plan araçları ve onay kapılarıyla
       // ilerler; bu yardımcı devreye girmez.
@@ -614,7 +624,9 @@ export class WorkflowController {
     if (!result.ok) {
       workflow.blockedReason =
         nextStage === 'done'
-          ? 'Görev tamamlanmadı: kabul kriterleri işaretlenmeli, doğrulama geçmeli ve @release-gate taze bir PASS kararı kaydetmeli.'
+          ? fast
+            ? 'Görev tamamlanmadı: doğrulama (test/lint) başarılı olmalı.'
+            : 'Görev tamamlanmadı: kabul kriterleri işaretlenmeli, doğrulama geçmeli ve @release-gate taze bir PASS kararı kaydetmeli.'
           : `${stageLabel(nextStage)} aşamasına geçilemedi; önce tamamlanması gereken adımlar var.`;
       this.syncProgressToState();
       this.host.emitState();
@@ -627,7 +639,7 @@ export class WorkflowController {
 
     // İnceleme aşamasına girildiyse çağrı haritasıyla "güncellenmemiş çağıran"
     // kontrolü yapılır; bulgu modele sistem mesajı olarak iletilir.
-    if (!planning && nextStage === 'review') {
+    if (!planning && !fast && nextStage === 'review') {
       await this.runReviewStage();
     }
 
@@ -793,13 +805,15 @@ export class WorkflowController {
         this.host.emitState();
         return;
       }
-      // Kriter ve doğrulama tamamsa eksik olan yalnızca yayın kapısıdır:
-      // build'e geri düşürmek gereksiz döngü üretirdi; verify'de kal ve
-      // @release-gate denetimini iste.
-      const gate = this.evaluateGate();
-      if (!gate.ok && this.currentSpecCriteriaMet() && this.verificationPassed()) {
-        this.requestReleaseGate(gate.reason);
-        return;
+      if (this.host.state.mode !== 'fast') {
+        // Kriter ve doğrulama tamamsa eksik olan yalnızca yayın kapısıdır:
+        // build'e geri düşürmek gereksiz döngü üretirdi; verify'de kal ve
+        // @release-gate denetimini iste.
+        const gate = this.evaluateGate();
+        if (!gate.ok && this.currentSpecCriteriaMet() && this.verificationPassed()) {
+          this.requestReleaseGate(gate.reason);
+          return;
+        }
       }
     }
 
@@ -811,7 +825,7 @@ export class WorkflowController {
     }
     const missing = this.missingAcceptanceCriteria();
     workflow.blockedReason =
-      missing.length > 0
+      missing.length > 0 && this.host.state.mode !== 'fast'
         ? `Bitti kapısı kapalı: işaretlenmemiş kabul kriterleri var (${missing.join(', ')}).`
         : 'Bitti kapısı kapalı: doğrulama geçmedi. Test/lint çıktısına göre düzeltme gerekiyor.';
     this.syncProgressToState();
@@ -820,6 +834,9 @@ export class WorkflowController {
 
   /** Bitti kapısı için gereken koşullar sağlanmış mı? */
   private canFinishTask(): boolean {
+    if (this.host.state.mode === 'fast') {
+      return this.verificationPassed();
+    }
     return this.currentSpecCriteriaMet() && this.verificationPassed();
   }
 

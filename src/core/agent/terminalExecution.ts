@@ -110,14 +110,24 @@ export async function runInIntegratedTerminal(
     }
   })();
 
+  // Zamanlayıcı temizlenir ve `unref` edilir: komut erken bittiğinde
+  // 2 dakikalık sayaç arka planda event loop'u tutmamalı.
+  let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<void>((resolve) => {
-    setTimeout(() => {
+    timeoutTimer = setTimeout(() => {
       timedOut = true;
       resolve();
     }, COMMAND_TIMEOUT_MS);
+    timeoutTimer.unref?.();
   });
+  // İsimli dinleyici: yarış bitince kaldırılır. Anonim `once` dinleyicisi
+  // iptal hiç gelmezse sinyalde kalıyordu; uzun oturumda her komut bir tane
+  // biriktirirdi.
+  let resolveRace!: () => void;
+  const onAbortRace = () => resolveRace();
   const abort = new Promise<void>((resolve) => {
-    signal?.addEventListener('abort', () => resolve(), { once: true });
+    resolveRace = resolve;
+    signal?.addEventListener('abort', onAbortRace, { once: true });
   });
 
   // Yalnızca promise yarışını iptal etmek komutu terminalde çalışır
@@ -135,19 +145,27 @@ export async function runInIntegratedTerminal(
   try {
     await Promise.race([reader, timeout, abort]);
   } finally {
+    if (timeoutTimer) clearTimeout(timeoutTimer);
     signal?.removeEventListener('abort', onAbort);
+    signal?.removeEventListener('abort', onAbortRace);
   }
 
   // Çıkış kodu yürütme-sonu olayından gelir. İptal veya zaman aşımından sonra
   // komut bir kod bildirmeyebilir; bu yüzden onu beklemeye girme.
   let exitCode: number | undefined;
   if (!timedOut && !signal?.aborted) {
-    exitCode = await Promise.race([
-      exitCodePromise,
-      new Promise<undefined>((resolve) => {
-        setTimeout(() => resolve(undefined), COMMAND_TIMEOUT_MS);
-      })
-    ]);
+    let exitTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      exitCode = await Promise.race([
+        exitCodePromise,
+        new Promise<undefined>((resolve) => {
+          exitTimer = setTimeout(() => resolve(undefined), COMMAND_TIMEOUT_MS);
+          exitTimer.unref?.();
+        })
+      ]);
+    } finally {
+      if (exitTimer) clearTimeout(exitTimer);
+    }
   }
   endSubscription.dispose();
 

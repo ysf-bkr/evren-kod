@@ -215,7 +215,7 @@ export const ChatStatusBar: React.FC<ChatStatusBarProps> = ({ state, onRetry }) 
     <div
       role="status"
       aria-live="polite"
-      className={`text-2xs flex items-center gap-1.5 px-1 pt-1.5 ${TONES[status.kind]}`}
+      className={`text-2xs flex items-center gap-1.5 px-[var(--evren-kod-pad-inline)] pt-1 pb-2 ${TONES[status.kind]}`}
     >
       {status.kind !== 'idle' && status.message && (
         <>

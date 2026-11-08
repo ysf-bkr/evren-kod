@@ -24,6 +24,13 @@ describe('Plan/Code mode tool lock', () => {
     assert.strictEqual(isToolAllowedInMode('execute_command', 'code'), true);
   });
 
+  it('fast mode allows all tools like code mode', () => {
+    assert.strictEqual(isToolAllowedInMode('read_file', 'fast'), true);
+    assert.strictEqual(isToolAllowedInMode('write_file', 'fast'), true);
+    assert.strictEqual(isToolAllowedInMode('edit_file', 'fast'), true);
+    assert.strictEqual(isToolAllowedInMode('execute_command', 'fast'), true);
+  });
+
   it('education mode locks writes like plan mode but keeps teaching tools', () => {
     assert.strictEqual(isToolAllowedInMode('read_file', 'education'), true);
     assert.strictEqual(isToolAllowedInMode('search_files', 'education'), true);

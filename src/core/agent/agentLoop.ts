@@ -95,7 +95,7 @@ export class AgentLoop {
     // ele alınıyor demektir. Bu olmadan şerit ilk aşamada takılı kalıyordu.
     const workflowAfterOnboarding = this.host.workflow.getWorkflow();
     if (workflowAfterOnboarding.stage === 'onboard') {
-      workflowAfterOnboarding.stage = 'intake';
+      workflowAfterOnboarding.stage = this.host.state.mode === 'fast' ? 'build' : 'intake';
       workflowAfterOnboarding.updatedAt = Date.now();
       this.host.workflow.syncProgressToState();
     }

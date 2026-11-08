@@ -96,7 +96,10 @@ export class ProjectMemoryManager {
           entries.push({
             taskId: parsed.taskId,
             timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
-            mode: parsed.mode === 'plan' || parsed.mode === 'education' ? parsed.mode : 'code',
+            mode:
+              parsed.mode === 'plan' || parsed.mode === 'education' || parsed.mode === 'fast'
+                ? parsed.mode
+                : 'code',
             status:
               parsed.status === 'failed' || parsed.status === 'cancelled' || parsed.status === 'paused'
                 ? parsed.status
@@ -202,7 +205,13 @@ export class ProjectMemoryManager {
       const files = input.files.filter(Boolean).slice(0, 12);
       const lines: string[] = [
         `## ${new Date().toISOString()} · ${
-          input.mode === 'plan' ? 'Planning' : input.mode === 'education' ? 'Education' : 'Coding'
+          input.mode === 'plan'
+            ? 'Planning'
+            : input.mode === 'education'
+              ? 'Education'
+              : input.mode === 'fast'
+                ? 'Fast'
+                : 'Coding'
         } · ${input.status}`,
         `<!-- task:${input.taskId} -->`,
         `- **Task:** ${cleanText(input.prompt, 320) || '(empty task)'}`
