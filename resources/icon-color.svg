@@ -1,33 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none">
-  <!-- Evren Vector Brand Icon (Full Color): mavi marka gradyanı + örgü düğümü (altın) + graf düğümleri -->
+  <!-- Evren Kod Renkli Amblem Vektörü: Kalkan (Güvenlik) + Kod </> + Sonsuzluk (Evren) + Doğrulama (Kanıt) -->
   <defs>
-    <linearGradient id="evrenBrand" x1="80" y1="80" x2="416" y2="432" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="20%" stop-color="#0092fa" />
-      <stop offset="65%" stop-color="#0051f1" />
-      <stop offset="100%" stop-color="#00299e" />
+    <!-- Kalkan Gradyanları -->
+    <linearGradient id="shieldRim" x1="106" y1="56" x2="406" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#93c5fd" />
+      <stop offset="35%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1e3a8a" />
     </linearGradient>
-    <linearGradient id="evrenKnot" x1="176" y1="232" x2="224" y2="280" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#fde68a" />
-      <stop offset="40%" stop-color="#f59e0b" />
-      <stop offset="100%" stop-color="#d97706" />
+    <linearGradient id="shieldBody" x1="256" y1="60" x2="256" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0c1938" />
+      <stop offset="50%" stop-color="#070f24" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Kod Sembolü </> Gradyanı -->
+    <linearGradient id="codeGrad" x1="182" y1="136" x2="330" y2="212" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+
+    <!-- Sonsuzluk Şeridi Gradyanı (Mavi/Camgöbeği -> Mor/Eflatun) -->
+    <linearGradient id="infGrad" x1="36" y1="276" x2="476" y2="276" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="25%" stop-color="#0284c7" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="75%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#d946ef" />
+    </linearGradient>
+
+    <!-- Doğrulama Mührü Rozet Gradyanı -->
+    <linearGradient id="sealGrad" x1="228" y1="347" x2="284" y2="403" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#022c22" />
     </linearGradient>
   </defs>
 
-  <!-- E Gövdesi + Merkez Elmas Penceresi -->
-  <path fill="url(#evrenBrand)" fill-rule="evenodd" d="M 116 80 L 380 80 A 36 36 0 0 1 380 152 L 176 152 A 24 24 0 0 0 152 176 L 152 196 A 24 24 0 0 0 176 220 L 330 220 A 36 36 0 0 1 330 292 L 176 292 A 24 24 0 0 0 152 316 L 152 336 A 24 24 0 0 0 176 360 L 380 360 A 36 36 0 0 1 380 432 L 116 432 A 36 36 0 0 1 80 396 L 80 116 A 36 36 0 0 1 116 80 Z M 200 222 L 234 256 L 200 290 L 166 256 Z" />
+  <!-- Kalkan Gövdesi & Dış Metal Çerçeve -->
+  <path d="M 256 56 C 295 72 355 96 406 118 C 406 185 396 310 256 440 C 116 310 106 185 106 118 C 157 96 217 72 256 56 Z"
+        fill="url(#shieldBody)" stroke="url(#shieldRim)" stroke-width="16" stroke-linejoin="round" />
 
-  <!-- Seljuk Örgü Düğümü (Altın Kehribar) -->
-  <path fill="url(#evrenKnot)" d="M 200 232 L 224 256 L 200 280 L 176 256 Z" />
-  <polygon points="200,250 206,256 200,262 194,256" fill="#ffffff" opacity="0.95" />
+  <!-- Kalkan İç Derinlik Çizgisi -->
+  <path d="M 256 74 C 288 88 344 110 384 128 C 384 185 375 292 256 414 C 137 292 128 185 128 128 C 168 110 224 88 256 74 Z"
+        fill="none" stroke="#60a5fa" stroke-width="2" opacity="0.25" />
 
-  <!-- Çağrı Grafiği Düğümleri (Orbital Halkalar ve Beyaz Çekirdekler) -->
-  <circle cx="380" cy="116" r="18" fill="#38bdf8" opacity="0.85" />
-  <circle cx="380" cy="116" r="8" fill="#ffffff" />
+  <!-- Kod Sembolü </> -->
+  <g stroke="url(#codeGrad)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 222 142 L 182 174 L 222 206" />
+    <path d="M 272 136 L 240 212" />
+    <path d="M 290 142 L 330 174 L 290 206" />
+  </g>
 
-  <circle cx="330" cy="256" r="18" fill="#fbbf24" opacity="0.85" />
-  <circle cx="330" cy="256" r="8" fill="#ffffff" />
+  <!-- Sonsuzluk / Evren Şeridi (Infinity Ribbon) -->
+  <path d="M 256 276 C 290 232 345 210 405 218 C 455 225 476 256 476 276 C 476 302 450 332 400 336 C 340 340 285 315 256 276 C 227 237 172 212 112 216 C 62 220 36 250 36 276 C 36 296 57 327 107 334 C 167 342 222 320 256 276 Z"
+        stroke="url(#infGrad)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none" />
 
-  <circle cx="380" cy="396" r="18" fill="#818cf8" opacity="0.85" />
-  <circle cx="380" cy="396" r="8" fill="#ffffff" />
+  <!-- Kalite & Kanıt Mührü (Yeşil Doğrulama Rozeti) -->
+  <g transform="translate(256, 375)">
+    <circle cx="0" cy="0" r="30" fill="url(#sealGrad)" stroke="#10b981" stroke-width="6" />
+    <circle cx="0" cy="0" r="35" fill="none" stroke="#34d399" stroke-width="2" opacity="0.4" />
+    <path d="M -11 1 L -3 9 L 13 -7" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
 </svg>

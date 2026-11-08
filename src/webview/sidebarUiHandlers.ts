@@ -8,6 +8,7 @@ import { resolveCallGraphPanelRequest } from './callgraphPanel';
 import { ROLE_ALIASES, getAgentDefinition } from '@evren-kod/core/shared/agents';
 import { PROJECT_KIND_IDS, PROJECT_STACK_IDS, ProjectProfile } from '@evren-kod/core/shared/types';
 import { profileWorkspace, resolveProfile, saveProfile } from '@evren-kod/core/core/project/ProjectProfiler';
+import { TechDebtTracker } from '@evren-kod/core/core/lifecycle/TechDebtTracker';
 import { invalidateProjectTeamContext } from '../core/agent/projectTeamContext';
 import type { SkillManager } from '@evren-kod/core/core/skills/SkillManager';
 import type { WebviewMessageHandlerMap, SidebarHandlerContext } from './sidebarMessageHandlers';
@@ -40,6 +41,8 @@ type UiHandlerKeys =
   | 'SHOW_FILE_DIFF'
   | 'GET_ABOUT_INFO'
   | 'CALLGRAPH_QUERY'
+  | 'GET_TECH_DEBT'
+  | 'GET_TOKEN_METRICS'
   | 'OPEN_EXTERNAL';
 
 /** Ayarlar, model, bilgi tabanı, git ve UI handler'larını döner. */
@@ -558,6 +561,40 @@ export function createUiHandlers(ctx: SidebarHandlerContext): Pick<WebviewMessag
           }
         });
       }
+    },
+
+    GET_TECH_DEBT: async () => {
+      const workspaceRoot = getActiveWorkspaceRoot();
+      if (!workspaceRoot) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'warning', message: 'Açık bir çalışma alanı yok.' }
+        });
+        return;
+      }
+      try {
+        const tracker = new TechDebtTracker();
+        const report = await tracker.scanWorkspace(workspaceRoot);
+        ctx.postMessage({
+          type: 'TECH_DEBT_REPORT_LOADED',
+          payload: report
+        });
+      } catch (err) {
+        ctx.postMessage({
+          type: 'NOTIFICATION',
+          payload: { level: 'error', message: `Teknik borç taraması başarısız: ${errorMessage(err)}` }
+        });
+      }
+    },
+
+    GET_TOKEN_METRICS: async () => {
+      const activeAgent = ctx.getAgentCore();
+      if (!activeAgent) return;
+      const summary = activeAgent.optimizationEngine.getObservabilitySummary();
+      ctx.postMessage({
+        type: 'TOKEN_METRICS_LOADED',
+        payload: summary
+      });
     },
 
     OPEN_EXTERNAL: async (message) => {

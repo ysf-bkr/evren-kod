@@ -1,70 +1,20 @@
+/**
+ * Evren Kod Bağımsız Terminal Ajanı (CLI / REPL).
+ *
+ * VS Code'a ihtiyaç duymadan, doğrudan terminal üzerinde tam ReAct döngüsünü,
+ * araç çalıştırmayı, oturum hafızasını ve proje yönetimini yürütür.
+ */
 import * as path from 'path';
-// `import * as process from 'process'` kullanma: esbuild CJS paketinde bu bir
-// namespace kopyası oluşturur ve process.on() EventEmitter olayları o kopyaya
-// kaydedilmeye çalışır; "_eventsCount" hatasına yol açar. Varsayılan import
-// gerçek process nesnesini verir.
 import process from 'process';
 import { createInterface } from 'readline/promises';
-import { createModelProvider } from '@evren-kod/core/providers';
-import { StreamInterruptedError } from '@evren-kod/core/providers/openai';
-import { ALL_TOOLS } from '@evren-kod/core/tools';
-import { ToolExecutionContext } from '@evren-kod/core/tools/base';
-import { runToolCall } from '@evren-kod/core/core/toolRunner';
-import { generateSystemPrompt } from '@evren-kod/core/core/prompts/systemPrompt';
-import { PermissionManager } from '@evren-kod/core/core/permission/PermissionManager';
-import { SnapshotManager } from '@evren-kod/core/core/snapshot/SnapshotManager';
-import { VerificationManager } from '@evren-kod/core/core/verification/VerificationManager';
-import { GitManager } from '@evren-kod/core/core/git/GitManager';
-import { ProjectMemoryManager } from '@evren-kod/core/core/memory/ProjectMemoryManager';
-import { TaskPlanner } from '@evren-kod/core/core/plan/TaskPlanner';
-import { resolveProfile } from '@evren-kod/core/core/project/ProjectProfiler';
-import { formatTeamContext, selectActiveTeam } from '@evren-kod/core/shared/agents/team';
-import { ContextManager } from '@evren-kod/core/core/context/ContextManager';
-import {
-  collapseRepetition,
-  findRepetitionCollapse,
-  StreamRepetitionGuard
-} from '@evren-kod/core/shared/repetition';
-import { ProviderMessage } from '@evren-kod/core/providers/base';
+import { TerminalAgent, TERMINAL_TOOLS, TerminalTurnResult } from '@evren-kod/core/core/agent/TerminalAgent';
+import { loadSettings, saveSettings } from '@evren-kod/core/core/settings/SettingsStorage';
 import { ModelProviderType, ToolName, UserSettings } from '@evren-kod/core/shared/types';
+import { TOOL_TITLES } from '@evren-kod/core/shared/toolLabels';
 import { errorMessage } from '@evren-kod/core/shared/errors';
+import { EXTENSION_VERSION } from '@evren-kod/core/shared/version';
 
-/**
- * CLI'ın yürütebileceği araçlar. Testler bu listeyi araç kayıt defteriyle
- * karşılaştırır: yeni bir araç eklendiğinde sessizce CLI dışında kalmasın.
- */
-export const CLI_TOOLS = new Set<ToolName>([
-  'read_file',
-  'write_file',
-  'edit_file',
-  'search_files',
-  'list_directory',
-  'execute_command',
-  'run_tests',
-  'run_linter',
-  'git_status',
-  'git_diff',
-  'read_skill',
-  'undo_change',
-  'update_plan',
-  'run_verification',
-  'index_workspace',
-  'find_symbol',
-  'analyze_impact',
-  'knowledge_graph',
-  'graph_callers',
-  'graph_callees',
-  'graph_impact',
-  'graph_search',
-  'graph_status',
-  'git_create_branch',
-  'git_commit',
-  'prepare_pr',
-  'search_memory',
-  'read_notebook',
-  'web_fetch',
-  'web_search'
-]);
+export const CLI_TOOLS = new Set<ToolName>(TERMINAL_TOOLS);
 
 export const READ_ONLY_TOOLS = new Set<ToolName>([
   'read_file',
@@ -95,38 +45,33 @@ export interface CliOptions {
   readOnly: boolean;
 }
 
-/**
- * CLI için aktif ekip bloğu: profil okunur, ekip seçilir. Depolanmış
- * profil bayatlamışsa taze bir tarama yapılır; hâl durumu sessiz kalır.
- */
-async function buildCliTeamContext(workspace: string): Promise<string> {
-  try {
-    const profile = await resolveProfile(workspace);
-    return formatTeamContext(selectActiveTeam(profile), profile);
-  } catch {
-    return '';
-  }
-}
-
 function usage(): string {
   return [
-    'Evren Kod CLI',
+    `Evren Kod CLI v${EXTENSION_VERSION}`,
     '',
     'Kullanım:',
-    '  evren-kod --prompt "Görev" [seçenekler]',
-    '  evren-kod                           Etkileşimli sohbet (exit ile çık)',
+    '  evren-kod --prompt "Görev" [seçenekler]   Tek seferlik görev çalıştır',
+    '  evren-kod                                 Etkileşimli terminal sohbeti (exit ile çık)',
     '',
     'Seçenekler:',
     '  --workspace <yol>    Çalışma alanı (varsayılan: cwd)',
     '  --provider <ad>      evren | ollama | openrouter | openai-compatible',
     '  --model <id>         Model kimliği',
-    '  --api-key <anahtar>  API anahtarı. UYARI: komut satırı argümanları kabuk',
-    '                       geçmişinde görünür; ortam değişkenlerini tercih edin',
-    '                       (EVREN_API_KEY / OPENROUTER_API_KEY / OPENAI_COMPATIBLE_API_KEY).',
+    '  --api-key <anahtar>  API anahtarı (ortam değişkenleri de desteklenir)',
     '  --max-steps <sayı>   Maksimum adım sayısı (varsayılan: 30)',
     '  --yes                Onay gerektiren işlemleri otomatik onayla',
-    '  --read-only          Yalnızca salt-okunur araçlar',
-    '  --help               Bu yardım mesajını göster'
+    '  --read-only          Yalnızca salt-okunur araçları etkinleştir',
+    '  --help               Bu yardım mesajını göster',
+    '',
+    'Etkileşimli Komutlar:',
+    '  /yardim, /help       Komut listesini göster',
+    '  /model <id>          Modeli değiştir',
+    '  /saglayici <ad>      Model sağlayıcısını değiştir',
+    '  /anahtar <ad> <key>  API anahtarını kaydet',
+    '  /durum, /status      Git, model ve tüketim durumunu göster',
+    '  /dogrula, /verify    Proje test ve lint kontrollerini koştur',
+    '  /temizle, /clear     Sohbet geçmişini ve ekranı temizle',
+    '  exit, quit, /cikis   Oturumdan çık'
   ].join('\n');
 }
 
@@ -200,12 +145,10 @@ export function parseArgs(argv: string[]): CliOptions {
     }
   }
 
-  // Etkileşimli sohbet yalnızca gerçek bir terminalde anlamlıdır; boru/hook
-  // altında istem boşsa hâlâ --prompt şarttır.
   if (!options.prompt.trim() && !process.stdin.isTTY) {
     throw new Error(`--prompt is required.\n\n${usage()}`);
   }
-  // Sağlayıcıya göre anahtar ortam değişkenini seç
+
   const providerKeyEnv =
     options.provider === 'evren'
       ? process.env.EVREN_API_KEY
@@ -219,6 +162,7 @@ export function parseArgs(argv: string[]): CliOptions {
 }
 
 export function buildSettings(options: CliOptions): UserSettings {
+  const loaded = loadSettings(options.workspace);
   const defaultModelForProvider =
     options.provider === 'evren'
       ? 'auto'
@@ -227,29 +171,36 @@ export function buildSettings(options: CliOptions): UserSettings {
         : options.provider === 'openrouter'
           ? 'anthropic/claude-3.5-sonnet'
           : '';
-  const selectedModel = options.model.trim() || defaultModelForProvider;
+
+  const selectedModel =
+    options.model.trim() ||
+    (options.provider === loaded.selectedProvider ? loaded.selectedModel : undefined) ||
+    defaultModelForProvider;
+
   return {
+    ...loaded,
     selectedProvider: options.provider,
     selectedModel,
     apiKeys: {
-      evren: options.provider === 'evren' ? options.apiKey : undefined,
-      openrouter: options.provider === 'openrouter' ? options.apiKey : undefined,
-      openaiCompatible: options.provider === 'openai-compatible' ? options.apiKey : undefined
+      ...loaded.apiKeys,
+      evren: options.provider === 'evren' && options.apiKey ? options.apiKey : loaded.apiKeys.evren,
+      openrouter:
+        options.provider === 'openrouter' && options.apiKey ? options.apiKey : loaded.apiKeys.openrouter,
+      openaiCompatible:
+        options.provider === 'openai-compatible' && options.apiKey
+          ? options.apiKey
+          : loaded.apiKeys.openaiCompatible
     },
-    openAiCompatibleBaseUrl: process.env.OPENAI_COMPATIBLE_BASE_URL,
     autoApprove: {
+      ...loaded.autoApprove,
       readFiles: true,
-      writeFiles: options.yes,
-      executeCommands: options.yes
+      writeFiles: options.yes || loaded.autoApprove.writeFiles,
+      executeCommands: options.yes || loaded.autoApprove.executeCommands
     },
-    autoVerify: false,
-    maxStepsPerTask: options.maxSteps,
-    sandbox: { mode: 'none', image: 'node:20-bookworm', network: false }
+    maxStepsPerTask: options.maxSteps
   };
 }
 
-// Tek paylaşılan readline akışı: onay soruları ile etkileşimli sohbet aynı
-// stdin'i kullanır; her soru için yeni arayüz açmak girdiyi bölüp kilitlerdi.
 let sharedReadline: ReturnType<typeof createInterface> | undefined;
 function getReadline(): ReturnType<typeof createInterface> {
   if (!sharedReadline) {
@@ -259,260 +210,238 @@ function getReadline(): ReturnType<typeof createInterface> {
 }
 
 async function askApproval(question: string): Promise<boolean> {
-  const answer = (await getReadline().question(`${question} [y/N] `)).trim().toLowerCase();
+  const answer = (await getReadline().question(`\x1b[33m${question} [e/H]\x1b[0m `)).trim().toLowerCase();
   return answer === 'e' || answer === 'evet' || answer === 'y' || answer === 'yes';
+}
+
+function printBanner(agent: TerminalAgent): void {
+  const c = {
+    cyan: '\x1b[36m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    green: '\x1b[32m',
+    reset: '\x1b[0m'
+  };
+  const provider = agent.settings.selectedProvider;
+  const model = agent.settings.selectedModel;
+  const ws = agent.workspaceRoot;
+
+  process.stdout.write(
+    `\n${c.cyan}${c.bold}🌌 Evren Kod v${EXTENSION_VERSION} — Bağımsız Terminal Geliştirme Ajanı${c.reset}\n`
+  );
+  process.stdout.write(`${c.dim}Çalışma Alanı : ${ws}${c.reset}\n`);
+  process.stdout.write(
+    `${c.dim}Sağlayıcı     : ${c.green}${provider}${c.reset} ${c.dim}(${model})${c.reset}\n`
+  );
+  process.stdout.write(`${c.dim}Yardım için: /yardim · Çıkış için: exit${c.reset}\n\n`);
+}
+
+function printUsage(agent: TerminalAgent): void {
+  const u = agent.usage;
+  if (u.total === 0 && u.requests === 0) return;
+  const dim = '\x1b[2m';
+  const reset = '\x1b[0m';
+  process.stdout.write(
+    `\n${dim}— Tüketim: ${u.total.toLocaleString('tr-TR')} token ` +
+      `(giden ${u.prompt.toLocaleString('tr-TR')} · gelen ${u.completion.toLocaleString('tr-TR')}` +
+      (u.cached > 0 ? ` · önbellek ${u.cached.toLocaleString('tr-TR')}` : '') +
+      `; ${u.requests} istek)${reset}\n`
+  );
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const settings = buildSettings(options);
-  const provider = createModelProvider(settings);
-  const permissionManager = new PermissionManager(settings);
-  // CLI'da Workspace Trust arayüzü yoktur; bu yüzden depo tarafından verilen
-  // allow kuralları yalnızca kullanıcı --yes ile açıkça izin verdiğinde geçerli
-  // olur. Aksi hâlde her yazma/komutu global ayarlar ve onay istemleri yönetir.
-  await permissionManager.loadProjectPermissions(options.workspace, options.yes);
 
-  // Ctrl+C: model isteklerini ve çalışan komutları AbortSignal ile durdurur.
-  // İkinci bir Ctrl+C anında çıkmaya zorlar.
-  const abortController = new AbortController();
-  process.on('SIGINT', () => {
-    if (abortController.signal.aborted) {
-      process.exit(130);
-    }
-    process.stdout.write('\nStopping... (press Ctrl+C again to force exit)\n');
-    abortController.abort();
-  });
-
-  const snapshotManager = new SnapshotManager();
-  const verificationManager = new VerificationManager();
-  verificationManager.setCommandFilter(
-    (command) => !permissionManager.isToolBlocked('execute_command', { command }).blocked
-  );
-  const gitManager = new GitManager();
-  const projectMemory = new ProjectMemoryManager();
-  const planner = new TaskPlanner();
-
-  // Salt-okunur mod hem modele sunulan araçları hem yürütücünün izin kümesini daraltır.
-  const allowedTools = new Set<ToolName>(
-    [...CLI_TOOLS].filter((name) => !options.readOnly || READ_ONLY_TOOLS.has(name))
-  );
-  const tools = Object.values(ALL_TOOLS).filter((tool) => allowedTools.has(tool.name));
-  const systemPrompt = await generateSystemPrompt(
-    options.workspace,
-    'code',
-    '',
-    '',
-    planner.formatForPrompt(),
-    undefined,
-    await buildCliTeamContext(options.workspace)
-  );
-  const messages: ProviderMessage[] = [{ role: 'system', content: systemPrompt }];
-  const context: ToolExecutionContext = {
+  const agent = new TerminalAgent({
     workspaceRoot: options.workspace,
-    snapshotManager,
-    permissionManager,
-    verificationManager,
-    gitManager,
-    projectMemory,
-    signal: abortController.signal
-  };
-
-  // Bağlam bütçesi: araç şemaları da sayılır; uzun görevlerde istek taşmasın.
-  const contextManager = new ContextManager({
-    contextWindowTokens: Number(process.env.EVREN_KOD_CONTEXT_WINDOW_TOKENS) || undefined,
-    tools
+    settings,
+    readOnly: options.readOnly,
+    maxSteps: options.maxSteps
   });
-  // Dejeneratif tekrar koruması: model bir satıra kilitlenirse akışı kes.
-  let repetitionHit = false;
 
-  // Döngü koruması: aynı araç aynı argümanlarla art arda üçüncü kez patlarsa
-  // dur; aksi hâlde CLI otuz adımı aynı hatayla tüketir.
-  let lastFailure: { key: string; count: number } | undefined;
+  await agent.init();
 
-  // Kullanım muhasebesi: sağlayıcı ne saydıysa oturum sonunda toplanır.
-  // CLI'ın "sınır değil, kontrol" dürüstlüğü buradan geçiyor: görev kaç
-  // token yaktı, kullanıcıya gösterilir; sessiz yanma yok.
-  const sessionUsage = { prompt: 0, completion: 0, total: 0, cached: 0, requests: 0 };
-  const printUsageSummary = () => {
-    if (sessionUsage.total === 0 && sessionUsage.requests === 0) return;
-    process.stdout.write(
-      `\n— tüketim: ${sessionUsage.total.toLocaleString('tr-TR')} token ` +
-        `(giden ${sessionUsage.prompt.toLocaleString('tr-TR')} · ` +
-        `gelen ${sessionUsage.completion.toLocaleString('tr-TR')}` +
-        (sessionUsage.cached > 0 ? ` · önbellekten ${sessionUsage.cached.toLocaleString('tr-TR')}` : '') +
-        `; ${sessionUsage.requests} istek)\n`
-    );
+  const c = {
+    cyan: '\x1b[36m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    red: '\x1b[31m',
+    dim: '\x1b[2m',
+    bold: '\x1b[1m',
+    reset: '\x1b[0m'
   };
 
-  // Tek istem turu: etkileşimli modda aynı mesaj geçmişi sürer; model araçsız
-  // yanıt verince tur biter ve söz terminale döner.
-  const runPrompt = async (promptText: string): Promise<boolean> => {
-    messages.push({ role: 'user', content: promptText });
-    for (let step = 0; step < options.maxSteps; step++) {
-      const outbound = contextManager.pruneMessages(contextManager.compactHistory(messages), tools);
-      const guard = new StreamRepetitionGuard();
-      repetitionHit = false;
-      // Adıma özel iptal: tekrar kesintisi sonraki istekleri sakatlamasın.
-      const stepAbort = new AbortController();
-      const stepSignal =
-        typeof AbortSignal.any === 'function'
-          ? AbortSignal.any([abortController.signal, stepAbort.signal])
-          : abortController.signal;
-      let assistantProbe = '';
-      let response;
-      try {
-        response = await provider.sendMessage(
-          outbound,
-          tools,
-          (chunk) => {
-            if (repetitionHit) return;
-            process.stdout.write(chunk);
-            assistantProbe += chunk;
-            if (guard.check(assistantProbe)) {
-              repetitionHit = true;
-              process.stdout.write('\n⚠ Model tekrara girdi; yanıt kesildi.\n');
-              stepAbort.abort();
-            }
-          },
-          stepSignal
-        );
-      } catch (err) {
-        // Kesinti bile faturalanmıştır: yanıp gitse de tüketim hanesine yazılır.
-        if (err instanceof StreamInterruptedError) {
-          sessionUsage.total += err.usage.totalTokens;
-          sessionUsage.requests += 1;
-        }
-        if (repetitionHit) {
-          // Korumalı kesinti: iptal değil, yanıtsız tur. Modele durumu bildir.
-          messages.push({
-            role: 'assistant',
-            content: '[The response collapsed into repeated lines and was truncated by the client.]'
-          });
-          messages.push({
-            role: 'user',
-            content:
-              'Your previous answer collapsed into a repeated line. Continue the task concisely without repeating.'
-          });
-          continue;
-        }
-        if (abortController.signal.aborted) {
-          process.stdout.write('\nCancelled.\n');
-          printUsageSummary();
-          process.exit(130);
-        }
-        throw err;
-      }
-      if (response.usage) {
-        sessionUsage.prompt += response.usage.promptTokens;
-        sessionUsage.completion += response.usage.completionTokens;
-        sessionUsage.total += response.usage.totalTokens;
-        sessionUsage.cached += response.usage.cachedTokens ?? 0;
-        sessionUsage.requests += 1;
-      }
-      if (response.text) {
-        // Akışsız sağlayıcılar için son kontrol; akışta yazılan metin tekrar
-        // içermiyorsa hiçbir şey değişmez.
-        if (!repetitionHit && findRepetitionCollapse(response.text)) {
-          response = { ...response, text: collapseRepetition(response.text) };
-        }
-        process.stdout.write('\n');
-      }
-
-      messages.push({
-        role: 'assistant',
-        content: response.text,
-        toolCalls: response.toolCalls
-      });
-
-      if (!response.toolCalls || response.toolCalls.length === 0) {
-        return true;
-      }
-
-      for (const toolCall of response.toolCalls) {
-        const toolName = toolCall.name as ToolName;
-        // Kapı zinciri paylaşılan yürütücüdedir; CLI kendi kopyasını taşımaz.
-        const outcome = await runToolCall(
-          {
-            id: toolCall.id,
-            name: toolName,
-            args: toolCall.arguments ?? {},
-            requiresApproval: false,
-            status: 'pending'
-          },
-          {
-            workspaceRoot: options.workspace,
-            permissionManager,
-            snapshotManager,
-            planner,
-            context,
-            allowedTools,
-            approve: options.yes
-              ? async () => true
-              : (explanation) => askApproval(`${explanation} Do you approve?`)
-          }
-        );
-
-        const result = outcome.output;
-        process.stdout.write(`\n[${toolName}] ${result.slice(0, 2_000)}\n`);
-        // Geçmişe tam gövde yazmak, ContextManager budayana kadar her adımda
-        // yeniden faturalanır: kapıdan geçmiş halini sok, gösterimi ayrı tut.
-        messages.push({
-          role: 'tool',
-          toolCallId: toolCall.id,
-          content: contextManager.truncateToolOutput(result, toolName)
-        });
-
-        // Döngü koruması: aynı araç aynı argümanlarla art arda üçüncü kez
-        // patlarsa çıkmaz sokakta dönülüyordur; CLI'ı nazikçe durdur.
-        if (!outcome.ok) {
-          const key = `${toolName}::${JSON.stringify(toolCall.arguments ?? {})}`;
-          lastFailure =
-            lastFailure && lastFailure.key === key
-              ? { key, count: lastFailure.count + 1 }
-              : { key, count: 1 };
-          if (lastFailure.count >= 3) {
-            process.stderr.write(
-              `\n“${toolName}” aynı argümanlarla üst üste üç kez hata verdi; döngü durduruldu. ` +
-                'Yaklaşımı değiştirin ya da onay/izin ayarlarını gözden geçirin.\n'
-            );
-            process.exit(1);
-          }
+  const executeTurn = async (promptText: string): Promise<TerminalTurnResult> => {
+    return agent.runTurn(promptText, {
+      onToken: (chunk) => {
+        process.stdout.write(chunk);
+      },
+      onToolStart: (name, args) => {
+        const title = TOOL_TITLES[name] || name;
+        let preview = '';
+        if (typeof args?.path === 'string') preview = ` · ${args.path}`;
+        else if (typeof args?.command === 'string') preview = ` · ${args.command}`;
+        else if (typeof args?.query === 'string') preview = ` · ${args.query}`;
+        process.stdout.write(`\n${c.cyan}[Araç: ${title}]${c.reset}${c.dim}${preview}${c.reset}\n`);
+      },
+      onToolComplete: (name, output, ok) => {
+        const title = TOOL_TITLES[name] || name;
+        if (ok) {
+          process.stdout.write(`${c.green}✓ [${title}] Tamamlandı${c.reset}\n`);
         } else {
-          lastFailure = undefined;
+          process.stdout.write(`${c.red}✗ [${title}] Hata:${c.reset} ${output.slice(0, 300)}\n`);
         }
+      },
+      onApprovalRequest: async (question) => {
+        return askApproval(`[Onay Gerekli] ${question}`);
+      },
+      onRepetition: () => {
+        process.stdout.write(`\n${c.yellow}⚠ Model tekrara girdi; yanıt kesildi.${c.reset}\n`);
       }
-    }
-    process.stderr.write(`Maximum step limit (${options.maxSteps}) reached.\n`);
-    printUsageSummary();
-    return false;
+    });
   };
 
+  // Tek seferlik görev modu
   if (options.prompt.trim()) {
-    const completed = await runPrompt(options.prompt);
+    const result = await executeTurn(options.prompt);
+    process.stdout.write('\n');
+    printUsage(agent);
     sharedReadline?.close();
-    printUsageSummary();
-    if (!completed) {
+    if (!result.completed) {
       process.exit(1);
     }
     return;
   }
 
-  // Terminal sohbeti: mesaj geçmişi istemler arasında kalıcıdır.
-  process.stdout.write('Evren Kod etkileşimli sohbet — çıkmak için: exit\n');
+  // Etkileşimli REPL sohbet modu
+  printBanner(agent);
+
   for (;;) {
-    const line = (await getReadline().question('\nsen> ')).trim();
-    if (!line || /^(exit|quit|\/exit|\/q)$/i.test(line)) break;
-    await runPrompt(line);
+    const line = (await getReadline().question(`${c.cyan}${c.bold}evren>${c.reset} `)).trim();
+    if (!line) continue;
+
+    if (/^(exit|quit|\/exit|\/q|\/cikis)$/i.test(line)) {
+      process.stdout.write('Görüşmek üzere!\n');
+      break;
+    }
+
+    // Eğik çizgi komutları
+    if (line.startsWith('/')) {
+      const parts = line.split(/\s+/);
+      const cmd = (parts[0] || '').toLowerCase();
+      const arg = parts.slice(1).join(' ').trim();
+
+      if (cmd === '/yardim' || cmd === '/help') {
+        process.stdout.write(`${usage()}\n\n`);
+        continue;
+      }
+
+      if (cmd === '/model') {
+        if (!arg) {
+          process.stdout.write(`Mevcut model: ${c.green}${agent.settings.selectedModel}${c.reset}\n`);
+        } else {
+          agent.switchModel(arg);
+          await saveSettings({ selectedModel: arg }, { workspaceRoot: agent.workspaceRoot });
+          process.stdout.write(`Model güncellendi: ${c.green}${arg}${c.reset}\n`);
+        }
+        continue;
+      }
+
+      if (cmd === '/saglayici' || cmd === '/provider') {
+        if (!arg) {
+          process.stdout.write(`Mevcut sağlayıcı: ${c.green}${agent.settings.selectedProvider}${c.reset}\n`);
+        } else {
+          const prov = arg.toLowerCase() as ModelProviderType;
+          agent.switchProvider(prov);
+          await saveSettings({ selectedProvider: prov }, { workspaceRoot: agent.workspaceRoot });
+          process.stdout.write(`Sağlayıcı güncellendi: ${c.green}${prov}${c.reset}\n`);
+        }
+        continue;
+      }
+
+      if (cmd === '/anahtar' || cmd === '/key') {
+        const [targetProv, targetKey] = parts.slice(1);
+        if (!targetProv || !targetKey) {
+          process.stdout.write('Kullanım: /anahtar <evren|openrouter|openai-compatible> <api_anahtarı>\n');
+        } else {
+          const provKey = targetProv === 'openai-compatible' ? 'openaiCompatible' : targetProv;
+          await saveSettings({ apiKeys: { [provKey]: targetKey } }, { workspaceRoot: agent.workspaceRoot });
+          agent.switchProvider(targetProv as ModelProviderType);
+          process.stdout.write(`API anahtarı kaydedildi (${targetProv}).\n`);
+        }
+        continue;
+      }
+
+      if (cmd === '/durum' || cmd === '/status') {
+        process.stdout.write(`\n${c.bold}Çalışma Alanı:${c.reset} ${agent.workspaceRoot}\n`);
+        process.stdout.write(`${c.bold}Sağlayıcı    :${c.reset} ${agent.settings.selectedProvider}\n`);
+        process.stdout.write(`${c.bold}Model        :${c.reset} ${agent.settings.selectedModel}\n`);
+        printUsage(agent);
+        try {
+          const status = await agent.getGitStatus();
+          process.stdout.write(`\n${c.bold}Git Durumu:${c.reset}\n${status || 'Temiz ağaç'}\n`);
+        } catch {
+          // Git yoksa atla
+        }
+        continue;
+      }
+
+      if (cmd === '/dogrula' || cmd === '/verify') {
+        process.stdout.write(`${c.cyan}Doğrulama (test ve linter) koşturuluyor...${c.reset}\n`);
+        try {
+          const v = await agent.runVerification();
+          if (v.status === 'passed') {
+            process.stdout.write(`${c.green}✓ Doğrulama başarılı! (${v.summary})${c.reset}\n`);
+          } else if (v.status === 'skipped') {
+            process.stdout.write(`${c.dim}Doğrulama atlandı: ${v.skippedReason}${c.reset}\n`);
+          } else {
+            process.stdout.write(`${c.red}✗ Doğrulama başarısız:${c.reset} ${v.summary}\n`);
+          }
+        } catch (err) {
+          process.stdout.write(`${c.red}Hata:${c.reset} ${errorMessage(err)}\n`);
+        }
+        continue;
+      }
+
+      if (cmd === '/temizle' || cmd === '/clear') {
+        await agent.clearHistory();
+        console.clear();
+        printBanner(agent);
+        process.stdout.write('Sohbet geçmişi ve ekran temizlendi.\n');
+        continue;
+      }
+
+      process.stdout.write(`Bilinmeyen komut: ${cmd}. Yardım için: /yardim\n`);
+      continue;
+    }
+
+    try {
+      const turnResult = await executeTurn(line);
+      process.stdout.write('\n');
+      if (!turnResult.completed) {
+        process.stdout.write(`${c.yellow}Görev tamamlanamadı veya limit aşıldı.${c.reset}\n`);
+      }
+    } catch (err) {
+      process.stdout.write(`\n${c.red}Hata:${c.reset} ${errorMessage(err)}\n`);
+    }
   }
+
   sharedReadline?.close();
-  printUsageSummary();
+  printUsage(agent);
 }
 
 function isMainModule(): boolean {
   if (typeof process === 'undefined' || !process.argv[1]) return false;
   const script = process.argv[1].replace(/\\/g, '/');
-  return (script.endsWith('/cli.ts') || script.endsWith('/cli.js')) && !process.argv.includes('--test');
+  return (
+    (script.endsWith('/cli.ts') ||
+      script.endsWith('/cli.js') ||
+      script.endsWith('/index.ts') ||
+      script.endsWith('/index.js') ||
+      script.endsWith('/evren-kod')) &&
+    !process.argv.includes('--test')
+  );
 }
 
 if (isMainModule()) {

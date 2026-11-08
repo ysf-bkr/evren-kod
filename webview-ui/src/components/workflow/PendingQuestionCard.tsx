@@ -27,7 +27,7 @@ export const PendingQuestionCard: React.FC<PendingQuestionCardProps> = ({ questi
         <HelpCircle className="evren-kod-icon-sm shrink-0" />
         Evren bir cevap bekliyor
       </div>
-      <div className="text-sm mb-2 rounded-md border evren-kod-border-surface evren-kod-bg-input px-2.5 py-2 leading-relaxed evren-kod-text-fg">
+      <div className="text-sm mb-2 rounded-md border evren-kod-border-surface evren-kod-bg-input px-2.5 py-2 leading-relaxed evren-kod-text-fg break-words whitespace-pre-wrap">
         {question}
       </div>
       <form onSubmit={submit} className="flex flex-col gap-1.5">

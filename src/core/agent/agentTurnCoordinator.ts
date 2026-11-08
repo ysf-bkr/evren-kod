@@ -60,7 +60,19 @@ export async function runAgentTurn(
   if (!options.internal) core.isCancelled = false;
   // Kullanıcı yeni bir görev verdiyse otonom devam bütçesi sıfırlanır;
   // iç turlar bütçeyi paylaşır.
-  if (!options.internal) core.autoContinuations = 0;
+  if (!options.internal) {
+    core.autoContinuations = 0;
+    // Önceki görev tamamlandıysa yeni kullanıcı istemi için iş akışını taze intake aşamasına döndür.
+    const currentWf = core.workflow.getWorkflow();
+    if (currentWf.stage === 'done') {
+      currentWf.stage = 'intake';
+      currentWf.specApproved = false;
+      currentWf.planApproved = false;
+      currentWf.questionsAsked = 0;
+      currentWf.updatedAt = Date.now();
+      core.workflow.syncProgressToState();
+    }
+  }
   const generation = core.runGeneration;
 
   if (mode) {
@@ -225,7 +237,7 @@ export async function runAgentTurn(
     }
     core.notify({
       level: 'error',
-      message: errorMessage(err, 'An unexpected error occurred in the agent loop.')
+      message: errorMessage(err, 'Ajan döngüsünde beklenmeyen bir hata oluştu.')
     });
     await core.saveCurrentState();
     core.emitState();

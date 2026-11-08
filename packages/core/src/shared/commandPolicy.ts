@@ -237,8 +237,8 @@ const SAFE_COMMAND_PATTERNS: RegExp[] = [
   /^node\s+--test(\s|$)/,
   /^tsx\s+--test(\s|$)/,
   /^tsc(\s|$)/,
-  /^(eslint|prettier|jest|vitest|mocha|pytest)(\s|$)/,
-  /^(python|python3)\s+-m\s+(pytest|unittest)(\s|$)/,
+  /^(eslint|prettier|jest|vitest|mocha|pytest|ruff|flake8|mypy|black|pylint)(\s|$)/,
+  /^(python|python3)\s+-m\s+(pytest|unittest|ruff|flake8|mypy|pylint)(\s|$)/,
   // Rust (Cargo) test, clippy ve kontrol
   /^cargo\s+(test|check|clippy|build|bench|verify|fmt|--version)(\s|$)/,
   // .NET build ve test. `dotnet run` bilinçli yok: keyfi program çalıştırır;
@@ -491,11 +491,22 @@ function assessSingleStage(stage: string, isPipelineFilter: boolean): CommandAss
   };
 }
 
-export function assessCommand(command: string, _workspaceRoot?: string): CommandAssessment {
-  const value = String(command || '').trim();
-  if (!value) {
+function normalizeWorkspacePaths(cmd: string, root?: string): string {
+  if (!root || !root.trim()) return cmd;
+  const normalizedRoot = root.trim().replace(/[/\\]+$/, '');
+  if (!normalizedRoot || normalizedRoot === '/' || normalizedRoot === '\\') {
+    return cmd;
+  }
+  const escaped = normalizedRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return cmd.replace(new RegExp(escaped, 'g'), '.');
+}
+
+export function assessCommand(command: string, workspaceRoot?: string): CommandAssessment {
+  const raw = String(command || '').trim();
+  if (!raw) {
     return { risk: 'safe', reasons: [] };
   }
+  const value = normalizeWorkspacePaths(raw, workspaceRoot);
 
   // 1. Tüm komut genelinde sert kural kontrolü (blocked)
   const rootBlocked = matchingReasons(value, BLOCKED_RULES);

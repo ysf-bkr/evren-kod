@@ -2,6 +2,7 @@ export * from './history';
 export * from './settings';
 export * from './agents';
 export * from './callgraph';
+export * from './reports';
 export * from './changes';
 export * from './mcp';
 export * from './about';

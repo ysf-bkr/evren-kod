@@ -1,9 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="currentColor">
-  <!-- Evren Monochrome: Activity Bar Icon (tema duyarlı, kenar boşluksuz) -->
-  <!-- E gövdesi + örgü düğümü boşluğu (diamond, evenodd) + iç örgü düğümü -->
-  <path fill-rule="evenodd" d="M 116 80 L 380 80 A 36 36 0 0 1 380 152 L 176 152 A 24 24 0 0 0 152 176 L 152 196 A 24 24 0 0 0 176 220 L 330 220 A 36 36 0 0 1 330 292 L 176 292 A 24 24 0 0 0 152 316 L 152 336 A 24 24 0 0 0 176 360 L 380 360 A 36 36 0 0 1 380 432 L 116 432 A 36 36 0 0 1 80 396 L 80 116 A 36 36 0 0 1 116 80 Z M 200 222 L 234 256 L 200 290 L 166 256 Z M 200 232 L 224 256 L 200 280 L 176 256 Z" />
-  <!-- Çağrı grafiği düğümleri: uçlardaki dairesel odak noktaları -->
-  <circle cx="380" cy="116" r="14" />
-  <circle cx="330" cy="256" r="14" />
-  <circle cx="380" cy="396" r="14" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none">
+  <!-- Evren Kod Monochrome Activity Bar Icon (Tema Duyarlı) -->
+  <!-- Kalkan Dış Çerçevesi -->
+  <path d="M 256 56 C 295 72 355 96 406 118 C 406 185 396 310 256 440 C 116 310 106 185 106 118 C 157 96 217 72 256 56 Z"
+        stroke="currentColor" stroke-width="26" stroke-linejoin="round" />
+
+  <!-- Kod Sembolü </> -->
+  <g stroke="currentColor" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 222 142 L 182 174 L 222 206" />
+    <path d="M 272 136 L 240 212" />
+    <path d="M 290 142 L 330 174 L 290 206" />
+  </g>
+
+  <!-- Sonsuzluk / Evren Şeridi (Infinity Loop) -->
+  <path d="M 256 276 C 290 232 345 210 405 218 C 455 225 476 256 476 276 C 476 302 450 332 400 336 C 340 340 285 315 256 276 C 227 237 172 212 112 216 C 62 220 36 250 36 276 C 36 296 57 327 107 334 C 167 342 222 320 256 276 Z"
+        stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Kalite & Kanıt Mührü (Doğrulama Rozeti) -->
+  <circle cx="256" cy="375" r="28" stroke="currentColor" stroke-width="12" />
+  <path d="M 245 375 L 253 383 L 268 368" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

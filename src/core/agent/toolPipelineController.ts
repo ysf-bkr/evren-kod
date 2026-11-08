@@ -38,6 +38,7 @@ import { normalizeFile, REVIEWER_CATEGORIES } from '@evren-kod/core/core/gate/Re
 import { skipsApprovalGates } from '@evren-kod/core/core/agent/autonomy';
 import { MAX_INTAKE_QUESTIONS } from '@evren-kod/core/core/workflow/TaskWorkflow';
 import { describeWorkflow } from '@evren-kod/core/core/workflow/TaskWorkflow';
+import { FastApplyEngine } from '@evren-kod/core/tools/fastApply';
 import { toolArgString, toolArgBoolean } from './toolPipelineHelpers';
 import { unquoteGitPath } from '@evren-kod/core/core/git/porcelainPath';
 
@@ -125,16 +126,24 @@ export class ToolPipelineController {
         try {
           const safePath = resolveWorkspacePath(targetPath, workspaceRoot);
           const current = await fs.readFile(safePath, 'utf-8');
-          const targetText = toolArgString(tc.args, 'targetText');
-          const replacementText = toolArgString(tc.args, 'replacementText');
-          const allowMultiple = toolArgBoolean(tc.args, 'allowMultiple');
-          const occurrences = targetText ? current.split(targetText).length - 1 : 0;
-          // Belirsiz bir hedef için yanıltıcı diff gösterme; hatayı araç bildirir.
-          if (occurrences === 1 || (occurrences > 1 && allowMultiple)) {
-            const modified = allowMultiple
-              ? current.split(targetText).join(replacementText)
-              : current.replace(targetText, () => replacementText);
-            await this.host.openDiffPreview(targetPath, modified);
+          const diff = toolArgString(tc.args, 'diff');
+          if (diff) {
+            const applyRes = FastApplyEngine.applyDiff(current, diff);
+            if (applyRes.success) {
+              await this.host.openDiffPreview(targetPath, applyRes.content);
+            }
+          } else {
+            const targetText = toolArgString(tc.args, 'targetText');
+            const replacementText = toolArgString(tc.args, 'replacementText');
+            const allowMultiple = toolArgBoolean(tc.args, 'allowMultiple');
+            const occurrences = targetText ? current.split(targetText).length - 1 : 0;
+            // Belirsiz bir hedef için yanıltıcı diff gösterme; hatayı araç bildirir.
+            if (occurrences === 1 || (occurrences > 1 && allowMultiple)) {
+              const modified = allowMultiple
+                ? current.split(targetText).join(replacementText)
+                : current.replace(targetText, () => replacementText);
+              await this.host.openDiffPreview(targetPath, modified);
+            }
           }
         } catch (diffErr) {
           // Yol geçersizse ya da diff açılamazsa araç kendi güvenlik
@@ -527,8 +536,42 @@ export class ToolPipelineController {
         }
         const moduleIds = new Set(this.host.modulePlanner.getPlan()?.modules.map((m) => m.id) ?? []);
         const criteriaIds = this.currentCriteriaIds();
+        const planInput = parsePlanUpdateInput(tc.args);
+
+        // Model adımlardan birinde kriteri atlamışsa (özellikle s6 gibi doğrulama/kapanış adımlarında),
+        // görevi kırmamak için önceki kriteri veya varsayılan kriteri bağla.
+        const inputSteps = planInput.steps ?? [];
+        if (criteriaIds.size > 0) {
+          const defaultCriterion = [...criteriaIds][0];
+          for (const step of inputSteps) {
+            if (!step.criteria || step.criteria.length === 0) {
+              const prev = this.host.planner.getPlan()?.steps.find((s) => s.id === step.id);
+              if (prev?.criteria && prev.criteria.length > 0) {
+                step.criteria = [...prev.criteria];
+              } else if (defaultCriterion) {
+                step.criteria = [defaultCriterion];
+              }
+            }
+          }
+        }
+
+        // Modül planı varsa ancak adım modülsüz geldiyse önceki modülü veya varsayılanı bağla.
+        if (!isFast && moduleIds.size > 0) {
+          const defaultModule = [...moduleIds][0];
+          for (const step of inputSteps) {
+            if (!step.moduleId) {
+              const prev = this.host.planner.getPlan()?.steps.find((s) => s.id === step.id);
+              if (prev?.moduleId) {
+                step.moduleId = prev.moduleId;
+              } else if (defaultModule) {
+                step.moduleId = defaultModule;
+              }
+            }
+          }
+        }
+
         const plan = this.host.planner.update({
-          ...parsePlanUpdateInput(tc.args),
+          ...planInput,
           validation: {
             moduleIds,
             criteriaIds,
@@ -656,30 +699,71 @@ export class ToolPipelineController {
         }
       }
 
-      const toolResult = await toolDef.execute(tc.args, {
-        workspaceRoot,
-        terminal:
-          this.host.settings.useIntegratedTerminal !== false && !this.host.getSandboxConfig(workspaceRoot)
-            ? (command, root, signal) => this.host.runInIntegratedTerminal(command, root, signal)
-            : undefined,
-        lspClient: this.host.lspClient,
-        snapshotManager: this.host.snapshotManager,
-        permissionManager: this.host.permissionManager,
-        verificationManager: this.host.verificationManager,
-        gitManager: this.host.gitManager,
-        projectMemory: this.host.projectMemory,
-        knowledgeStore: this.host.knowledgeStore,
-        vectorMemory: this.host.vectorMemory,
-        embeddingIndex: this.host.embeddingIndex,
-        specStore: this.host.specStore,
-        releaseGate: this.host.workflow.releaseGatePort,
-        callGraph: this.host.callGraphManager,
-        workflow: this.host.workflow.getWorkflow(),
-        sandbox: this.host.getSandboxConfig(workspaceRoot),
-        signal: this.host.activeAbortController?.signal
-      });
+      // Dosya kilitleme kontrolü (FileLockManager): Eşzamanlı düzenleme çatışmasını engelle
+      let lockedPath: string | undefined;
+      if (tc.name === 'write_file' || tc.name === 'edit_file') {
+        const rawTarget = (tc.args?.filePath ?? tc.args?.path) as string;
+        if (rawTarget && workspaceRoot) {
+          lockedPath = path.isAbsolute(rawTarget) ? rawTarget : path.join(workspaceRoot, rawTarget);
+          const lockResult = this.host.fileLockManager.tryAcquire(lockedPath, 'agent');
+          if (!lockResult.acquired) {
+            tc.status = 'error';
+            tc.error = `Dosya şu anda "${lockResult.currentOwner}" tarafından kilitlenmiş.`;
+            tc.result = `[Hata]: Dosya kilitli (${rawTarget}): ${tc.error}`;
+            return { paused: false, filesChanged: false };
+          }
+        }
+      }
+
+      let toolResult: string;
+      try {
+        toolResult = await toolDef.execute(tc.args, {
+          workspaceRoot,
+          terminal:
+            this.host.settings.useIntegratedTerminal !== false && !this.host.getSandboxConfig(workspaceRoot)
+              ? (command, root, signal) => this.host.runInIntegratedTerminal(command, root, signal)
+              : undefined,
+          lspClient: this.host.lspClient,
+          snapshotManager: this.host.snapshotManager,
+          permissionManager: this.host.permissionManager,
+          verificationManager: this.host.verificationManager,
+          gitManager: this.host.gitManager,
+          projectMemory: this.host.projectMemory,
+          knowledgeStore: this.host.knowledgeStore,
+          vectorMemory: this.host.vectorMemory,
+          embeddingIndex: this.host.embeddingIndex,
+          specStore: this.host.specStore,
+          releaseGate: this.host.workflow.releaseGatePort,
+          callGraph: this.host.callGraphManager,
+          workflow: this.host.workflow.getWorkflow(),
+          sandbox: this.host.getSandboxConfig(workspaceRoot),
+          signal: this.host.activeAbortController?.signal
+        });
+      } finally {
+        if (lockedPath) {
+          this.host.fileLockManager.release(lockedPath, 'agent');
+        }
+      }
+
       tc.status = 'completed';
-      tc.result = this.host.contextManager.truncateToolOutput(toolResult, tc.name);
+      const optimizedResult = this.host.optimizationEngine.optimizeToolOutput(tc.name, toolResult, tc.args);
+      tc.result = this.host.contextManager.truncateToolOutput(optimizedResult, tc.name);
+
+      if (tc.name === 'write_file' || tc.name === 'edit_file') {
+        const rawTarget = (tc.args?.filePath ?? tc.args?.path) as string;
+        if (rawTarget) {
+          let updatedContent = typeof tc.args?.content === 'string' ? tc.args.content : '';
+          if (!updatedContent && workspaceRoot) {
+            try {
+              const fullPath = resolveWorkspacePath(rawTarget, workspaceRoot);
+              updatedContent = await fs.readFile(fullPath, 'utf-8');
+            } catch {
+              // Dosya okunamadıysa sessizce geç
+            }
+          }
+          this.host.optimizationEngine.handleFileMutation(rawTarget, updatedContent);
+        }
+      }
       // Okuma gerçekten çalıştı: pencereye yaz ki sonraki birebir tekrar stub'lanabilsin.
       if (tc.name === 'read_file' && readStamp) {
         this.host.readDeduper.record(readStamp.path, tc.args.offset, tc.args.limit, readStamp.mtimeMs);

@@ -5,18 +5,18 @@ import {
   GraduationCap,
   Layers,
   Plug,
-  Settings,
   ShieldCheck,
   Sparkles,
   Bot,
   Terminal
 } from 'lucide-react';
-import { ChatMessage, CheckpointSummary, ToolCall } from '@shared/types';
+import { ChatMessage, CheckpointSummary, ModelProviderType, ToolCall } from '@shared/types';
 import { stripInjectedContext } from '@shared/editorContext';
-import { ListButton, Button } from '../ui';
+import { ListButton } from '../ui';
 import { Logo } from '../common/Logo';
 import { SystemMessage, TurnBlock, UserMessage } from './MessageBubbles';
 import { groupMessages } from './chatTurns';
+import { SetupWizard } from './SetupWizard';
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -31,6 +31,11 @@ interface MessageListProps {
   onRetryMessage?: (content: string, messageId: string) => void;
   onSuggestionClick?: (prompt: string) => void;
   isConfigured?: boolean;
+  isOllamaUnavailable?: boolean;
+  ollamaError?: string;
+  selectedProvider?: ModelProviderType;
+  onRetryConnection?: () => void;
+  onSwitchProvider?: (provider: ModelProviderType) => void;
   onOpenSettings?: () => void;
 }
 
@@ -80,8 +85,22 @@ const CAPABILITIES = [
 const EmptyState: React.FC<{
   onSuggestionClick?: (prompt: string) => void;
   isConfigured?: boolean;
+  isOllamaUnavailable?: boolean;
+  ollamaError?: string;
+  selectedProvider?: ModelProviderType;
+  onRetryConnection?: () => void;
+  onSwitchProvider?: (provider: ModelProviderType) => void;
   onOpenSettings?: () => void;
-}> = ({ onSuggestionClick, isConfigured = true, onOpenSettings }) => (
+}> = ({
+  onSuggestionClick,
+  isConfigured = true,
+  isOllamaUnavailable = false,
+  ollamaError,
+  selectedProvider,
+  onRetryConnection,
+  onSwitchProvider,
+  onOpenSettings
+}) => (
   <div className="flex h-full flex-col justify-between gap-4 px-[var(--evren-kod-pad-inline)] py-4">
     <div className="space-y-5 pt-2">
       <div className="flex flex-col items-center gap-2 text-center">
@@ -90,9 +109,9 @@ const EmptyState: React.FC<{
         </div>
         <div>
           <h1 className="text-sm font-semibold tracking-tight evren-kod-text-fg">Evren Kod</h1>
-          <p className="mt-0.5 max-w-[260px] text-sm leading-relaxed evren-kod-text-muted">
-            Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Kodlama, hızlı, planlama ve
-            eğitim modlarında çalışır.
+          <p className="mt-0.5 max-w-[280px] text-sm leading-relaxed evren-kod-text-muted">
+            Türkiye'nin ve dünyanın en güvenli, kurumsal gizliliğe saygılı ve kanıtsız kodu teslim etmeyen
+            kalite asistanı. Kodlama, hızlı, planlama ve eğitim modlarında çalışır.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-1">
@@ -108,29 +127,15 @@ const EmptyState: React.FC<{
         </div>
       </div>
 
-      {!isConfigured ? (
-        <div className="rounded-lg border evren-kod-border-warning evren-kod-bg-warning p-4 text-center space-y-3">
-          <div className="evren-kod-avatar evren-kod-avatar--lg evren-kod-bg-badge mx-auto">
-            <Settings className="evren-kod-icon-lg" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="evren-kod-title">Model Ayarları Yapılandırılmadı</h2>
-            <p className="text-xs evren-kod-text-muted leading-relaxed">
-              Evren ile sohbete başlayabilmek için lütfen bir model sağlayıcısı (Yerel Ollama, EVREN LLM,
-              OpenRouter vb.) seçip yapılandırın.
-            </p>
-          </div>
-          {onOpenSettings && (
-            <Button
-              variant="primary"
-              className="w-full justify-center"
-              onClick={onOpenSettings}
-              icon={<Settings className="evren-kod-icon-sm" />}
-            >
-              Ayarları Yapılandır
-            </Button>
-          )}
-        </div>
+      {!isConfigured || isOllamaUnavailable ? (
+        <SetupWizard
+          selectedProvider={selectedProvider}
+          isOllamaUnavailable={isOllamaUnavailable}
+          ollamaError={ollamaError}
+          onRetryConnection={onRetryConnection}
+          onSwitchProvider={onSwitchProvider}
+          onOpenSettings={onOpenSettings}
+        />
       ) : (
         <div className="space-y-1.5">
           <div className="px-1 evren-kod-overline">Hızlı başlangıç</div>
@@ -167,6 +172,11 @@ export const MessageList: React.FC<MessageListProps> = ({
   onRetryMessage,
   onSuggestionClick,
   isConfigured = true,
+  isOllamaUnavailable = false,
+  ollamaError,
+  selectedProvider,
+  onRetryConnection,
+  onSwitchProvider,
   onOpenSettings
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -250,6 +260,11 @@ export const MessageList: React.FC<MessageListProps> = ({
         <EmptyState
           onSuggestionClick={onSuggestionClick}
           isConfigured={isConfigured}
+          isOllamaUnavailable={isOllamaUnavailable}
+          ollamaError={ollamaError}
+          selectedProvider={selectedProvider}
+          onRetryConnection={onRetryConnection}
+          onSwitchProvider={onSwitchProvider}
           onOpenSettings={onOpenSettings}
         />
       </div>

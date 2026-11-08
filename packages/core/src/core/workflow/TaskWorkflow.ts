@@ -113,7 +113,8 @@ export function canTransition(
   mode: AgentMode = 'code'
 ): WorkflowGateResult {
   if (from === to) return { allowed: true };
-  if (to === 'intake' && from !== 'done') return { allowed: true };
+  // Görev bittikten sonra veya herhangi bir aşamada yeni istek için intake'e geri dönülebilir.
+  if (to === 'intake') return { allowed: true };
 
   // Doğrulama başarısız olduğunda ajan uygulama aşamasına geri döner; bu tek
   // adımlık geri dönüş, iş akışının "düzelt ve yeniden doğrula" döngüsüdür.

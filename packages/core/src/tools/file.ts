@@ -12,6 +12,7 @@ import { argString, argBoolean, toPositiveInt } from './args';
 import { resolveWorkspacePath } from './pathSafety';
 import { isRecord } from '../shared/errors';
 import { EVREN_KOD_DIR, MAX_TOOL_OUTPUT_CHARS } from '../shared/constants';
+import { FastApplyEngine } from './fastApply';
 
 const execFileAsync = promisify(execFile);
 
@@ -122,7 +123,7 @@ export const writeFileTool: ToolDefinition = {
 
 export const editFileTool: ToolDefinition = {
   name: 'edit_file',
-  description: 'Safely replaces a specific code block in a file with new code.',
+  description: 'Safely replaces code blocks or applies unified diffs/hunks in a file (powered by FastApply).',
   parameters: {
     type: 'object',
     properties: {
@@ -132,31 +133,48 @@ export const editFileTool: ToolDefinition = {
       },
       targetText: {
         type: 'string',
-        description: 'Exact existing text to find and replace in the file.'
+        description: 'Exact existing text to find and replace in the file (optional if diff is provided).'
       },
       replacementText: {
         type: 'string',
         description: 'New replacement text.'
+      },
+      diff: {
+        type: 'string',
+        description: 'Unified diff or SEARCH/REPLACE blocks to apply directly to large files (Fast Apply).'
       },
       allowMultiple: {
         type: 'boolean',
         description: 'Replace all occurrences if the target text appears more than once (default: false).'
       }
     },
-    required: ['path', 'targetText', 'replacementText']
+    required: ['path']
   },
   execute: async (args, context) => {
+    const targetPath = argString(args.path);
+    const fullPath = resolveWorkspacePath(targetPath, context.workspaceRoot);
+    const content = await fs.readFile(fullPath, 'utf-8');
+
+    // 1. Doğrudan Diff / SEARCH-REPLACE Bloğu Verilmişse (Fast Apply)
+    if (typeof args.diff === 'string' && args.diff.trim().length > 0) {
+      const applyRes = FastApplyEngine.applyDiff(content, args.diff);
+      if (!applyRes.success) {
+        throw new Error(
+          `Diff application failed for ${targetPath}: ${applyRes.error || 'No matching blocks'}`
+        );
+      }
+      await fs.writeFile(fullPath, applyRes.content, 'utf-8');
+      return `Successfully fast-applied diff to ${targetPath} (${applyRes.diffSummary})`;
+    }
+
     const targetText = args.targetText;
     const replacementText = args.replacementText;
     if (typeof targetText !== 'string' || targetText.length === 0) {
-      throw new Error('Target text to search for cannot be empty.');
+      throw new Error('Target text to search for cannot be empty (or provide a diff parameter).');
     }
     if (typeof replacementText !== 'string') {
       throw new Error('Replacement text must be a string.');
     }
-    const targetPath = argString(args.path);
-    const fullPath = resolveWorkspacePath(targetPath, context.workspaceRoot);
-    const content = await fs.readFile(fullPath, 'utf-8');
 
     // Windows/autocrlf kullanan dosyalarda \r\n, model çıktısında \n olabilir.
     const normalizedContent = content.replace(/\r\n/g, '\n');
@@ -166,10 +184,6 @@ export const editFileTool: ToolDefinition = {
     const lfCount = (content.match(/(?<!\r)\n/g) || []).length;
     const eol = crlfCount > lfCount ? '\r\n' : '\n';
 
-    if (!normalizedContent.includes(normalizedTarget)) {
-      throw new Error(`Target text was not found in file: ${targetPath}`);
-    }
-
     // Hedef ile yedek aynıysa yazma hiçbir şey değiştirmez; "başarılı" demek
     // modeli yanlış yönlendirir (denetim m.15). Dosyaya dokunmadan patla.
     if (normalizedTarget === normalizedReplacement) {
@@ -177,6 +191,16 @@ export const editFileTool: ToolDefinition = {
         `targetText and replacementText are identical; the edit would change nothing in ${targetPath}. ` +
           'Describe the intended change instead.'
       );
+    }
+
+    if (!normalizedContent.includes(normalizedTarget)) {
+      // 2. Tam eşleşme yoksa FastApply toleranslı (fuzzy) eşleştirmeyi dene (boşluk/girinti toleransı)
+      const fuzzyMatch = FastApplyEngine.fuzzyReplace(content, targetText, replacementText, 0.8);
+      if (fuzzyMatch) {
+        await fs.writeFile(fullPath, fuzzyMatch.updatedContent, 'utf-8');
+        return `Successfully edited ${targetPath} (fast-apply fuzzy match, confidence: %${Math.round(fuzzyMatch.confidence * 100)})`;
+      }
+      throw new Error(`Target text was not found in file: ${targetPath}`);
     }
 
     const occurrences = normalizedContent.split(normalizedTarget).length - 1;

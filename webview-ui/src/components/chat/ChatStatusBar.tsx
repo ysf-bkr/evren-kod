@@ -66,12 +66,13 @@ export function resolveChatStatus(state: TaskState): ChatStatus {
     const location = sub.isolate ? ' · İzole Worktree' : '';
     let action = 'çalışıyor…';
     if (sub.currentTool) {
+      const detailStr = sub.currentToolDetail ? ` · ${sub.currentToolDetail}` : '';
       const stepStr = sub.step
         ? sub.maxSteps
           ? ` (${sub.step}/${sub.maxSteps})`
           : ` (adım ${sub.step})`
         : '';
-      action = `araç çalışıyor: ${sub.currentTool}${stepStr}`;
+      action = `araç çalışıyor: ${sub.currentTool}${detailStr}${stepStr}`;
     }
     return {
       kind: 'busy',
@@ -86,7 +87,9 @@ export function resolveChatStatus(state: TaskState): ChatStatus {
     const info = lastAssistant ? resolveMessagePhase(lastAssistant) : undefined;
     let action = 'Yanıt bekleniyor…';
     if (info?.phase === 'working' && info.tool) {
-      action = `Araç çalışıyor: ${info.tool}${info.totalSteps ? ` (${info.step}/${info.totalSteps})` : ''}`;
+      const detailStr = info.toolDetail ? ` · ${info.toolDetail}` : '';
+      const stepStr = info.totalSteps ? ` (${info.step}/${info.totalSteps})` : '';
+      action = `Araç çalışıyor: ${info.tool}${detailStr}${stepStr}`;
     } else if (info?.phase === 'writing') {
       action = 'Yanıt yazılıyor…';
     }
@@ -177,6 +180,10 @@ const releaseGateLabel = (state: TaskState): { text: string; tone: string; title
   if (!workflow) return null;
   const record = workflow.releaseGate;
   if (record) {
+    const isOngoing = state.stats.verification?.status === 'running' || Boolean(state.activeSubagent);
+    const ongoingNote = isOngoing
+      ? ' Şu anda inceleme / doğrulama sürüyor; tamamlandığında kapı yeniden değerlendirilecek.'
+      : '';
     const title = [
       `Kapı kararı ${new Date(record.recordedAt).toLocaleString('tr-TR', {
         day: '2-digit',
@@ -186,13 +193,24 @@ const releaseGateLabel = (state: TaskState): { text: string; tone: string; title
       })} · kanıt: ${record.criteriaEvidence.length} kriter`,
       record.reasons[0] || '',
       record.rollback ? `Geri alma: ${record.rollback}` : '',
-      'Karar sonrası dosya değişirse kapı yeniden koşar.'
+      'Karar sonrası dosya değişirse kapı yeniden koşar.' + (ongoingNote ? ` ${ongoingNote}` : '')
     ]
       .filter(Boolean)
       .join(' — ');
-    return record.verdict === 'pass'
-      ? { text: 'Kapı: Geçti', tone: 'evren-kod-text-success', title }
-      : { text: 'Kapı: Engellendi', tone: 'evren-kod-text-error', title };
+
+    if (record.verdict === 'pass') {
+      return { text: 'Kapı: Geçti', tone: 'evren-kod-text-success', title };
+    }
+
+    if (isOngoing) {
+      return {
+        text: 'Kapı: İnceleniyor',
+        tone: 'evren-kod-text-info',
+        title: `Önceki kapı engeli üzerine inceleme/doğrulama sürüyor.${ongoingNote}`
+      };
+    }
+
+    return { text: 'Kapı: Engellendi', tone: 'evren-kod-text-error', title };
   }
   if (workflow.stage === 'verify') {
     return {

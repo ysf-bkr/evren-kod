@@ -7,6 +7,7 @@ import {
   HistoryView,
   McpView,
   CallGraphView,
+  ReportsView,
   AgentsView,
   AboutView,
   ChangesView
@@ -18,9 +19,12 @@ import {
   AutonomyLevel,
   ExtensionToWebviewMessage,
   EvrenQuota,
+  ModelProviderType,
   NavigationDestination,
   SessionInfoLoaded,
+  TaskObservabilitySummary,
   TaskState,
+  TechDebtReport,
   ToastNotification,
   UserSettings
 } from '@shared/types';
@@ -85,6 +89,7 @@ export const App: React.FC = () => {
 
   /** Sohbet altındaki model seçici için sağlayıcı model listesi. */
   const [models, setModels] = useState<string[]>([]);
+  const [modelsError, setModelsError] = useState<string | undefined>(undefined);
   /** EVREN günlük kota bilgisi; diğer sağlayıcılarda boş kalır. */
   const [quota, setQuota] = useState<EvrenQuota | undefined>(undefined);
   const [quotaError, setQuotaError] = useState<string | undefined>(undefined);
@@ -93,6 +98,10 @@ export const App: React.FC = () => {
   const [activeSessionKey, setActiveSessionKey] = useState<string | undefined>(undefined);
   /** Bellekteki oturumlar (arka planda çalışanlar dahil). */
   const [sessions, setSessions] = useState<SessionInfoLoaded[]>([]);
+  /** Çalışma alanı teknik borç raporu. */
+  const [techDebtReport, setTechDebtReport] = useState<TechDebtReport | null>(null);
+  /** Canlı token ve maliyet optimizasyon metrikleri. */
+  const [tokenMetrics, setTokenMetrics] = useState<TaskObservabilitySummary | null>(null);
 
   useEffect(() => {
     vscode.postMessage({ type: 'REQUEST_SETTINGS' });
@@ -133,11 +142,18 @@ export const App: React.FC = () => {
           break;
         case 'MODELS_LOADED':
           setModels(msg.payload.models ?? []);
+          setModelsError(msg.payload.error);
           break;
         case 'QUOTA_LOADED':
           setLoadingQuota(false);
           setQuota(msg.payload.quota);
           setQuotaError(msg.payload.error);
+          break;
+        case 'TECH_DEBT_REPORT_LOADED':
+          setTechDebtReport(msg.payload);
+          break;
+        case 'TOKEN_METRICS_LOADED':
+          setTokenMetrics(msg.payload);
           break;
         case 'STREAM_CHUNK': {
           if (msg.sessionKey && msg.sessionKey !== activeSessionRef.current) break;
@@ -329,6 +345,28 @@ export const App: React.FC = () => {
     vscode.postMessage({ type: 'EDIT_MESSAGE', payload: { messageId, text: content, mode: taskState.mode } });
   };
 
+  const isOllamaUnavailable = settings.selectedProvider === 'ollama' && Boolean(modelsError);
+  const isChatReady = isChatConfigured(settings) && !isOllamaUnavailable;
+
+  const handleRetryModels = () => {
+    setModelsError(undefined);
+    vscode.postMessage({
+      type: 'FETCH_MODELS',
+      payload: { provider: settings.selectedProvider }
+    });
+  };
+
+  const handleSwitchProvider = (provider: ModelProviderType) => {
+    const updated: UserSettings = {
+      ...settings,
+      selectedProvider: provider,
+      selectedModel: provider === 'evren' ? 'auto' : settings.selectedModel
+    };
+    setSettings(updated);
+    vscode.postMessage({ type: 'SAVE_SETTINGS', payload: updated });
+    openView('settings');
+  };
+
   return (
     <div className="evren-kod-app">
       {/* Sabit Header — Sohbet ekranındayken TaskHeader; diğer ekranlar kendi ScreenHeader'ını tepe başlığı olarak kullanır */}
@@ -354,6 +392,11 @@ export const App: React.FC = () => {
               onRetryMessage={handleRetryMessage}
               onSuggestionClick={handleSuggestionClick}
               isConfigured={isChatConfigured(settings)}
+              isOllamaUnavailable={isOllamaUnavailable}
+              ollamaError={modelsError}
+              selectedProvider={settings.selectedProvider}
+              onRetryConnection={handleRetryModels}
+              onSwitchProvider={handleSwitchProvider}
               onOpenSettings={() => openView('settings')}
             />
             <div className="shrink-0 w-full border-t evren-kod-border-base evren-kod-bg-base">
@@ -370,7 +413,7 @@ export const App: React.FC = () => {
                   durur; kullanıcı kaydırıp adım kartı aramadan burada onaylar. */}
               <PendingActionNotice state={taskState} />
               <ComposerDock state={taskState} />
-              {isChatConfigured(settings) && (
+              {isChatReady && (
                 <ChatMetaBar
                   settings={settings}
                   models={models}
@@ -388,7 +431,7 @@ export const App: React.FC = () => {
                   onSend={handleSendMessage}
                   onModeChange={handleModeChange}
                   initialValue={draftPrompt}
-                  isConfigured={isChatConfigured(settings)}
+                  isConfigured={isChatReady}
                   onOpenSettings={() => openView('settings')}
                   editing={Boolean(
                     editingMessageId && taskState.messages.some((message) => message.id === editingMessageId)
@@ -491,6 +534,16 @@ export const App: React.FC = () => {
 
           {activeTab === 'callgraph' && (
             <CallGraphView onSelectMenu={openView} changedFileCount={taskState.stats.filesModified.length} />
+          )}
+
+          {activeTab === 'reports' && (
+            <ReportsView
+              state={taskState}
+              techDebtReport={techDebtReport}
+              tokenMetrics={tokenMetrics}
+              onSelectMenu={openView}
+              changedFileCount={taskState.stats.filesModified.length}
+            />
           )}
 
           {activeTab === 'agents' && (

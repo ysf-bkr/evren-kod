@@ -110,7 +110,7 @@ describe('TurnChangesReview: dosya değişikliklerini toplama ve inceleme', () =
     assert.equal(messages.length, 1);
     assert.deepEqual(messages[0], {
       type: 'OPEN_FILE',
-      payload: { filePath: 'src/newFile.ts' }
+      payload: { filePath: 'src/newFile.ts', line: 1 }
     });
   });
 });

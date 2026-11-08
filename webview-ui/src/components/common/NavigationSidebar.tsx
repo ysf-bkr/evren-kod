@@ -1,6 +1,17 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Bot, FileDiff, History, Info, MessageSquare, Network, Server, Settings } from 'lucide-react';
+import {
+  BarChart3,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  FileDiff,
+  History,
+  Info,
+  MessageSquare,
+  Network,
+  Server,
+  Settings
+} from 'lucide-react';
 import { NavigationDestination } from '@shared/types';
 import { NavButton } from '../ui';
 
@@ -24,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'history', title: 'Görev Geçmişi', icon: <History className="evren-kod-icon-md" /> },
   { id: 'agents', title: 'Ajanlar & Beceriler', icon: <Bot className="evren-kod-icon-md" /> },
   { id: 'callgraph', title: 'Bilgi Grafiği', icon: <Network className="evren-kod-icon-md" /> },
+  { id: 'reports', title: 'Raporlar & Borç', icon: <BarChart3 className="evren-kod-icon-md" /> },
   { id: 'mcp', title: 'MCP Sunucuları', icon: <Server className="evren-kod-icon-md" /> },
   { id: 'settings', title: 'Ayarlar', icon: <Settings className="evren-kod-icon-md" /> },
   { id: 'about', title: 'Hakkında', icon: <Info className="evren-kod-icon-md" /> }

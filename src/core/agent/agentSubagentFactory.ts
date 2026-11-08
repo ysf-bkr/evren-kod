@@ -31,6 +31,7 @@ export function createSubagentManager(core: AgentCore): SubagentManager {
           task: current?.task || '',
           status: details?.state || 'running',
           currentTool: details?.tool,
+          currentToolDetail: details?.toolDetail,
           step: details?.step,
           maxSteps: details?.maxSteps,
           worktreePath: details?.worktreePath ?? current?.worktreePath,

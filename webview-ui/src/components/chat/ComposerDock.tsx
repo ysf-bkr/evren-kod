@@ -20,6 +20,7 @@ import { PendingQuestionCard } from '../workflow/PendingQuestionCard';
 import { Button } from '../ui';
 import { vscode } from '../../utils/vscode';
 import { describePlanStep, STEP_STATUS_COLOR, STEP_STATUS_LABEL } from '../../utils/planProgress';
+import { TOOL_TITLES } from '../../utils/toolLabels';
 
 interface ComposerDockProps {
   state: TaskState;
@@ -233,12 +234,22 @@ export const ComposerDock: React.FC<ComposerDockProps> = ({ state }) => {
           <div className="mt-1 text-2xs evren-kod-text-muted truncate">{state.activeSubagent.task}</div>
 
           <div className="mt-1.5 flex items-center justify-between border-t evren-kod-border-surface pt-1 text-2xs">
-            <div className="flex items-center gap-1 evren-kod-text-brand">
+            <div className="flex min-w-0 flex-1 items-center gap-1 evren-kod-text-brand mr-2">
               {state.activeSubagent.currentTool ? (
                 <>
-                  <Wrench className="evren-kod-icon-xs animate-spin" />
-                  <span className="font-mono">
+                  <Wrench className="evren-kod-icon-xs animate-spin shrink-0" />
+                  <span
+                    className="font-mono truncate"
+                    title={`${TOOL_TITLES[state.activeSubagent.currentTool as keyof typeof TOOL_TITLES] || state.activeSubagent.currentTool}${
+                      state.activeSubagent.currentToolDetail
+                        ? `: ${state.activeSubagent.currentToolDetail}`
+                        : ''
+                    }`}
+                  >
                     {state.activeSubagent.currentTool}
+                    {state.activeSubagent.currentToolDetail
+                      ? ` · ${state.activeSubagent.currentToolDetail}`
+                      : ''}
                     {state.activeSubagent.step
                       ? state.activeSubagent.maxSteps
                         ? ` (${state.activeSubagent.step}/${state.activeSubagent.maxSteps})`
@@ -248,7 +259,7 @@ export const ComposerDock: React.FC<ComposerDockProps> = ({ state }) => {
                 </>
               ) : (
                 <>
-                  <Loader2 className="evren-kod-icon-xs animate-spin" />
+                  <Loader2 className="evren-kod-icon-xs animate-spin shrink-0" />
                   <span>Düşünüyor ve planlıyor…</span>
                 </>
               )}

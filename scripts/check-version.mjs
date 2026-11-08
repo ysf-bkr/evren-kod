@@ -25,6 +25,9 @@ for (const ws of ['packages/core', 'packages/cli']) {
   expected(`package-lock.json ${ws} version`, lock.packages?.[ws]?.version);
 }
 expected('webview-ui/package.json version', uiPkg.version);
+const uiLock = JSON.parse(read('webview-ui/package-lock.json'));
+expected('webview-ui/package-lock.json version', uiLock.version);
+expected('webview-ui/package-lock.json packages[""].version', uiLock.packages?.['']?.version);
 
 const vsix = `out/evren-kod-${version}.vsix`;
 // Vizyon belgesi bilinçli olarak build çıktı yolları içermez; bu yüzden
@@ -51,7 +54,8 @@ const stale = [
   'evren-kod-0.0.2.vsix',
   'evren-kod-0.1.0.vsix',
   'evren-kod-0.2.0.vsix',
-  'evren-kod-0.0.4.vsix'
+  'evren-kod-0.0.4.vsix',
+  'evren-kod-0.1.3.vsix'
 ];
 for (const file of ['README.md']) {
   const content = read(file);

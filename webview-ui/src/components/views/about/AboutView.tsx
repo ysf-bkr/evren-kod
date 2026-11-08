@@ -17,7 +17,9 @@ import {
   FolderOpen,
   RefreshCw,
   BookOpen,
-  Bug
+  Bug,
+  Network,
+  Cpu
 } from 'lucide-react';
 import { AboutInfo, NavigationDestination } from '@shared/types';
 import { ScreenHeader } from '../../common/ScreenHeader';
@@ -43,28 +45,38 @@ const FEATURES = [
   },
   {
     icon: <Compass className="evren-kod-icon-sm evren-kod-text-brand" />,
-    title: 'Planlama / Kodlama / Eğitim modları',
-    desc: 'Planlama ve eğitimde salt okunur korumalar; eğitimde sohbette ders sözleşmesi.'
+    title: 'Dört Çalışma Modu',
+    desc: 'Kodlama, Hızlı düzeltme, Planlama ve Eğitim modları.'
+  },
+  {
+    icon: <Cpu className="evren-kod-icon-sm text-cyan-400" />,
+    title: 'Token & Bağlam Optimizasyonu',
+    desc: 'Dinamik araç maskeleme, AST çıktı iskeleti ve akıllı bütçe.'
+  },
+  {
+    icon: <Network className="evren-kod-icon-sm text-indigo-400" />,
+    title: 'Bilgi Grafiği & Dosya Ağacı',
+    desc: 'Çalışma alanı kökünden kaynak kod hiyerarşisi ve çağrı ilişkileri.'
   },
   {
     icon: <Plug className="evren-kod-icon-sm evren-kod-text-info" />,
-    title: 'MCP desteği',
-    desc: 'Harici araçlar ve sunucular.'
+    title: 'MCP Desteği',
+    desc: 'Harici araçlar ve sunucularla çift yönlü entegrasyon.'
   },
   {
     icon: <Layers className="evren-kod-icon-sm evren-kod-text-success" />,
-    title: 'LSP entegrasyonu',
+    title: 'LSP Entegrasyonu',
     desc: 'Tanılar, tanımlara gitme ve üzerine gelme.'
   },
   {
     icon: <Bot className="evren-kod-icon-sm evren-kod-text-brand" />,
-    title: 'Alt ajanlar',
-    desc: 'Görevleri uzman rollere devreder.'
+    title: 'Uzman Ekip & Alt Ajanlar',
+    desc: 'Görevleri profil bazlı 102 uzman role ve alt ajanlara devreder.'
   },
   {
     icon: <ShieldCheck className="evren-kod-icon-sm evren-kod-text-error" />,
-    title: 'Güvenlik',
-    desc: 'Yol kısıtlamaları, izinler ve denetim.'
+    title: 'Güvenlik & Yayın Kapısı',
+    desc: 'Yol hapsi, izin kalkanı, denetim defteri ve bağımsız son denetim.'
   }
 ];
 
@@ -150,10 +162,10 @@ export const AboutView: React.FC<AboutViewProps> = ({ onSelectMenu, changedFileC
               Açık kaynak
             </span>
           </div>
-          <p className="mt-2 max-w-[280px] text-xs leading-relaxed evren-kod-text-muted">
-            Zanaat disipliniyle kodlayan, kanıtla doğrulayan otonom VS Code ajanı. Üç ilke: izin sizden
-            alınmadan tek satır yazmaz (kalkan), düzenlemeyi kanıtsız başarılı saymaz (zanaat) ve iş gerçekten
-            olmadan "oldu" demez (dürüstlük).
+          <p className="mt-2 w-full max-w-md text-xs leading-relaxed evren-kod-text-muted">
+            Türkiye'nin ve dünyanın en güvenli, kurumsal gizliliğe saygılı ve kanıtsız kodu teslim etmeyen
+            kalite asistanı. Üç ilke: izin sizden alınmadan tek satır yazmaz (kalkan), düzenlemeyi kanıtsız
+            başarılı saymaz (zanaat) ve iş gerçekten olmadan "oldu" demez (dürüstlük).
           </p>
           <div className="mt-2 text-2xs evren-kod-text-muted">
             Geliştirici: <span className="font-medium evren-kod-text-fg">{DEVELOPER_NAME}</span>
@@ -166,7 +178,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onSelectMenu, changedFileC
           >
             {DEVELOPER_EMAIL}
           </LinkButton>
-          <div className="mt-2.5 flex items-center gap-1.5">
+          <div className="mt-2.5 flex flex-wrap justify-center items-center gap-1.5">
             <Button
               variant="primary"
               size="xs"
@@ -188,7 +200,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onSelectMenu, changedFileC
 
         <section className="space-y-1.5">
           <div className="px-0.5 evren-kod-overline evren-kod-text-muted">Özellikler</div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {FEATURES.map((feature) => (
               <div
                 key={feature.title}
@@ -208,28 +220,31 @@ export const AboutView: React.FC<AboutViewProps> = ({ onSelectMenu, changedFileC
           <div className="px-0.5 evren-kod-overline evren-kod-text-muted">Ortam</div>
           <div className="space-y-1 rounded-md border evren-kod-border-surface evren-kod-bg-raised p-2.5">
             <div className="flex items-center justify-between gap-2 text-2xs">
-              <span className="flex items-center gap-1 evren-kod-text-muted">
+              <span className="flex items-center gap-1 shrink-0 evren-kod-text-muted">
                 <Code2 className="evren-kod-icon-xs" /> Eklenti
               </span>
-              <span className="font-mono evren-kod-text-fg">v{version}</span>
+              <span className="font-mono truncate evren-kod-text-fg">v{version}</span>
             </div>
             <div className="flex items-center justify-between gap-2 text-2xs">
-              <span className="flex items-center gap-1 evren-kod-text-muted">
+              <span className="flex items-center gap-1 shrink-0 evren-kod-text-muted">
                 <Monitor className="evren-kod-icon-xs" /> VS Code
               </span>
-              <span className="font-mono evren-kod-text-fg">{info?.vscodeVersion || '...'}</span>
+              <span className="font-mono truncate evren-kod-text-fg">{info?.vscodeVersion || '...'}</span>
             </div>
             <div className="flex items-center justify-between gap-2 text-2xs">
-              <span className="flex items-center gap-1 evren-kod-text-muted">
+              <span className="flex items-center gap-1 shrink-0 evren-kod-text-muted">
                 <Info className="evren-kod-icon-xs" /> İşletim sistemi
               </span>
-              <span className="font-mono evren-kod-text-fg">{info?.platform || '...'}</span>
+              <span className="font-mono truncate evren-kod-text-fg">{info?.platform || '...'}</span>
             </div>
             <div className="flex items-center justify-between gap-2 text-2xs">
-              <span className="flex items-center gap-1 evren-kod-text-muted">
+              <span className="flex items-center gap-1 shrink-0 evren-kod-text-muted">
                 <FolderOpen className="evren-kod-icon-xs" /> Çalışma alanı
               </span>
-              <span className="max-w-[140px] truncate font-mono evren-kod-text-fg">
+              <span
+                className="min-w-0 flex-1 truncate text-right font-mono evren-kod-text-fg"
+                title={info?.workspaceFolders?.join(', ')}
+              >
                 {info?.workspaceFolders?.length ? info.workspaceFolders.join(', ') : '(açık değil)'}
               </span>
             </div>

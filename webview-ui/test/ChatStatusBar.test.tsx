@@ -195,6 +195,21 @@ describe('ChatStatusBar: yayın kapısı rozeti', () => {
     assert.ok(status);
   });
 
+  it('BLOCK kararı varken doğrulama veya alt ajan sürüyorsa "Kapı: İnceleniyor" gösterir', () => {
+    const state = baseState({
+      workflow: workflowOf({ releaseGate: gateRecord('block') }),
+      stats: {
+        totalTokens: 0,
+        stepsCount: 0,
+        filesModified: [],
+        verification: { status: 'running', attempts: 1 }
+      }
+    });
+    render(<ChatStatusBar state={state} onRetry={() => {}} />);
+    assert.ok(screen.getByText('Kapı: İnceleniyor'));
+    assert.ok(!screen.queryByText('Kapı: Engellendi'));
+  });
+
   it('kapı kararı sonrası şerit artık "bekliyor" demez', () => {
     const state = baseState({
       workflow: workflowOf({ stage: 'done', releaseGate: gateRecord('pass') })

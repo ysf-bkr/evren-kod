@@ -27,6 +27,7 @@ import { SnapshotManager } from '@evren-kod/core/core/snapshot/SnapshotManager';
 import { HookManager } from '@evren-kod/core/core/hooks/HookManager';
 import { CheckpointManager } from '@evren-kod/core/core/checkpoint/CheckpointManager';
 import { ContextManager } from '@evren-kod/core/core/context/ContextManager';
+import { TokenOptimizationEngine, FileLockManager } from '@evren-kod/core';
 import { MODEL_TOOLS } from '@evren-kod/core/tools';
 import { ReadDeduper } from '@evren-kod/core/core/agent/readDeduper';
 import { ProjectMemoryManager, ProjectMemoryStatus } from '@evren-kod/core/core/memory/ProjectMemoryManager';
@@ -97,6 +98,8 @@ export class AgentCore implements AgentHost {
   public lspClient: LspClient;
   public hookManager: HookManager;
   public contextManager: ContextManager;
+  public optimizationEngine: TokenOptimizationEngine;
+  public fileLockManager = new FileLockManager();
   /** "Aynı dosyayı tekrar okuma" döngüsünü engelleyen bekçi (araç hattında çalışır). */
   public readDeduper = new ReadDeduper();
   private knowledgeWarmedRoot?: string;
@@ -222,6 +225,10 @@ export class AgentCore implements AgentHost {
       tools: MODEL_TOOLS,
       digestFor: (relativePath) => this.knowledgeStore.digestFor(relativePath)
     });
+    this.optimizationEngine = new TokenOptimizationEngine({
+      contextWindowTokens: this.settings.contextWindowTokens,
+      providerType: this.settings.selectedProvider
+    });
     this.callGraphManager =
       shared?.callGraphManager ??
       new CallGraphManager({
@@ -286,6 +293,7 @@ export class AgentCore implements AgentHost {
       tools: MODEL_TOOLS,
       digestFor: (relativePath) => this.knowledgeStore.digestFor(relativePath)
     });
+    this.optimizationEngine.updateProvider(newSettings.selectedProvider);
     this.refreshEmbeddingIndex();
     // Küratör sağlayıcı referansını tutar; yenisiyle yeniden kurulur.
     this.knowledgeCurator = new KnowledgeCurator(this.knowledgeStore, this.provider, this.lspClient);

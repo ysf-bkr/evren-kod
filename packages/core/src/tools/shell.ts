@@ -218,7 +218,16 @@ export async function detectTestCommand(workspaceRoot: string): Promise<string> 
   if (await exists('Package.swift')) return 'swift test';
   if (await exists('gradlew')) return './gradlew test';
   if ((await exists('build.gradle')) || (await exists('build.gradle.kts'))) return 'gradle test';
-  if ((await exists('pyproject.toml')) || (await exists('pytest.ini'))) return 'pytest';
+  if (
+    (await exists('pyproject.toml')) ||
+    (await exists('pytest.ini')) ||
+    (await exists('tox.ini')) ||
+    (await exists('setup.cfg')) ||
+    (await exists('requirements.txt'))
+  )
+    return 'pytest';
+  const rootEntries = await fs.readdir(workspaceRoot).catch(() => [] as string[]);
+  if (rootEntries.some((f) => f.endsWith('.sln') || f.endsWith('.csproj'))) return 'dotnet test';
   return 'npm test';
 }
 
@@ -242,6 +251,19 @@ export async function detectLintCommand(workspaceRoot: string): Promise<string> 
   if (await exists('pubspec.yaml')) return 'flutter analyze';
   if (await exists('gradlew')) return './gradlew lint';
   if ((await exists('build.gradle')) || (await exists('build.gradle.kts'))) return 'gradle lint';
+  if ((await exists('ruff.toml')) || (await exists('.ruff.toml'))) return 'ruff check .';
+  if (await exists('.flake8')) return 'flake8 .';
+  if (
+    (await exists('pyproject.toml')) ||
+    (await exists('setup.cfg')) ||
+    (await exists('requirements.txt')) ||
+    (await exists('setup.py'))
+  )
+    return 'ruff check .';
+
+  const rootEntries = await fs.readdir(workspaceRoot).catch(() => [] as string[]);
+  if (rootEntries.some((f) => f.endsWith('.sln') || f.endsWith('.csproj')))
+    return 'dotnet format --verify-no-changes';
 
   throw new Error(
     'No lint command detected for this project. Pass an explicit command, for example `run_linter` with "cargo clippy", "flutter analyze", or "ruff check .".'

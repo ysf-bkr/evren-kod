@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, CheckCircle2, Loader2, Sparkles, Wrench } from 'lucide-react';
 import { ChatMessage, ToolCall } from '@shared/types';
 import { humanizeErrorMessage } from '../../utils/toolErrors';
+import { TOOL_TITLES, toolStepDetail } from '../../utils/toolLabels';
 
 export type MessagePhase = 'thinking' | 'writing' | 'working' | 'done' | 'error';
 
@@ -45,6 +46,10 @@ export interface MessagePhaseInfo {
   phase: MessagePhase;
   /** Şu anda çalışan aracın adı, varsa. */
   tool?: string;
+  /** Kullanıcıya gösterilen anlamlı araç başlığı veya adı. */
+  toolTitle?: string;
+  /** Aracın parametresinden çıkarılan kısa detay (dosya adı, komut, arama terimi). */
+  toolDetail?: string;
   /** Etkin aracın turdaki araç çağrıları arasındaki 1 tabanlı konumu. */
   step?: number;
   totalSteps?: number;
@@ -70,13 +75,18 @@ export function resolveMessagePhase(message: ChatMessage): MessagePhaseInfo | un
   if (activeTool) {
     const step = activeIndex + 1;
     const name = String(activeTool.name || 'araç');
+    const toolTitle = TOOL_TITLES[activeTool.name] || name;
+    const toolDetail = toolStepDetail(activeTool);
     const explanation = activeTool.explanation ? ` — ${activeTool.explanation}` : '';
+    const detailPart = toolDetail ? `: ${toolDetail}` : '';
     return {
       phase: 'working',
       tool: name,
+      toolTitle,
+      toolDetail,
       step,
       totalSteps: toolCalls.length,
-      detail: `${name} çalışıyor (adım ${step}/${toolCalls.length})${explanation}`
+      detail: `${toolTitle}${detailPart} (adım ${step}/${toolCalls.length})${explanation}`
     };
   }
 
@@ -111,21 +121,22 @@ export const MessageStatus: React.FC<MessageStatusProps> = ({ message }) => {
   if (!info) return null;
 
   const meta = PHASE_META[info.phase];
+  const shortDetail = info.toolDetail ? ` · ${info.toolDetail}` : '';
   const suffix =
     info.phase === 'working' && info.tool
-      ? `: ${info.tool}${info.totalSteps ? ` (${info.step}/${info.totalSteps})` : ''}`
+      ? `: ${info.tool}${shortDetail}${info.totalSteps ? ` (${info.step}/${info.totalSteps})` : ''}`
       : '';
 
   return (
     <span
-      className={`flex items-center gap-1 text-2xs ${meta.className}`}
+      className={`flex max-w-[320px] items-center gap-1 truncate text-2xs ${meta.className}`}
       role="status"
       aria-live="polite"
       title={info.detail}
     >
       {meta.icon}
-      {meta.label}
-      {suffix}
+      <span className="shrink-0">{meta.label}</span>
+      <span className="truncate">{suffix}</span>
     </span>
   );
 };

@@ -56,7 +56,10 @@ describe('MessageStatus: dürüst durum', () => {
       />
     );
     assert.ok(screen.getByRole('status'));
-    assert.match(screen.getByRole('status').textContent ?? '', /çalışıyor: read_file \(1\/1\)/);
+    assert.match(
+      screen.getByRole('status').textContent ?? '',
+      /çalışıyor: read_file · src\/index\.ts \(1\/1\)/
+    );
   });
 
   it('metin akarken "yazıyor", içerik yokken "düşünüyor" der', () => {

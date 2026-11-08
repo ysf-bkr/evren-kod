@@ -33,6 +33,8 @@ tsconfig.json
 esbuild.js
 .gitignore
 *.vsix
+*.log
+.*.log
 # Pakete çalışma zamanında gerekmeyen geliştirici dosyaları.
 .nvmrc
 .prettierignore
@@ -40,6 +42,7 @@ esbuild.js
 .editorconfig
 CODE_OF_CONDUCT.md
 resources/logo.svg
+resources/logo-evren.png
 resources/logo-*-*.png
 resources/icon-*.png
 resources/favicon*

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Copy, Layers, Pencil, RotateCcw, Undo2 } from 'lucide-react';
+import { Check, Copy, Layers, Loader2, Pencil, RotateCcw, ShieldCheck, Sparkles, Undo2 } from 'lucide-react';
 import { ChatMessage, CheckpointSummary, ToolCall } from '@shared/types';
 import { stripInjectedContext } from '@shared/editorContext';
+import { TOOL_TITLES } from '../../utils/toolLabels';
 import { Button, Disclosure } from '../ui';
 import { vscode } from '../../utils/vscode';
 import { ActionStepCard } from './ActionStepCard';
@@ -162,11 +163,13 @@ const ToolSteps: React.FC<{ toolCalls: ToolCall[]; pendingToolCall?: ToolCall }>
   pendingToolCall
 }) => {
   // Adım listesi varsayılan KAPALI: ekranı araç gürültüsü değil, yanıt metni
-  // kaplar. Onay bekleyen bir adım varsa bölüm kendini açar — onay kartı
+  // kaplar. Onay bekleyen veya çalışan bir adım varsa bölüm kendini açar — onay kartı
   // katlanmış listenin içinde gömülü kalamaz.
   const needsAttention =
     pendingToolCall !== undefined ||
-    toolCalls.some((call) => call.status === 'pending' || call.status === 'approved');
+    toolCalls.some(
+      (call) => call.status === 'pending' || call.status === 'approved' || call.status === 'executing'
+    );
   // Onayla açılmış bir bölüm, onay bitince kullanıcının önünden kendiliğinden
   // kapanmasın: açılış kararı ilk görünürlükte kilitlenir.
   const [openedAtMount] = useState(needsAttention);
@@ -222,7 +225,7 @@ export const TurnBlock: React.FC<TurnBlockProps> = ({ turn, active, pendingToolC
     .map((message) => message.content)
     .filter((text) => text.trim())
     .join('\n\n');
-  // İçerikli son mesaj turun teslimidir; ondan önceki kısa metinler arac
+  // İçerikli son mesaj turun teslimidir; ondan önceki kısa metinler araç
   // araları arasındaki ara anlatımdır. Anlatım, balon boşluklarıyla ekranı
   // seyrekleştirmesin diye tek satırlık soluk izleme çizgisine indirgenir.
   // Boşluk-only metinler içerik sayılmaz: boş balon boşuna yer kaplar.
@@ -242,15 +245,32 @@ export const TurnBlock: React.FC<TurnBlockProps> = ({ turn, active, pendingToolC
   if (turn.assistant.length === 0) return null;
 
   return (
-    <div className="evren-kod-turn-card rounded-lg border evren-kod-border-surface evren-kod-bg-surface">
+    <div
+      className={`evren-kod-turn-card rounded-lg border evren-kod-border-surface evren-kod-bg-surface ${
+        active ? 'evren-kod-turn-card--active' : ''
+      }`}
+    >
       <div className="evren-kod-turn-card__header flex items-center gap-2 px-2.5 py-1.5">
-        <span className="evren-kod-avatar evren-kod-avatar-soft evren-kod-avatar--sm evren-kod-text-brand">
+        <span
+          className={`evren-kod-avatar evren-kod-avatar-soft evren-kod-avatar--sm evren-kod-text-brand ${
+            active ? 'animate-pulse' : ''
+          }`}
+        >
           <Logo className="evren-kod-icon-xs" colored />
         </span>
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-xs font-semibold evren-kod-text-fg">Evren Kod</span>
-          {last && <MessageStatus message={last} />}
-          <span className="font-mono text-2xs evren-kod-text-muted opacity-70">
+        <span className="flex min-w-0 flex-1 items-center gap-2 flex-wrap sm:flex-nowrap">
+          <span className="text-xs font-semibold evren-kod-text-fg shrink-0">Evren Kod</span>
+          {active && pendingToolCall ? (
+            <span className="flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 font-medium border border-amber-500/20 truncate">
+              <Loader2 className="evren-kod-icon-xs animate-spin shrink-0" />
+              <span className="truncate">
+                {TOOL_TITLES[pendingToolCall.name] || pendingToolCall.name} (onay bekleniyor)
+              </span>
+            </span>
+          ) : last ? (
+            <MessageStatus message={last} />
+          ) : null}
+          <span className="font-mono text-2xs evren-kod-text-muted opacity-70 shrink-0 ml-auto sm:ml-0">
             {formatTime(turn.assistant[0].timestamp)}
           </span>
         </span>
@@ -274,16 +294,29 @@ export const TurnBlock: React.FC<TurnBlockProps> = ({ turn, active, pendingToolC
           const hasText = Boolean(message.content.trim());
           const isNarration = hasText && index === lastNarrationIndex && !message.isStreaming;
           const isFinal = hasText && index === lastContentIndex;
+          const isVisibleStreaming = Boolean(
+            message.isStreaming && (hasText || (active && index === turn.assistant.length - 1))
+          );
+          const hasVisibleBody = isFinal || isNarration || isVisibleStreaming;
+          const hasError = Boolean(message.error);
+
+          // İçeriği ve hatası olmayan mesajlar (ör. arka planda tamamlanmış salt araç çağrıları)
+          // DOM'da boş kutu ve kesikli çizgi yığını üretmemeli.
+          if (!hasVisibleBody && !hasError) {
+            return null;
+          }
+
           return (
             <div key={message.id} className="evren-kod-turn-msg space-y-1.5">
-              {(isFinal || isNarration || message.isStreaming) &&
+              {hasVisibleBody &&
                 (isNarration ? (
-                  <p
+                  <div
                     data-testid="narration-line"
-                    className="text-2xs leading-relaxed evren-kod-text-muted opacity-85"
+                    className="flex items-center gap-2 rounded-md bg-brand-500/[0.04] border border-brand-500/15 px-2.5 py-1.5 text-2xs leading-relaxed evren-kod-text-muted opacity-90"
                   >
-                    {message.content}
-                  </p>
+                    <Sparkles className="evren-kod-icon-xs evren-kod-text-brand animate-pulse shrink-0" />
+                    <span className="italic">{message.content}</span>
+                  </div>
                 ) : (
                   <div className="evren-kod-bubble evren-kod-bubble--flush">
                     <Markdown content={message.content} isStreaming={message.isStreaming} />
@@ -296,6 +329,14 @@ export const TurnBlock: React.FC<TurnBlockProps> = ({ turn, active, pendingToolC
 
         {turn.assistant.some((message) => message.toolCalls?.length) && (
           <TurnChangesReview toolCalls={toolCalls} />
+        )}
+
+        {/* Doğrulama Kanıtı / Kalite Asistanı Mührü */}
+        {toolCalls.some((tc) => tc.name === 'run_verification' || tc.name === 'run_tests') && (
+          <div className="flex items-center gap-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-2xs font-medium text-emerald-500">
+            <ShieldCheck className="evren-kod-icon-xs shrink-0" />
+            <span>Doğrulama ve test kanıtı tamamlandı — Kanıtsız kod teslim edilmez.</span>
+          </div>
         )}
 
         {toolCalls.length > 0 && <ToolSteps toolCalls={toolCalls} pendingToolCall={pendingToolCall} />}

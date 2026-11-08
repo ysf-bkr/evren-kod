@@ -206,6 +206,51 @@ describe('MessageList: tur akordeonu', () => {
     assert.ok(card?.querySelector('.evren-kod-bubble--flush'), 'süren/son yanıt balon olarak görünmeli');
   });
 
+  it('içeriksiz araç adımı asistan mesajları boş .evren-kod-turn-msg kutusu üretmez', () => {
+    const messages: ChatMessage[] = [
+      { id: 'u1', role: 'user', content: 'görev', timestamp: 1, turnId: 't1' },
+      {
+        id: 'a1',
+        role: 'assistant',
+        content: '',
+        timestamp: 2,
+        turnId: 't1',
+        toolCalls: [
+          {
+            id: 'tc1',
+            name: 'read_file',
+            args: { path: 'a.ts' },
+            requiresApproval: false,
+            status: 'completed'
+          }
+        ]
+      },
+      {
+        id: 'a2',
+        role: 'assistant',
+        content: '',
+        timestamp: 3,
+        turnId: 't1',
+        toolCalls: [
+          {
+            id: 'tc2',
+            name: 'read_file',
+            args: { path: 'b.ts' },
+            requiresApproval: false,
+            status: 'completed'
+          }
+        ]
+      },
+      { id: 'a3', role: 'assistant', content: 'Sonuç hazır.', timestamp: 4, turnId: 't1' }
+    ];
+    render(<MessageList messages={messages} />);
+
+    const card = document.querySelector('.evren-kod-turn-card');
+    assert.ok(card);
+    const turnMsgs = card.querySelectorAll('.evren-kod-turn-msg');
+    assert.equal(turnMsgs.length, 1, 'yalnızca görünür içeriği olan mesaj için kapsayıcı üretilmeli');
+  });
+
   const withToolCall = (status: 'completed' | 'pending'): ChatMessage[] => [
     { id: 'u1', role: 'user', content: 'dosyayı oku', timestamp: 1, turnId: 't1' },
     {
@@ -379,5 +424,34 @@ describe('MessageList: boş durum ve ayar kontrolü', () => {
     assert.ok(screen.getByText('Hızlı başlangıç'));
     fireEvent.click(screen.getByRole('button', { name: /Projeyi analiz et/ }));
     assert.equal(selected.length, 1);
+  });
+
+  it('Ollama tespit edilemediğinde Kurulum Sihirbazını gösterir ve bulut seçimine izin verir', () => {
+    let retried = false;
+    let switchedProvider = '';
+    render(
+      <MessageList
+        messages={[]}
+        isConfigured={true}
+        isOllamaUnavailable={true}
+        ollamaError="ECONNREFUSED 127.0.0.1:11434"
+        onRetryConnection={() => {
+          retried = true;
+        }}
+        onSwitchProvider={(p) => {
+          switchedProvider = p;
+        }}
+      />
+    );
+
+    assert.ok(screen.getByText('Yerel Model (Ollama) Tespit Edilemedi'));
+    assert.ok(screen.getByText(/ECONNREFUSED/));
+    assert.ok(screen.getByText(/ollama run qwen2.5-coder:7b/));
+
+    fireEvent.click(screen.getByRole('button', { name: /Bağlantıyı Yeniden Kontrol Et/ }));
+    assert.equal(retried, true);
+
+    fireEvent.click(screen.getByRole('button', { name: /EVREN LLM/ }));
+    assert.equal(switchedProvider, 'evren');
   });
 });

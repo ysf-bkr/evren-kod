@@ -438,11 +438,20 @@ select:focus-visible {
   background-color: var(--evren-kod-hover-bg);
 }
 
-/* Aynı turdaki art arda asistan mesajlarının sınırı ince kesikli çizgiyle
- * seçilir; kutulamadan ayrışır. */
+/* Aynı turdaki art arda asistan mesajlarının aralığı; kesikli çizgiler
+ * yerine temiz dikey akış ve boşluk kullanılır. */
 .evren-kod-turn-msg + .evren-kod-turn-msg {
-  border-top: 1px dashed var(--evren-kod-surface-border);
-  padding-top: var(--evren-kod-space-2);
+  margin-top: var(--evren-kod-space-2);
+}
+
+.evren-kod-turn-msg:empty {
+  display: none;
+}
+
+/* Çalışan aktif tur kartı: sol marka şeridi canlı parlar, hafif gölgeyle öne çıkar */
+.evren-kod-turn-card--active {
+  border-left-color: var(--evren-kod-brand-400);
+  box-shadow: 0 0 14px -3px color-mix(in srgb, var(--evren-kod-brand-400) 28%, transparent), var(--evren-kod-shadow-sm);
 }
 
 /* Asistan/logo yuvarlağı; eskiden tanımsız kaldığı için çerçevesiz görünüyordu. */

@@ -243,11 +243,18 @@ export class AgentLoop {
     // `build`'e taşısa bile liste salt-okunur kalıyor ve modelin ilk yazma
     // denemesi yanıltıcı bir "not allowed at this stage" hatası alıyordu.
     const toolsForCurrentStage = (): ToolDefinition[] => {
+      const currentStage = this.host.workflow.getWorkflow().stage;
       const snapshot = describeWorkflow(this.host.workflow.getWorkflow(), this.host.state.mode);
-      return filterToolsForMode(allAvailableTools, this.host.state.mode, {
+      const modeFiltered = filterToolsForMode(allAvailableTools, this.host.state.mode, {
         workflowReadOnly: snapshot.readOnly,
         allowCommands: snapshot.allowsCommands
       });
+      // TokenOptimizationEngine aşama maskelemesi: Şemalar ilgili aşamayla sınırlandırılır
+      return this.host.optimizationEngine.optimizeToolsForStage(
+        modeFiltered,
+        currentStage,
+        this.host.state.mode
+      ).tools;
     };
     let tools: ToolDefinition[];
 
@@ -277,10 +284,17 @@ export class AgentLoop {
       // Aşama tur içinde ilerlediyse (spec/plan onayı) kilidi güncelle.
       tools = toolsForCurrentStage();
 
+      const currentStage = this.host.workflow.getWorkflow().stage;
+      const phaseStatus = this.host.optimizationEngine.getPhaseBudgetStatus(currentStage);
+      if (phaseStatus.shouldTransition && phaseStatus.advisory) {
+        logWarning(`[TokenBudgetManager]: ${phaseStatus.advisory}`);
+      }
+
       // LLM için tam mesaj geçmişini oluştur (saf yardımcı, birim testli).
-      // Kuyruk bağlamı her adımda tazelenir: canlı spec/plan/aşama durumu +
+      // Kuyruk bağlamı her adımda tazelenir: çalışma hafızası + canlı spec/plan/aşama durumu +
       // anlamsal hafıza; sistem istemi ve geçmiş ise önbellekte kalır.
-      const tailContext = [taskStateContext(), vectorMemoryContext]
+      const workingMemoryContext = this.host.optimizationEngine.workingMemory.formatForPrompt();
+      const tailContext = [workingMemoryContext, taskStateContext(), vectorMemoryContext]
         .filter((block) => block.trim().length > 0)
         .join('\n');
       const providerMessages = buildProviderMessages(systemPrompt, this.host.state.messages, tailContext);
@@ -455,6 +469,24 @@ export class AgentLoop {
         stats.promptTokens = (stats.promptTokens ?? 0) + response.usage.promptTokens;
         stats.completionTokens = (stats.completionTokens ?? 0) + response.usage.completionTokens;
         stats.cachedTokens = (stats.cachedTokens ?? 0) + (response.usage.cachedTokens ?? 0);
+
+        const schemaFootprint =
+          this.host.optimizationEngine.schemaOptimizer.estimateToolsTokenFootprint(tools);
+        this.host.optimizationEngine.recordApiCallMetrics(
+          {
+            callId: assistantMsgId,
+            stage: currentStage,
+            inputTokens: response.usage.promptTokens,
+            outputTokens: response.usage.completionTokens,
+            cachedTokens: response.usage.cachedTokens ?? 0,
+            toolSchemaTokens: schemaFootprint,
+            contextTokens: Math.max(0, response.usage.promptTokens - schemaFootprint),
+            latencyMs: 0,
+            success: true,
+            timestamp: Date.now()
+          },
+          currentStage
+        );
       }
       this.host.state.stats.lastModel = resolvedModel;
       this.host.state.stats.modelRoutingReason = routing.reason;

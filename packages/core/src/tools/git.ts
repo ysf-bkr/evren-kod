@@ -123,6 +123,10 @@ export const gitCommitTool: ToolDefinition = {
   },
   execute: async (args, ctx) => {
     if (!ctx.gitManager || !ctx.workspaceRoot) throw new Error('Git manager is not ready.');
+    const commitMsg = argString(args.message).trim();
+    if (/^(fixme|todo|hack|xxx|wip)\b/i.test(commitMsg)) {
+      return 'COMMIT REDDEDILDI (mühendislik disiplini): Commit mesajı geçici yama (TODO/FIXME/WIP) olamaz; yapılan işi açıkça anlatan açıklayıcı bir mesaj girilmelidir.';
+    }
     // `argBoolean` yalnızca boolean/"true" kabul eder; `!== false` karşılaştırması
     // "false" dizesini her şeyi stage'lemek olarak yorumluyordu.
     const stageAll = args.stageAll === undefined ? true : argBoolean(args.stageAll);

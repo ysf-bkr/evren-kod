@@ -46,6 +46,17 @@ describe('callgraph identity: kararlı kimlik ve yol kuralları', () => {
   it('desteklenen kaynak uzantılarını tanır', () => {
     assert.strictEqual(isSupportedSource('src/a.ts'), true);
     assert.strictEqual(isSupportedSource('app/main.py'), true);
+    assert.strictEqual(isSupportedSource('server/main.go'), true);
+    assert.strictEqual(isSupportedSource('engine/lib.rs'), true);
+    assert.strictEqual(isSupportedSource('backend/App.java'), true);
+    assert.strictEqual(isSupportedSource('core/Program.cs'), true);
+    assert.strictEqual(isSupportedSource('web/index.php'), true);
+    assert.strictEqual(isSupportedSource('native/main.cpp'), true);
+    assert.strictEqual(isSupportedSource('ios/AppDelegate.swift'), true);
+    assert.strictEqual(isSupportedSource('android/MainActivity.kt'), true);
+    assert.strictEqual(isSupportedSource('mobile/main.dart'), true);
+    assert.strictEqual(isSupportedSource('scripts/deploy.sh'), true);
+    assert.strictEqual(isSupportedSource('schema/init.sql'), true);
     assert.strictEqual(isSupportedSource('README.md'), false);
     assert.strictEqual(isSupportedSource('image.png'), false);
   });

@@ -20,23 +20,25 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval }) => {
   const Icon = isSpec ? FileText : ListChecks;
 
   return (
-    <Card className="flex flex-col gap-2 evren-kod-border-warning evren-kod-bg-warning">
-      <div className="flex items-start gap-2">
-        <span className="evren-kod-toggle-row__icon evren-kod-text-warning">
+    <Card className="flex flex-col gap-2 evren-kod-border-warning evren-kod-bg-warning overflow-hidden">
+      <div className="flex items-start gap-2 min-w-0">
+        <span className="evren-kod-toggle-row__icon evren-kod-text-warning shrink-0 mt-0.5">
           <Icon className="evren-kod-icon-sm" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="evren-kod-title">{approval.title}</div>
-          <div className="text-2xs mt-0.5 flex items-center gap-1 evren-kod-text-muted">
-            <ShieldAlert className="evren-kod-icon-xs" />
-            {isSpec
-              ? 'Onaylamadan plan yapılmaz ve kod yazılmaz.'
-              : 'Onaylamadan hiçbir dosya değiştirilmez.'}
+          <div className="evren-kod-title break-words leading-tight">{approval.title}</div>
+          <div className="text-2xs mt-1 flex items-center gap-1 evren-kod-text-muted">
+            <ShieldAlert className="evren-kod-icon-xs shrink-0" />
+            <span className="truncate">
+              {isSpec
+                ? 'Onaylamadan plan yapılmaz ve kod yazılmaz.'
+                : 'Onaylamadan hiçbir dosya değiştirilmez.'}
+            </span>
           </div>
         </div>
       </div>
 
-      <pre className="text-xs max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded border evren-kod-border-surface evren-kod-bg-input p-2 font-mono leading-relaxed evren-kod-text-fg">
+      <pre className="text-xs max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded border evren-kod-border-surface evren-kod-bg-input p-2 font-mono leading-relaxed evren-kod-text-fg">
         {approval.details}
       </pre>
 
@@ -51,7 +53,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval }) => {
             aria-label="Reddetme gerekçesi"
             className="text-sm"
           />
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
             <Button variant="ghost" size="xs" onClick={() => setRejecting(false)}>
               Vazgeç
             </Button>
@@ -71,7 +73,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval }) => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
           <Button
             variant="secondary"
             size="xs"

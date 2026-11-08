@@ -3,15 +3,75 @@
 Bu dosya kullanıcıları etkileyen önemli değişiklikleri kaydeder.
 Proje sürümlemesi 0.1.0 ile burada başlar.
 
+## [0.1.5] - 2026-11-09
+
+### Eklendi
+
+- **Akıllı Kurulum Sihirbazı (`SetupWizard`):**
+  - Yerel Ollama bağlantısı bulunamadığında kullanıcıyı karanlıkta bırakmayan, tek tıkla kopyalanabilir `ollama run qwen2.5-coder:7b` komutu, otomatik yeniden deneme ve tek tıkla bulut modellerine (EVREN LLM, OpenRouter) geçiş rehberi eklendi.
+- **Satır İçi Görsel Fark Görüntüleyici (`VisualDiffViewer` & `TurnChangesReview`):**
+  - Dosya değişiklikleri için editörde onlarca sekme açmak yerine, doğrudan asistan yanıt kartı içinde renkli ve sözdizimi ayrıştırmalı satır içi fark (diff), ekleme/silme sayıları (`+15 / -2`) ve tek tıkla geri alma entegre edildi.
+  - Ajanın `diff` (SEARCH/REPLACE) formatında Fast Apply uyguladığı bloklar için dosya yazılmadan önce görsel önizleme desteği bağlandı.
+- **Bağımsız Terminal Ajanı (`TerminalAgent` & CLI):**
+  - VS Code eklentisinden bağımsız çalışan, komut satırından tek seferlik veya REPL etkileşimli çalışan tam ReAct motoru (`packages/core/src/core/agent/TerminalAgent.ts` ve `packages/cli`).
+- **Kurumsal Güvenlik ve İzolasyon Altyapısı:**
+  - Konteyner sandbox yöneticisi (`ContainerSandboxManager`), RBAC ve lisans denetimi (`EnterpriseGovernance`), eşzamanlı dosya kilitleri (`FileLockManager`), sürüm boru hattı (`ReleasePipelineManager`) ve bağımlılık odaklı görev kuyruğu (`TaskQueueManager`) sisteme dahil edildi.
+- **Semantik ve Vektörel Kod İndeksi (`SemanticCodeIndex`):**
+  - Nöral gömmeler ve yerel TF-IDF / N-gram vektör uzay modeliyle kod tabanında anlamsal blok arama motoru pakete bağlandı.
+
+### Düzeltildi
+
+- **`edit_file` Sonrası Hafıza & Sembol Kaybı Kör Noktası:**
+  - `edit_file` aracında `content` parametresi bulunmadığı için dosya mutasyonunda hafızanın boş string ile sıfırlanması hatası giderildi; düzenlenen dosyanın gerçek içeriği diskten okunarak semboller ve içerik hash'i eksiksiz korundu.
+- **Büyük Dosyalarda AST İskeletleme Parametresi:**
+  - `TokenOptimizationEngine` içinde `read_file` parametresi olan `args.path` desteği eklendi; canlı ajan oturumlarında 200+ satırlık dosyalarda AST iskelet çıkarma ve mükerrer okuma önbelleği canlıya alındı.
+- **Kök Dizin Yol Normalizasyon Hatası:**
+  - `commandPolicy.ts` içindeki `normalizeWorkspacePaths` fonksiyonunun `/` veya tek bölü kök dizinlerde boş regex üreterek komutları bozması engellendi.
+- **Webview Mesaj Tipi Güvenliği:**
+  - `SidebarProvider.ts` içinde geçersiz veya bilinmeyen webview mesaj tiplerine karşı koruyucu tip doğrulaması eklendi.
+
+## [0.1.4] - 2026-11-08
+
+### Eklendi
+
+- **Çoklu Dil Bilgi & Çağrı Grafiği Desteği:**
+  - Bilgi Grafiği ve Çağrı Grafiği yalnızca JavaScript/TypeScript ile sınırlı kalmayıp; Python, Go, Rust, Java, C#, PHP, C/C++, Swift, Kotlin, Dart, Ruby, Shell, SQL, Lua, Elixir ve Zig dillerindeki tüm fonksiyon, metot, sınıf, struct, trait, interface ve import bağıntılarını tanıyacak şekilde genişletildi.
+  - Harici bir LSP eklentisi bulunmayan dillerde regex/AST tabanlı ayrıştırma ile otomatik yedekleme (fallback) sağlandı; böylece tüm diller klasör ağacında ve grafikte sembolleriyle tam olarak listelenir.
+- **Kullanıcı Dostu Araç Adımı Detayları:**
+  - Ham araç adları (`read_file (11/15)`) yerine Türkçe anlaşılır eylem başlıkları (`Dosya okunuyor · src/core/agent.ts (11/15)`) ve adım detayları eklendi.
+  - Alt ajan ve ana ajan çalışma durumunda yürütülen komut, aranan sembol veya okunan dosya yolu hem durum çubuğunda hem de mesaj başlığında net olarak gösterilir.
+
+### İyileştirildi
+
+- **Değişiklikler Görünümü Yeniden Tasarlandı (`ChangesView`):**
+  - Dar yan panellerde (260px–360px) dosya adlarının ezilmesini ve butonların taşmasını önleyen esnek, responsive kart mimarisi kuruldu.
+  - Dosya yolları dizin ve dosya adı olarak ayrıştırıldı; dosya adı öne çıkarılarak okunabilirlik artırıldı.
+  - Değişiklik durumları için kompakt ve görsel durumu netleştiren durum rozetleri (`Değişti`, `Eklendi`, `Silindi`, `İzlenmiyor`) entegre edildi.
+  - Değişen dosyalar için anlık filtreleme / arama çubuğu ve görev/git bazlı filtreleme butonları eklendi.
+
 ## [0.1.3] - 2026-11-08
 
 ### Eklendi
 
+- **Token & Bağlam Optimizasyon Motoru (Token & Context Optimization Engine):**
+  - **Dinamik Araç Maskeleme (`ToolSchemaOptimizer`):** Ajanın iş akışındaki aşamasına (`intake`, `spec`, `plan`, `build`, `verify`, `done`) göre gereksiz araç şemalarını modele göndermeyerek şema yükünü %60–75 oranında düşürür.
+  - **Araç Çıktı Optimizasyonu (`OutputOptimizer`):** Dosya okuma işlemlerinde AST tabanlı iskelet çıkarma (yalnızca fonksiyon/sınıf arayüzleri), başarılı test çıktılarında otomatik kısaltma ve terminal çıktısı filtreleme.
+  - **Reaktif Bağlam Sıkıştırma (`ContextOptimizer`):** Dosya düzenlendikten sonra eski ham okuma çıktısını otomatik özetler; sürüm kontrolüyle dosya değişse dahi önemli mimari kararları korur.
+  - **Dinamik Görev Bütçe Yöneticisi (`TokenBudgetManager`):** Planlama, keşif, kodlama ve inceleme aşamaları için esnek, göreve duyarlı dinamik bütçe yönetimi.
+  - **Bağlam Değer Puanlama (`ContextRelevanceScorer`):** Güncel kod parçaları, API sözleşmeleri ve mimari kararlara yüksek; eski terminal çıktılarına düşük puan vererek bağlam kalitesini optimize eder.
+  - **Araç Çıktı Tekilleştirme (`ToolDeduplicator`):** sha256 içerik hash'i ve çalışma parametreleriyle mükerrer araç ve komut sonuçlarını önbelleğe alır.
+  - **Yapılandırılmış Çalışma Hafızası (`StructuredMemory`):** Görev amacı, tamamlanan işler, kararlar, değişen dosyalar ve bilinen sorunları yapısal özet olarak tutar.
+  - **Sağlayıcı Uyumlu Önbellek Yönetimi (`ProviderCacheManager`):** Sabit sistem istemi ve araç şemalarını dinamik bağlamdan ayırarak Anthropic, OpenAI ve yerel sağlayıcıların prompt caching mekanizmalarından maksimum fayda sağlar.
+  - **Token Gözlemlenebilirliği (`TokenObservability`):** Girdi, çıktı, önbellek ve gecikme metriklerini ölçer ve raporlar.
+- **Bilgi Grafiği Hiyerarşik Klasör Ağacı (`FolderTree`):** Düz dosya listesi yerine, çalışma alanı kökünü baz alan, açılır/kapanır klasör ve dosya ağacı eklendi. Yalnızca kaynak kodları tarar (`node_modules`, `dist`, `.git` vb. hariçtir). Tıklanan dosya ve fonksiyonların çağıran (callers), çağrılan (callees) ve import bağımlılıklarını çift yönlü inceleme ve VS Code editöründe ilgili satıra zıplama desteği sunar.
 - **Hızlı Mod (Fast Mode):** Bürokrasi (soru bütçesi, ön spec hazırlığı, katmanlı modül haritası) olmadan doğrudan okuma, hedefli düzeltme ve test doğrulamasıyla çalışan yeni ajan modu eklendi. Zanaat ve kanıt disiplini tam olarak korunur: değişiklikler test/lint doğrulaması geçmeden tamamlandı kabul edilmez.
 - **Hızlı Mod Test Paketi:** Aşama geçişleri, araç izinleri, kapı mantığı ve tamir döngüsünü kapsayan 14 yeni birim testi eklendi.
 
 ### Düzeltildi
 
+- **İş Akışı Aşama Kilidi Kör Noktası (`done` -> `intake`):** Görev `done` durumundayken yeni kullanıcı istemi geldiğinde iş akışının `intake` aşamasına dönebilmesi sağlandı (`canTransition('done', 'intake')`). Ajanın "görev bitti" durumunda takılıp yeni isteğe cevap verememesi kör noktası giderildi.
+- **Duyarlı Tasarım (Responsive UI):** Hakkında & Tanılama, Raporlar & Analiz, Değişiklik İnceleme ve Bilgi Grafiği ekranları dar kenar çubukları ve küçük ekranlar için tam responsive hale getirildi.
+- **Sohbet Bestecisi Sadeleştirmesi:** Bestecideki gereksiz etiketler (`@backend`, `@quality`, `@security`) kaldırılarak temiz ve doğrudan görev odaklı bir arayüz sağlandı. Tüm simgeler Lucide ikon ailesiyle standartlaştırıldı.
 - **Sohbet Tasarımı ve Arayüz Kontrastı:** Besteci (composer) iç içe çift kenarlık ve iç odak halkası kaldırıldı; durum çubuğu ve boş durum dolguları besteci hizasına çekildi; kullanıcı mesaj balonundaki fazlalık "Sen" başlığı kaldırıldı.
 - **Açık Tema Kontrast Uyumsuzlukları:** Bildirim ve uyarı kutularındaki düşük kontrastlı renkler tasarım jetonlarıyla (`evren-kod-border-warning`, `evren-kod-bg-warning`, `evren-kod-text-warning`) ve açık tema marka mavisiyle güncellendi.
 - **Logo ve Amblem Gösterimi:** Asistan mesaj balonundaki amblem renkli ve net hale getirildi.

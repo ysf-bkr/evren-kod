@@ -795,6 +795,7 @@ export interface SubagentRunInfo {
   task: string;
   status: 'starting' | 'running' | 'completed' | 'failed' | 'cancelled';
   currentTool?: string;
+  currentToolDetail?: string;
   step?: number;
   maxSteps?: number;
   worktreePath?: string;
@@ -814,6 +815,7 @@ export type NavigationDestination =
   | 'mcp'
   | 'agents'
   | 'callgraph'
+  | 'reports'
   | 'about';
 
 /** Çağrı grafiği ekranının düğüm kaydı; motor tiplerinden bağımsız taşınabilir biçim. */
@@ -1059,6 +1061,8 @@ export type WebviewToExtensionMessage =
   | { type: 'CLEAR_PROJECT_MEMORY' }
   | { type: 'CUSTOMIZE_BUILTIN_AGENT'; payload: { role: string } }
   | { type: 'RESET_BUILTIN_AGENT'; payload: { role: string } }
+  | { type: 'GET_TECH_DEBT' }
+  | { type: 'GET_TOKEN_METRICS' }
   | { type: 'OPEN_EXTERNAL'; payload: { url: string } };
 
 export interface VsCodeThemeConfig {
@@ -1094,7 +1098,48 @@ export type ExtensionToWebviewMessage =
   /** Etkin oturum değişti; arayüz kendi odağını buna göre taşır. */
   | { type: 'SESSION_ACTIVATED'; payload: { sessionKey: string } }
   /** Bellekteki oturumların özeti (arka planda çalışanlar dahil). */
-  | { type: 'SESSIONS_CHANGED'; payload: { sessions: SessionInfoLoaded[] } };
+  | { type: 'SESSIONS_CHANGED'; payload: { sessions: SessionInfoLoaded[] } }
+  | { type: 'TECH_DEBT_REPORT_LOADED'; payload: TechDebtReport }
+  | { type: 'TOKEN_METRICS_LOADED'; payload: TaskObservabilitySummary };
+
+export interface TaskObservabilitySummary {
+  totalCalls: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCachedTokens: number;
+  totalToolSchemaTokens: number;
+  totalContextTokens: number;
+  totalTokens: number;
+  averageLatencyMs: number;
+  cacheHitRatePercent: number;
+  schemaOverheadPercent: number;
+  successRatePercent: number;
+  estimatedCostReductionPercent: number;
+}
+
+export interface TechDebtItem {
+  filePath: string;
+  line: number;
+  type: 'todo' | 'fixme' | 'hack' | 'deprecated' | 'large_file';
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+}
+
+export interface TechDebtReport {
+  score: number;
+  grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+  totalIssues: number;
+  categoryCounts: {
+    todo: number;
+    fixme: number;
+    hack: number;
+    deprecated: number;
+    largeFile: number;
+  };
+  items: TechDebtItem[];
+  scannedFilesCount: number;
+  timestamp: number;
+}
 
 /** Arayüze taşınan oturum özeti. */
 export interface SessionInfoLoaded {

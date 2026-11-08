@@ -27,13 +27,35 @@ export async function openFileInEditor(
 ): Promise<void> {
   try {
     const workspaceRoot = getActiveWorkspaceRoot();
-    const targetPath = resolveWorkspacePath(filePath, workspaceRoot ?? undefined);
+    let targetPath = '';
+    try {
+      targetPath = resolveWorkspacePath(filePath, workspaceRoot ?? undefined);
+    } catch {
+      targetPath = filePath;
+    }
 
     let fileExists = true;
     try {
       await fs.promises.access(targetPath);
     } catch {
       fileExists = false;
+    }
+
+    // Doğrudan bulunamadıysa çalışma alanında ada göre ara (ör. SnapshotManager.ts)
+    if (!fileExists && workspaceRoot) {
+      try {
+        const found = await vscode.workspace.findFiles(
+          `**/${path.basename(filePath)}`,
+          '{**/node_modules/**,**/dist/**,**/.git/**,**/out/**,**/build/**}',
+          1
+        );
+        if (found.length > 0 && found[0]) {
+          targetPath = found[0].fsPath;
+          fileExists = true;
+        }
+      } catch {
+        // Arama hatasında normal akışa devam et
+      }
     }
 
     if (!fileExists) {

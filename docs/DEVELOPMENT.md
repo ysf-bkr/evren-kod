@@ -65,7 +65,7 @@ Evren Kod, yüksek kod kalitesi ve test izolasyonu için kapsamlı kontrol scrip
 | `npm run test:coverage`        | Node.js yerleşik test kapsam raporunu yazdırır.                                                                                                                            |
 | `npm run check:coverage`       | Satır kapsamı eşiğini (%75) doğrular; ölçüm Node birim test kümesi (`test/unit/**`) üzerinden yapılır, webview UI testleri ayrı koşar ve eşiğe dâhil değildir.             |
 | `npm run check`                | Tam kalite kapısı: format + tip + lint + dil + test + kapsam.                                                                                                              |
-| `npm run package`              | `out/evren-kod-0.1.3.vsix` paketini üretir.                                                                                                                                |
+| `npm run package`              | `out/evren-kod-0.1.5.vsix` paketini üretir.                                                                                                                                |
 | `npm run install:ext`          | VSIX paketini üretip yerel VS Code ortamına kurar/günceller.                                                                                                               |
 
 ---
@@ -104,6 +104,7 @@ packages/core/src/                # @evren-kod/core — vscode import etmez
     ├── plan/                     # Görev ve modül planlayıcıları
     ├── project/                  # Uygulama türü ve teknoloji yığını algılama
     ├── spec/                     # Şartname deposu
+    ├── optimization/             # Token ve bağlam optimizasyon motoru (şema maskeleme, AST iskelet, bütçe, önbellek)
     ├── verification/             # Test/lint/tip doğrulaması ve onarım politikası
     ├── workflow/                 # Aşama kapıları ve iş akışı durumu
     └── mcp/                      # Model Context Protocol istemcisi
@@ -212,3 +213,53 @@ kaydı ya yerel bir süreç ya da uzak bir uç nokta tanımlar:
   yüklenmez.
 - MCP sunucusuna gönderilen araç argümanları ve çağrının gerektirdiği proje
   verileri makinenizden çıkabilir. Yalnızca güvendiğiniz sunucuları ekleyin.
+
+---
+
+## 5. Bağımsız Terminal Uygulaması (CLI) Kullanımı
+
+Evren Kod, VS Code editörüne ihtiyaç duymadan doğrudan işletim sistemi terminalinde de çalıştırılabilir. Terminal uygulaması (`packages/cli`), `@evren-kod/core` paketini kullanarak gövdesiz (headless) ReAct döngüsünü, 29 adet çalışma alanı ve kodlama aracını, izin politikasını ve otomatik doğrulamayı tam olarak çalıştırır.
+
+### Terminal Ajanını Çalıştırma
+
+```bash
+# Kaynaktan doğrudan çalıştırma:
+npm run cli
+
+# Tek bir istemle çalıştırma:
+npm run cli -- -p "Projedeki derleme hatalarını listele"
+
+# Derlenmiş ikili dosyayı doğrudan çalıştırma:
+./dist/cli.js
+```
+
+### Komut Satırı Argümanları
+
+| Parametre | Kısa Yol | Açıklama |
+| --- | --- | --- |
+| `--prompt <metin>` | `-p` | Tek seferlik istem çalıştırıp sonucu yazdırdıktan sonra çıkar. |
+| `--provider <ad>` | | Sağlayıcıyı belirler (`ollama`, `evren`, `openrouter`, `openai-compatible`). |
+| `--model <ad>` | `-m` | Kullanılacak model adını belirler (örn: `llama3.1`, `glm-5.3`). |
+| `--cwd <dizin>` | `-c` | Çalışma alanı kök dizini (varsayılan: aktif çalışma dizini). |
+| `--help` | `-h` | Komut satırı yardım ekranını gösterir. |
+
+### Etkileşimli Terminal İçi Slash Komutları
+
+REPL isteminde (`evren> `) aşağıdaki komutlar kullanılabilir:
+
+- `/yardim`, `/help`: Yardım kılavuzunu ve komutları listeler.
+- `/model <id>`: Oturum ve kalıcı ayarlar için modeli değiştirir.
+- `/saglayici <ad>`: Model sağlayıcısını değiştirir (`ollama`, `evren`, vb.).
+- `/anahtar <ad> <key>`: İlgili sağlayıcı için API anahtarını güvenli ayar dosyasına kaydeder.
+- `/durum`, `/status`: Model, sağlayıcı, Git çalışma alanı durumu ve token tüketimini raporlar.
+- `/dogrula`, `/verify`: Test ve linter doğrulamasını hemen çalıştırır.
+- `/temizle`, `/clear`: Terminal ekranını temizler ve konuşma geçmişini sıfırlar.
+- `exit`, `quit`, `/cikis`: Terminal oturumunu güvenle sonlandırır.
+
+### Ayar ve Sır Saklama
+
+CLI, VS Code API'lerine bağımlı olmadığı için ayarları hiyerarşik olarak okur ve yazar:
+1. `DEFAULT_USER_SETTINGS`: Varsayılan yerel yapılandırma (Ollama varsayılandır).
+2. Global Kullanıcı Ayarları: `~/.evren-kod/settings.json` (`0o600` güvenli dosya izni).
+3. Çalışma Alanı Ayarları: `<workspace>/.evren-kod/settings.json`.
+4. Ortam Değişkenleri: `EVREN_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_COMPATIBLE_API_KEY`, `EVREN_PROVIDER`, `EVREN_MODEL`.

@@ -21,6 +21,7 @@ import type { SnapshotManager } from '@evren-kod/core/core/snapshot/SnapshotMana
 import type { HookManager } from '@evren-kod/core/core/hooks/HookManager';
 import type { CheckpointManager } from '@evren-kod/core/core/checkpoint/CheckpointManager';
 import type { ContextManager } from '@evren-kod/core/core/context/ContextManager';
+import type { TokenOptimizationEngine, FileLockManager } from '@evren-kod/core';
 import type { ReadDeduper } from '@evren-kod/core/core/agent/readDeduper';
 import type {
   ProjectMemoryManager,
@@ -125,6 +126,8 @@ export interface ToolPipelineHost extends AgentHostBase {
   contextManager: ContextManager;
   snapshotManager: SnapshotManager;
   checkpointManager: CheckpointManager;
+  optimizationEngine: TokenOptimizationEngine;
+  fileLockManager: FileLockManager;
   subagentManager: SubagentManager;
   readDeduper: ReadDeduper;
   gitManager: GitManager;
@@ -164,6 +167,7 @@ export interface AgentLoopHost extends AgentHostBase {
   permissionManager: PermissionManager;
   hookManager: HookManager;
   contextManager: ContextManager;
+  optimizationEngine: TokenOptimizationEngine;
   readDeduper: ReadDeduper;
   mcpHub: McpHub;
   skillManager: SkillManager;

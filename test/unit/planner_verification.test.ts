@@ -6,6 +6,7 @@ import * as fs from 'node:fs/promises';
 import { TaskPlanner } from '@evren-kod/core/core/plan/TaskPlanner';
 import { VerificationManager } from '@evren-kod/core/core/verification/VerificationManager';
 import { buildSandboxInvocation, sanitizeEnv } from '@evren-kod/core/core/verification/CommandRunner';
+import { detectTestCommand, detectLintCommand } from '@evren-kod/core/tools/shell';
 
 describe('TaskPlanner: dependencies and status management', () => {
   it('identifies steps and resolves dependency order', () => {
@@ -229,6 +230,36 @@ describe('VerificationManager: verification and baseline comparison', () => {
     }
   });
 
+  it('detects Python (pytest/ruff/mypy) and .NET (dotnet test/format) verification commands', async () => {
+    const manager = new VerificationManager();
+    const pythonDir = await fs.mkdtemp(path.join(os.tmpdir(), 'evren-kod-py-test-'));
+    const dotnetDir = await fs.mkdtemp(path.join(os.tmpdir(), 'evren-kod-dotnet-test-'));
+
+    try {
+      await fs.writeFile(path.join(pythonDir, 'pyproject.toml'), '[project]\nname = "test"\n', 'utf-8');
+      await fs.writeFile(path.join(pythonDir, 'ruff.toml'), '[lint]\n', 'utf-8');
+      await fs.writeFile(path.join(pythonDir, 'mypy.ini'), '[mypy]\n', 'utf-8');
+      const pyCommands = await manager.detectCommands(pythonDir);
+      assert.ok(pyCommands.some((c) => c.command === 'pytest -q'));
+      assert.ok(pyCommands.some((c) => c.command.includes('ruff check')));
+      assert.ok(pyCommands.some((c) => c.command === 'mypy .'));
+
+      assert.strictEqual(await detectTestCommand(pythonDir), 'pytest');
+      assert.strictEqual(await detectLintCommand(pythonDir), 'ruff check .');
+
+      await fs.writeFile(path.join(dotnetDir, 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk"/>\n', 'utf-8');
+      const dotnetCommands = await manager.detectCommands(dotnetDir);
+      assert.ok(dotnetCommands.some((c) => c.command === 'dotnet test'));
+      assert.ok(dotnetCommands.some((c) => c.command.includes('dotnet format')));
+
+      assert.strictEqual(await detectTestCommand(dotnetDir), 'dotnet test');
+      assert.strictEqual(await detectLintCommand(dotnetDir), 'dotnet format --verify-no-changes');
+    } finally {
+      await fs.rm(pythonDir, { recursive: true, force: true }).catch(() => {});
+      await fs.rm(dotnetDir, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
   it('reports successful and failed commands', async () => {
     const manager = new VerificationManager();
     const ok = await manager.verify(tmpDir, {
@@ -328,7 +359,7 @@ describe('VerificationManager: verification and baseline comparison', () => {
         { kind: 'test', command: 'node -e "process.stderr.write(\'Error: kalici\\n\'); process.exit(1)"' }
       ]
     });
-    manager.setBaseline(baseline);
+    await manager.setBaseline(baseline);
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const reloaded = new VerificationManager();
@@ -343,7 +374,7 @@ describe('VerificationManager: verification and baseline comparison', () => {
     const baseline = await manager.verify(tmpDir, {
       commands: [{ kind: 'test', command }]
     });
-    manager.setBaseline(baseline);
+    await manager.setBaseline(baseline);
 
     const after = await manager.verify(tmpDir, {
       commands: [{ kind: 'test', command }]

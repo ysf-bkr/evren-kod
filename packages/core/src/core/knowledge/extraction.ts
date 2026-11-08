@@ -24,22 +24,56 @@ export function toRelativePath(root: string, absolutePath: string): string {
 }
 
 function symbolKindFor(line: string): string {
-  if (/\bclass\b/.test(line)) return 'class';
-  if (/\binterface\b/.test(line)) return 'interface';
+  if (/\b(class|module|defmodule|namespace)\b/.test(line)) return 'class';
+  if (/\b(interface|protocol|trait)\b/.test(line)) return 'interface';
   if (/\benum\b/.test(line)) return 'enum';
-  if (/\b(type|struct|trait|record)\b/.test(line)) return 'type';
-  if (/\b(function|def|fn|func)\b/.test(line)) return 'function';
+  if (/\b(type|struct|record|union)\b/.test(line)) return 'type';
+  if (/\b(function|def|defp|fn|func|fun|proc|procedure)\b/.test(line)) {
+    if (/^[ \t]{2,}/.test(line)) return 'method';
+    return 'function';
+  }
   if (/\b(const|let|var|val)\b/.test(line)) return 'variable';
-  return 'symbol';
+  return 'function';
 }
 
 const SYMBOL_PATTERNS: RegExp[] = [
-  /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|enum|type|struct|trait|record)\s+([A-Za-z_$][\w$]*)/,
-  /^\s*(?:export\s+)?(?:const|let|var|val)\s+([A-Za-z_$][\w$]*)\s*(?::|=)/,
-  /^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)/,
-  /^\s*def\s+([A-Za-z_]\w*)/,
+  // 1. Anahtar kelimeli bildirimler: TS/JS/PHP/Rust/Java/C#/Kotlin/Swift/C++/Go
+  // class, interface, enum, struct, trait, record, type, protocol, extension, union, namespace, module, defmodule
+  /^\s*(?:(?:export|default|pub(?:\([^)]*\))?|public|private|protected|internal|static|final|abstract|override|virtual|sealed|readonly|async|inline|mutating|open|data)\s+)*(?:class|interface|enum|type|struct|trait|record|protocol|extension|union|namespace|module|defmodule)\s+([A-Za-z_$][\w$]*)/,
+
+  // 2. Python def ve async def (örn. def foo(...) veya async def foo(...))
+  /^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)/,
+
+  // 3. Go func (örn. func Foo(...) veya func (s *Server) Start(...))
   /^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)/,
-  /^\s*(?:public|private|protected|static|final|abstract|override|suspend|open|internal)\s+(?:class|interface|enum|record|fun|void|int|long|double|float|boolean|string)\s+([A-Za-z_]\w*)/
+
+  // 4. Rust fn (örn. fn foo(), pub fn foo(), pub(crate) async fn foo(), const fn foo())
+  /^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?(?:unsafe\s+)?(?:extern(?:\s+"[^"]+")?\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)/,
+
+  // 5. Kotlin/Swift fun/func (örn. fun foo(), suspend fun foo(), private func foo())
+  /^\s*(?:(?:public|private|protected|internal|suspend|override|open|inline|mutating|final|static)\s+)*(?:fun|func)\s+([A-Za-z_]\w*)/,
+
+  // 6. Ruby metotları (örn. def foo veya def self.foo)
+  /^\s*def\s+(?:self\.)?([A-Za-z_]\w*)/,
+
+  // 7. PHP / JS / TS / Lua function (örn. function foo(), public function foo(), local function foo())
+  /^\s*(?:(?:export|default|public|private|protected|internal|static|final|abstract|async|local)\s+)*function\s+(?:[A-Za-z_$][\w$]*[:.])?([A-Za-z_$][\w$]*)/,
+
+  // 8. JS/TS/Go/Rust değişken ve sabit bildirimleri (örn. const MAX = 10, export let foo = () =>)
+  /^\s*(?:export\s+)?(?:const|let|var|val)\s+([A-Za-z_$][\w$]*)\s*(?::|=)/,
+
+  // 9. Java/C#/C++/C/Dart tip bildirimli fonksiyon ve metotlar
+  // Örn: public static void main(), public Task<Result> ExecuteAsync(), int calculate(int x), void init()
+  /^\s*(?:(?:public|private|protected|internal|static|final|abstract|override|virtual|sealed|async|inline|extern)\s+)*(?:[A-Za-z_][\w<>[\]*&?,]*\s+)+([A-Za-z_]\w*)\s*\([^;{()]*\)\s*(?:const\s*)?(?:noexcept\s*)?(?:throws\s+[^{;]+)?(?:where\s+[^{;]+)?\{.*$/,
+
+  // 10. Shell script fonksiyonları (örn. function foo { veya foo() {)
+  /^\s*(?:function\s+)?([A-Za-z_][\w-]*)\s*\(\s*\)\s*\{.*$/,
+
+  // 11. SQL fonksiyon, yordam ve tabloları (örn. CREATE PROCEDURE foo, CREATE FUNCTION bar)
+  /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:PROCEDURE|FUNCTION|TABLE|VIEW)\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_]\w*)/i,
+
+  // 12. Elixir def/defp
+  /^\s*(?:def|defp)\s+([A-Za-z_]\w*)/
 ];
 
 /** Gövde anahtar kelimeleri: metot deseni bunları asla sembol saymaz. */
@@ -63,7 +97,17 @@ const CONTROL_WORDS = new Set([
   'void',
   'super',
   'import',
-  'export'
+  'export',
+  'from',
+  'with',
+  'as',
+  'break',
+  'continue',
+  'default',
+  'throw',
+  'package',
+  'using',
+  'namespace'
 ]);
 
 /**
@@ -73,15 +117,20 @@ const CONTROL_WORDS = new Set([
  * görünmüyor, ajan bir metot için `find_symbol`'dan aralık alamıyordu.
  */
 const METHOD_PATTERN =
-  /^[ \t]+(?:(?:public|private|protected|internal|static|async|readonly|abstract|override|final|get|set)\s+)*([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*(?::\s*[^{;]+)?\{[ \t]*$/;
+  /^[ \t]+(?:(?:public|private|protected|internal|static|async|readonly|abstract|override|virtual|final|get|set)\s+)*([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*(?::\s*[^{;]+)?\{[ \t]*$/;
 
 const IMPORT_PATTERNS: RegExp[] = [
   /import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g,
+  /export\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g,
   /require\(\s*['"]([^'"]+)['"]\s*\)/g,
+  /require_relative\s*['"]([^'"]+)['"]/g,
   /from\s+([A-Za-z0-9_.]+)\s+import/g,
   /^\s*import\s+([A-Za-z0-9_.]+)/gm,
-  /^\s*use\s+([A-Za-z0-9_:]+)/gm,
-  /^\s*#include\s+[<"]([^>"]+)[>"]/gm
+  /^\s*import\s+["']([^"']+)["']/gm,
+  /^\s*use\s+([A-Za-z0-9_:\\]+)/gm,
+  /^\s*using\s+([A-Za-z0-9_.]+)/gm,
+  /^\s*#include\s+[<"]([^>"]+)[>"]/gm,
+  /^\s*mod\s+([A-Za-z0-9_]+);/gm
 ];
 
 /** İmza olarak saklanacak en uzun bildirim satırı. */
@@ -108,8 +157,10 @@ export function extractSymbols(relativePath: string, content: string): Knowledge
     for (const pattern of SYMBOL_PATTERNS) {
       const match = line.match(pattern);
       if (match?.[1]) {
+        const name = match[1];
+        if (CONTROL_WORDS.has(name)) continue;
         symbols.push({
-          name: match[1],
+          name,
           kind: symbolKindFor(line),
           file: relativePath,
           line: index + 1,

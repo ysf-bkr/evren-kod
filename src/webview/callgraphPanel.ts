@@ -33,7 +33,8 @@ export type CallGraphPanelSource = Pick<CallGraphManager, 'ensureReady' | 'getDo
  * Bilgi tabanının panele eşlik eden sayıları. Ekran "Bilgi Grafiği" başlığıyla
  * iki kaynağı birden anlattığı için başlık ile içerik birbirini tutar.
  */
-export type CallGraphPanelKnowledge = Pick<KnowledgeStore, 'knowledgeStats'>;
+export type CallGraphPanelKnowledge = Pick<KnowledgeStore, 'knowledgeStats'> &
+  Partial<Pick<KnowledgeStore, 'findSymbolsByFile'>>;
 
 function toPanelNode(node: CallGraphNode): CallGraphPanelNode {
   return {
@@ -157,16 +158,30 @@ export async function resolveCallGraphPanelRequest(
   if (request.action === 'files') {
     const testFiles = new Set(document.nodes.filter((node) => node.isTest).map((node) => node.file));
     const rows = Object.entries(document.files)
-      .map(([path, meta]) => ({
-        path,
+      .map(([filePath, meta]) => ({
+        path: filePath,
         status: meta.status,
         nodeCount: meta.nodeCount,
         edgeCount: meta.edgeCount,
         externalCalls: meta.externalCalls,
-        isTest: testFiles.has(path),
+        isTest: testFiles.has(filePath),
         reason: meta.reason
       }))
       .sort((a, b) => a.path.localeCompare(b.path));
+
+    // Bilgi tabanında sembolü olan ancak haritada 0 görünen dosyaları zenginleştir
+    if (knowledge && typeof knowledge.findSymbolsByFile === 'function') {
+      for (const row of rows) {
+        if (row.nodeCount === 0) {
+          const kSymbols = knowledge.findSymbolsByFile(row.path);
+          if (kSymbols && kSymbols.length > 0) {
+            row.nodeCount = kSymbols.length;
+            if (row.status === 'skipped') row.status = 'complete';
+          }
+        }
+      }
+    }
+
     return {
       ...base,
       ready: true,
@@ -179,11 +194,33 @@ export async function resolveCallGraphPanelRequest(
   // fileSymbols: tek dosyanın sembolleri, tanım satırı sırasıyla.
   if (request.action === 'fileSymbols') {
     const target = request.path || '';
-    const symbols = document.nodes
+    let symbols = document.nodes
       .filter((candidate) => candidate.file === target)
       .sort((a, b) => a.startLine - b.startLine)
       .slice(0, CALLGRAPH_MAX_FILE_SYMBOLS)
       .map(toPanelNode);
+
+    // Eğer haritada sembol yoksa ancak bilgi tabanında taranmışsa:
+    if (symbols.length === 0 && knowledge && typeof knowledge.findSymbolsByFile === 'function') {
+      const kSymbols = knowledge.findSymbolsByFile(target);
+      if (kSymbols && kSymbols.length > 0) {
+        symbols = kSymbols.slice(0, CALLGRAPH_MAX_FILE_SYMBOLS).map((ks) => ({
+          id: `${ks.file}#${ks.name}`,
+          name: ks.name,
+          kind:
+            ks.kind === 'class'
+              ? 'class'
+              : ks.kind === 'method' || ks.kind === 'constructor'
+                ? 'method'
+                : 'function',
+          file: ks.file,
+          startLine: ks.line,
+          exported: true,
+          isTest: false
+        }));
+      }
+    }
+
     return {
       ...base,
       ready: true,

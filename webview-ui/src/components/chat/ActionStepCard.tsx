@@ -174,7 +174,9 @@ export const ActionStepCard: React.FC<ActionStepCardProps> = ({
       className={`overflow-hidden rounded-md border evren-kod-bg-base transition ${
         isPendingApproval
           ? 'evren-kod-border-warning evren-kod-shadow-sm'
-          : 'evren-kod-border-surface hover:border-[var(--evren-kod-focus)]'
+          : toolCall.status === 'executing'
+            ? 'border-brand-500/50 bg-brand-500/[0.04] shadow-sm'
+            : 'evren-kod-border-surface hover:border-[var(--evren-kod-focus)]'
       }`}
     >
       {/* Başlık düğmesi ve Diff kısayolu yan yana: düğme içinde düğme geçersiz HTML. */}
@@ -316,15 +318,15 @@ export const ActionStepCard: React.FC<ActionStepCardProps> = ({
       )}
 
       {isPendingApproval && (
-        <div className="flex items-center justify-between gap-2 border-t evren-kod-border-warning evren-kod-bg-raised p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t evren-kod-border-warning evren-kod-bg-raised p-2">
           <div
-            className="flex min-w-0 items-center gap-1.5 text-xs font-medium evren-kod-text-warning"
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-medium evren-kod-text-warning"
             title={toolCall.approvalReason || 'Bu işlem onayınızı bekliyor'}
           >
             <AlertTriangle className="evren-kod-icon-xs shrink-0" />
             <span className="truncate">{toolCall.approvalReason || 'Bu işlem onayınızı bekliyor'}</span>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-1 shrink-0 ml-auto">
             <ApprovalActionButtons
               toolCallId={toolCall.id}
               showDiff={toolCall.name === 'write_file' || toolCall.name === 'edit_file'}

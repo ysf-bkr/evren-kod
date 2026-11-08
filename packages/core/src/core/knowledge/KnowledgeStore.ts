@@ -705,6 +705,12 @@ export class KnowledgeStore {
     return results;
   }
 
+  /** Belirli bir dosyadaki sembolleri satır sırasına göre listeler. */
+  public findSymbolsByFile(filePath: string): KnowledgeSymbolRecord[] {
+    const normalized = filePath.replace(/\\/g, '/');
+    return this.symbols.filter((symbol) => symbol.file === normalized).sort((a, b) => a.line - b.line);
+  }
+
   /**
    * Bir sembolü tanımlayan dosyalar ve ona bağımlı dosyalar; import grafiğinde
    * dışa doğru gezinilir. Semboller ve import'lar için tek doğruluk kaynağı

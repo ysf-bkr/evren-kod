@@ -118,6 +118,24 @@ export class Range {
   }
 }
 
+export class EventEmitter<T = unknown> {
+  private listeners: Array<(e: T) => void> = [];
+  public event = (listener: (e: T) => void) => {
+    this.listeners.push(listener);
+    return {
+      dispose: () => {
+        this.listeners = this.listeners.filter((l) => l !== listener);
+      }
+    };
+  };
+  public fire(data: T): void {
+    for (const listener of this.listeners) listener(data);
+  }
+  public dispose(): void {
+    this.listeners = [];
+  }
+}
+
 export const DiagnosticSeverity = { Error: 0, Warning: 1, Information: 2, Hint: 3 } as const;
 
 export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 } as const;

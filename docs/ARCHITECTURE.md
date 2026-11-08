@@ -1,5 +1,9 @@
 # Evren Kod Mimari ve Geliştirici Kılavuzu
 
+<p align="center">
+  <img src="../resources/logo.svg" alt="Evren Kod Logosu" width="640" />
+</p>
+
 Bu belge, Evren Kod eklentisinin iç mimarisini, dizin yapısını, veri akışını, geliştirici araç zincirini ve test stratejisini detaylandırmaktadır.
 
 ---
@@ -45,12 +49,15 @@ evren-kod/                                 npm workspaces monorepo
 │   │                                     (birleşik bilgi grafı), multiagent,
 │   │                                     plan, verification, routing, audit, snapshot,
 │   │                                     checkpoint, worktree, rules, skills, workflow,
-│   │                                     hooks, git, spec, mcp istemcisi
+│   │                                     hooks, git, spec, mcp istemcisi, optimization
+│   │                                     (Token & Bağlam Optimizasyon Motoru),
+│   │                                     settings (SettingsStorage - VS Code bağımsız ayar deposu) ve
+│   │                                     agent/TerminalAgent (Headless ReAct ajanı)
 │   │       └── core/project/             ProjectProfiler: uygulama türü ve stack algılama,
 │   │       │                             `.evren-kod/project-profile.json` kalıcılığı
 │   │       └── core/lsp/port.ts          LspClientPort: motor vscode modülünü asla görmez
 │   └── cli/                              @evren-kod/cli — terminal ajanı (`evren-kod`)
-│       └── src/index.ts                  @evren-kod/core üzerinde ReAct döngüsü + readline arayüzü
+│       └── src/index.ts                  @evren-kod/core üzerinde ReAct döngüsü + readline REPL, canlı streaming, renkli araç kartları ve slash komutları
 ├── webview-ui/                           React 18 + Tailwind CSS + Lucide webview
 │   ├── src/
 │   │   ├── App.tsx                       Ana görünüm yönlendirme ve mesaj dağıtıcı
@@ -243,7 +250,7 @@ denetim turunun ölçülemezlik kanıtıyla kapanır.
 | `npm run compile`              | Yalnızca extension bundle'ını esbuild ile derler.                                                            |
 | `npm run build:ui`             | Yalnızca webview uygulamasını Vite ile derler.                                                               |
 | `npm run build:cli`            | Yalnızca CLI bundle'ını derler.                                                                              |
-| `npm run package`              | `out/evren-kod-0.1.3.vsix` paketini üretir.                                                                  |
+| `npm run package`              | `out/evren-kod-0.1.5.vsix` paketini üretir.                                                                  |
 | `npm run audit:verify`         | `.evren-kod/audit.log` hash zincirini doğrular (`-- --workspace <path>`).                                    |
 | `npm run cli`                  | Başsız (headless) terminal CLI'ını kaynaktan çalıştırır.                                                     |
 | `npm run test:e2e`             | Derler ve gerçek bir VS Code penceresinde uçtan uca testleri çalıştırır.                                     |
@@ -301,8 +308,35 @@ ve hangi modülün işlendiği tek bakışta izlenir.
 
 ## 9. Test Mimarisi ve Kapsam
 
-Test süiti hâlihazırda 1025 testten (871 çekirdek + 154 webview) oluşur ve üç katmanda icra edilir:
+Test süiti hâlihazırda 1145 testten (981 çekirdek + 164 webview) oluşur ve üç katmanda icra edilir:
 
 1. **Birim Testleri (`test/unit/`):** Node.js yerleşik test runner'ı (`node:test`) ve sahte VS Code köprüsü (`test/support/vscode-stub.ts`) ile harici bağımlılık olmadan milisaniyeler içinde çalışır.
 2. **Webview UI Testleri (`webview-ui/test/`):** JSDOM ortamında React Testing Library benzeri yapıyla tüm ekran ve bileşen etkileşimlerini simüle eder.
 3. **Uçtan Uca Entegrasyon Testleri (`test/e2e/`):** `@vscode/test-electron` ile gerçek bir VS Code örneği başlatarak uzantının manifest uyumunu, komut kaydını ve ayar senkronizasyonunu denetler.
+
+---
+
+## 10. Token & Bağlam Optimizasyon Motoru
+
+Evren Kod, problem çözme yeteneğini düşürmeden model token tüketimini ve gecikmeyi en aza indiren merkezi bir optimizasyon katmanına (`packages/core/src/core/optimization/`) sahiptir:
+
+1. **Dinamik Araç Maskeleme (`ToolSchemaOptimizer`):** İş akışı aşamasına (`intake`, `spec`, `plan`, `build`, `verify`, `done`) göre alakasız araç şemalarını filtreler; gereksiz şema token yükünü %60–75 oranında düşürür.
+2. **Araç Çıktı Optimizasyonu (`OutputOptimizer`):** AST tabanlı dosya iskeletleri (arayüz/metot imzaları), test başarı çıktılarında kısa özetleme, terminal çıktısı filtreleme ve diff arındırması yapar.
+3. **Reaktif Bağlam Sıkıştırma (`ContextOptimizer`):** Düzenlenen dosyanın eski okuma çıktılarını ve geçmiş araç yanıtlarını yapısal olarak özetler; sürüm kontrolüyle dosya değişse dahi önemli bağlamı korur.
+4. **Dinamik Görev Bütçe Yöneticisi (`TokenBudgetManager`):** Keşif, planlama, kodlama ve inceleme aşamaları için esnek, göreve duyarlı dinamik token bütçeleri uygular.
+5. **Bağlam Değer Puanlama (`ContextRelevanceScorer`):** Güncel kod parçaları, API sözleşmeleri ve mimari kararlara yüksek; eski terminal loglarına düşük öncelik vererek bağlam kalitesini maksimize eder.
+6. **Araç Çıktı Tekilleştirme (`ToolDeduplicator`):** sha256 içerik hash'i ve çalışma parametreleriyle mükerrer okuma ve komut çağrılarını tespit eder.
+7. **Yapılandırılmış Çalışma Hafızası (`StructuredMemory`):** Görev amacı, tamamlanan işler, kararlar, değişen dosyalar ve bilinen sorunları yapısal özet olarak tutar.
+8. **Sağlayıcı Uyumlu Önbellek Yönetimi (`ProviderCacheManager`):** Statik istem öneki ile dinamik bağlamı ayırarak Anthropic, OpenAI ve yerel sağlayıcıların prompt caching mekanizmalarından en yüksek faydayı sağlar.
+9. **Gözlemlenebilirlik (`TokenObservability`):** Girdi, çıktı, önbellek ve gecikme metriklerini her turda takip eder.
+
+---
+
+## 11. Bilgi Grafiği ve Hiyerarşik Klasör Ağacı
+
+`CallGraphView` ve `packages/core/src/core/graph/` katmanı:
+
+- **Hiyerarşik Gezinti (`FolderTree`):** Düz dosya listesi yerine, çalışma alanı kökünü baz alan, açılır/kapanır klasör ve dosya ağacı sunar.
+- **Kaynak Kod Odaklılığı:** `node_modules`, `.git`, `dist`, `build` ve gizli klasörler otomatik olarak elenir; yalnızca kaynak kodlar haritalanır.
+- **Çift Yönlü İlişki İncelemesi:** Seçilen dosya veya fonksiyonun çağıranları (callers), çağırdıkları (callees), import bağımlılıkları ve etki analizi anlık olarak listelenir.
+- **Editör Entegrasyonu:** Fonksiyon ve sembol kartlarına tıklanarak ilgili satıra doğrudan atlanır.

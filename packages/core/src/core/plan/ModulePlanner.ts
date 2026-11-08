@@ -39,7 +39,15 @@ const ALLOWED_DEPENDENCIES: Record<ModuleLayer, ReadonlySet<ModuleLayer>> = {
     'infrastructure',
     'shared'
   ]),
-  docs: new Set<ModuleLayer>(['docs', 'test'])
+  docs: new Set<ModuleLayer>([
+    'docs',
+    'test',
+    'interface',
+    'application',
+    'domain',
+    'infrastructure',
+    'shared'
+  ])
 };
 
 export const MODULE_LAYERS: ModuleLayer[] = [

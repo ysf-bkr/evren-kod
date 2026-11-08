@@ -478,9 +478,8 @@ export class PermissionManager {
         const assessment = assessCommand(cmd, this.workspaceRoot);
 
         // Komut politikası allow listesi tabanlıdır: bilinen güvenli olmayan her
-        // komut (yıkıcı, zincirlenmiş, `bash -c "rm -rf ~"` gibi alıntı hileleri ya
-        // da tamamen bilinmeyen) otomatik onay ya da proje allow listesi açık olsa
-        // bile açık, komut bazlı onay ister.
+        // komut (yıkıcı, alıntı hileleri ya da tamamen bilinmeyen) otomatik onay ya da
+        // proje allow listesi açık olsa bile açık, komut bazlı onay ister.
         if (assessment.risk === 'blocked') {
           return true;
         }
@@ -577,91 +576,91 @@ export class PermissionManager {
   public getToolExplanation(toolName: ToolName, args: Record<string, unknown>): string {
     switch (toolName) {
       case 'read_file':
-        return `Read file "${args.path}".`;
+        return `"${args.path}" dosyasını oku.`;
       case 'write_file':
-        return `Create or write file "${args.path}".`;
+        return `"${args.path}" dosyasını oluştur veya yaz.`;
       case 'edit_file':
-        return `Edit file "${args.path}".`;
+        return `"${args.path}" dosyasını düzenle.`;
       case 'execute_command': {
         const command = String(args.command || '');
         const chained = /[;&|<>`\n]|\$\(/.test(command);
         return (
-          `Run terminal command: \`${command}\`` +
-          (chained ? ' (contains shell chaining or a pipe; additional commands may run)' : '')
+          `\`${command}\` terminal komutunu çalıştır.` +
+          (chained ? ' (komut zinciri veya boru hattı içeriyor; ek komutlar çalışabilir)' : '')
         );
       }
       case 'run_tests':
-        return 'Run tests.';
+        return 'Testleri çalıştır.';
       case 'run_linter':
-        return 'Run lint checks.';
+        return 'Kod denetleyicisini (linter) çalıştır.';
       case 'run_verification':
-        return 'Verify changes by running tests, lint, and type checks.';
+        return 'Değişiklikleri test, lint ve tip denetimleriyle doğrula.';
       case 'update_plan':
-        return 'Update the task plan.';
+        return 'Görev planını güncelle.';
       case 'update_module_plan':
-        return 'Split the work into layered modules (layer, paths, responsibility, dependencies, owner role).';
+        return 'İşi katmanlı modüllere ayır (katman, yollar, sorumluluk, bağımlılıklar, sahip rol).';
       case 'get_references':
-        return 'Find all references to a symbol.';
+        return 'Sembolün tüm kullanımlarını bul.';
       case 'get_workspace_symbols':
-        return `Search workspace symbols for "${args.query || ''}".`;
+        return `Çalışma alanı sembollerinde "${args.query || ''}" ara.`;
       case 'index_workspace':
-        return 'Build the codebase symbol index.';
+        return 'Kod tabanı sembol indeksini oluştur.';
       case 'find_symbol':
-        return `Search for symbol "${args.query || ''}".`;
+        return `"${args.query || ''}" sembolünü ara.`;
       case 'analyze_impact':
-        return `Analyze files affected by symbol "${args.symbol || ''}".`;
+        return `"${args.symbol || ''}" sembolünden etkilenen dosyaları analiz et.`;
       case 'knowledge_graph':
-        return `Query the knowledge graph for "${args.focus || args.mode || 'architecture'}".`;
+        return `Bilgi grafiğini sorgula ("${args.focus || args.mode || 'mimari'}").`;
       case 'graph_callers':
       case 'graph_callees':
       case 'get_callers':
       case 'get_callees':
-        return `Read call relations for "${args.symbol || ''}".`;
+        return `"${args.symbol || ''}" için çağrı ilişkilerini oku.`;
       case 'graph_impact':
       case 'call_graph_impact':
-        return `Analyze the blast radius of "${(args.symbols as string[] | undefined)?.join(', ') || ''}".`;
+        return `"${(args.symbols as string[] | undefined)?.join(', ') || ''}" etki alanını analiz et.`;
       case 'graph_search':
       case 'find_related_code':
-        return `Search the knowledge graph for "${args.query || ''}".`;
+        return `Bilgi grafiğinde "${args.query || ''}" ara.`;
       case 'graph_status':
       case 'call_graph_status':
-        return 'Read knowledge graph readiness.';
+        return 'Bilgi grafiği hazırlık durumunu oku.';
       case 'git_create_branch':
-        return `Create a new Git branch named "${args.name || ''}".`;
+        return `"${args.name || ''}" adında yeni bir Git dalı oluştur.`;
       case 'git_commit':
-        return 'Save changes as a Git commit.';
+        return "Değişiklikleri Git commit'i olarak kaydet.";
       case 'prepare_pr':
-        return 'Prepare a pull request description.';
+        return 'PR (Pull Request) açıklamasını hazırla.';
       case 'web_fetch':
-        return `Fetch content from "${args.url || ''}".`;
+        return `"${args.url || ''}" adresinden içerik getir.`;
       case 'web_search':
-        return `Search the web for "${args.query || ''}".`;
+        return `Web'de "${args.query || ''}" ara.`;
       case 'search_memory':
-        return 'Search project memory.';
+        return 'Proje hafızasını ara.';
       case 'read_notebook':
-        return 'Read Jupyter notebook contents.';
+        return 'Jupyter defteri içeriğini oku.';
       case 'run_parallel_tasks':
-        return 'Run multiple subagents in parallel.';
+        return 'Birden fazla alt ajanı paralel çalıştır.';
       case 'merge_worktree':
-        return 'Apply isolated worktree changes to the main workspace.';
+        return 'İzole worktree değişikliklerini ana çalışma alanına aktar.';
       case 'invoke_subagent':
-        return `Delegate a task to the "${args.role}" subagent: ${String(args.task || '').slice(0, 200)}`;
+        return `Görevi "${args.role}" alt ajanına devret: ${String(args.task || '').slice(0, 200)}`;
       case 'read_skill':
-        return `Read instructions for the "${args.skill_name}" skill.`;
+        return `"${args.skill_name}" becerisi yönergelerini oku.`;
       case 'write_knowledge_file':
-        return `Propose the content of knowledge file "${args.file || ''}.md" for user approval.`;
+        return `"${args.file || ''}.md" bilgi dosyasının içeriğini kullanıcı onayına sun.`;
       case 'search_files':
-        return `Search project files for "${args.query}".`;
+        return `Proje dosyalarında "${args.query}" ara.`;
       case 'list_directory':
-        return `List directory "${args.path || '.'}".`;
+        return `"${args.path || '.'}" dizinini listele.`;
       case 'git_diff':
-        return 'Review Git changes (diff).';
+        return 'Git değişikliklerini (diff) incele.';
       case 'get_diagnostics':
-        return 'Inspect compiler and linter diagnostics.';
+        return 'Derleyici ve linter tanılarını incele.';
       case 'undo_change':
-        return 'Undo the most recent file change.';
+        return 'En son dosya değişikliğini geri al.';
       default:
-        return `Run the ${toolName} tool.`;
+        return `"${toolName}" aracını çalıştır.`;
     }
   }
 

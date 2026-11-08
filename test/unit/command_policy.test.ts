@@ -88,6 +88,11 @@ describe('CommandPolicy: risk classification', () => {
       'tsc --noEmit',
       'eslint src',
       'pytest -q',
+      'ruff check .',
+      'flake8 .',
+      'mypy .',
+      'python -m mypy .',
+      'python3 -m pytest',
       'tsx --test test/unit/**/*.test.ts',
       'node --test',
       'cargo test',
@@ -106,6 +111,14 @@ describe('CommandPolicy: risk classification', () => {
     ]) {
       assert.strictEqual(assessCommand(command).risk, 'safe', command);
     }
+  });
+
+  it('normalizes workspaceRoot safely without corrupting commands on root slash', () => {
+    // Kök '/' veya boş olduğunda regex patlamamalı ve komut güvenli kalmalı
+    assert.strictEqual(assessCommand('npm test', '/').risk, 'safe');
+    assert.strictEqual(assessCommand('npm test', '///').risk, 'safe');
+    assert.strictEqual(assessCommand('npm test', '').risk, 'safe');
+    assert.strictEqual(assessCommand('cat /workspace/src/index.ts', '/workspace').risk, 'safe');
   });
 
   it('safe-listed commands cannot run extra code through their arguments (F01)', () => {

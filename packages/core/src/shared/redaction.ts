@@ -23,7 +23,8 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
     replacement: '$1=[REDACTED]'
   },
   {
-    pattern: /\b(--(?:api[-_]?key|token|secret|password|passwd|auth[-_]?token))\s+("[^"]*"|'[^']*'|\S+)/gi,
+    pattern:
+      /(?<=^|\s)(--(?:api[-_]?key|token|secret|password|passwd|auth[-_]?token))\s+("[^"]*"|'[^']*'|\S+)/gi,
     replacement: '$1 [REDACTED]'
   }
 ];

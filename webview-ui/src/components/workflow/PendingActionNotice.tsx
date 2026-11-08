@@ -30,21 +30,31 @@ export const PendingActionNotice: React.FC<PendingActionNoticeProps> = ({ state 
     <div
       role="region"
       aria-label={pending ? 'Onay bekliyor' : 'Cevap bekleyen soru'}
-      className="mx-[var(--evren-kod-pad-inline)] mb-2 rounded-lg border evren-kod-border-warning evren-kod-bg-warning px-3 py-2.5"
+      className="mx-[var(--evren-kod-pad-inline)] mb-2 rounded-lg border evren-kod-border-warning evren-kod-bg-warning px-3 py-2.5 overflow-hidden"
     >
       {pending ? (
         <>
-          <div className="flex items-center gap-2">
-            <ShieldQuestion className="evren-kod-icon-xs shrink-0 evren-kod-text-warning" />
-            <span className="text-sm font-medium evren-kod-text-fg">
-              Onay bekliyor: {TOOL_TITLES[pending.name] ?? pending.name}
-            </span>
-            <span className="text-2xs evren-kod-text-muted truncate">{toolStepDetail(pending)}</span>
+          <div className="flex items-start gap-2 min-w-0">
+            <ShieldQuestion className="evren-kod-icon-xs shrink-0 evren-kod-text-warning mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-1.5">
+                <span className="text-sm font-medium evren-kod-text-fg">
+                  Onay bekliyor: {TOOL_TITLES[pending.name] ?? pending.name}
+                </span>
+                {toolStepDetail(pending) && (
+                  <span className="text-2xs font-mono evren-kod-text-muted break-all">
+                    {toolStepDetail(pending)}
+                  </span>
+                )}
+              </div>
+              {approvalReason(pending) && (
+                <p className="text-xs mt-1 leading-relaxed evren-kod-text-muted break-words">
+                  {approvalReason(pending)}
+                </p>
+              )}
+            </div>
           </div>
-          {approvalReason(pending) && (
-            <p className="text-xs mt-1 leading-relaxed evren-kod-text-muted">{approvalReason(pending)}</p>
-          )}
-          <div className="mt-2 flex items-center justify-end gap-1.5">
+          <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
             <ApprovalActionButtons
               toolCallId={pending.id}
               showDiff={pending.name === 'write_file' || pending.name === 'edit_file'}
@@ -53,11 +63,13 @@ export const PendingActionNotice: React.FC<PendingActionNoticeProps> = ({ state 
           </div>
         </>
       ) : (
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2 min-w-0">
           <CircleHelp className="evren-kod-icon-xs mt-0.5 shrink-0 evren-kod-text-warning" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-sm font-medium evren-kod-text-fg">Ajanın bir sorusu var</span>
-            <p className="text-xs mt-0.5 leading-relaxed evren-kod-text-muted">{question?.question}</p>
+            <p className="text-xs mt-0.5 leading-relaxed evren-kod-text-muted break-words">
+              {question?.question}
+            </p>
             <p className="text-2xs mt-1 evren-kod-text-muted">
               Yanıtını aşağıdaki kutuya yazıp gönder — ajan kaldığı yerden devam eder.
             </p>

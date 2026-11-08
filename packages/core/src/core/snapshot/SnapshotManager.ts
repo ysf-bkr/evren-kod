@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as crypto from 'crypto';
 import { resolveWorkspacePath } from '../../tools/pathSafety';
 import { errorCode, errorMessage } from '../../shared/errors';
 import { EVREN_KOD_DIR, EVREN_KOD_SUBDIRS } from '../../shared/constants';
@@ -8,15 +9,61 @@ export interface FileSnapshot {
   id: string;
   filePath: string;
   originalContent: string | null; // dosya yeni oluşturulduysa null
+  originalSha256: string;
+  postExecutionSha256?: string;
   existsBefore: boolean;
   timestamp: number;
   toolCallId?: string;
   description?: string;
 }
 
+export interface RevertOptions {
+  workspaceRoot?: string;
+  force?: boolean;
+}
+
+export interface RevertResult {
+  success: boolean;
+  message: string;
+  filePath: string;
+  conflict?: boolean;
+  currentSha256?: string;
+  expectedSha256?: string;
+  diff?: string;
+}
+
 interface SnapshotPersistence {
   dir: string;
   sessionId: string;
+}
+
+function sha256(content: string | null): string {
+  if (content === null) return '';
+  return crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
+}
+
+/**
+ * İki içerik arasındaki farkı kullanıcıya sunulabilir biçimde üretir.
+ */
+export function generateSimpleDiff(expected: string | null, actual: string | null, filePath: string): string {
+  const expLines = (expected ?? '').split('\n');
+  const actLines = (actual ?? '').split('\n');
+  const lines: string[] = [
+    `--- a/${filePath} (ajanın bıraktığı beklenen durum)`,
+    `+++ b/${filePath} (diskteki mevcut değiştirilmiş durum)`
+  ];
+  const max = Math.max(expLines.length, actLines.length);
+  for (let i = 0; i < max; i++) {
+    const exp = expLines[i];
+    const act = actLines[i];
+    if (exp !== act) {
+      if (exp !== undefined) lines.push(`-${exp}`);
+      if (act !== undefined) lines.push(`+${act}`);
+    } else {
+      lines.push(` ${exp}`);
+    }
+  }
+  return lines.slice(0, 100).join('\n');
 }
 
 export class SnapshotManager {
@@ -116,7 +163,7 @@ export class SnapshotManager {
   }
 
   /**
-   * Bir dosyanın durumunu değiştirilmeden veya yazılmadan önce kopyalar.
+   * Bir dosyanın durumunu değiştirilmeden veya yazılmadan önce kopyalar ve SHA-256 hash'ini kaydeder.
    */
   public async createSnapshot(
     filePath: string,
@@ -157,6 +204,7 @@ export class SnapshotManager {
       id,
       filePath,
       originalContent,
+      originalSha256: sha256(originalContent),
       existsBefore,
       timestamp: Date.now(),
       toolCallId,
@@ -174,22 +222,92 @@ export class SnapshotManager {
   }
 
   /**
-   * Belirli bir anlık görüntüye geri döner.
+   * Araç çalıştırmasından hemen sonra dosyanın ulaştığı yeni durumun hash'ini kaydeder.
+   * Bu hash, daha sonra rollback yapılırken kullanıcının yaptığı harici değişiklikleri
+   * tespit etmek için referans alınır.
    */
-  public async revertSnapshot(
+  public async recordPostExecutionHash(
     snapshotId: string,
     workspaceRoot?: string
-  ): Promise<{ success: boolean; message: string; filePath: string }> {
+  ): Promise<string | undefined> {
     const snapshot = this.snapshots.find((s) => s.id === snapshotId);
-    if (!snapshot) {
-      return { success: false, message: `Anlık görüntü bulunamadı: ${snapshotId}`, filePath: '' };
-    }
-
+    if (!snapshot) return undefined;
     const fullPath = workspaceRoot
       ? resolveWorkspacePath(snapshot.filePath, workspaceRoot)
       : path.isAbsolute(snapshot.filePath)
         ? snapshot.filePath
         : snapshot.filePath;
+
+    try {
+      const content = await fs.readFile(fullPath, 'utf-8');
+      const hash = sha256(content);
+      snapshot.postExecutionSha256 = hash;
+      await this.persistSnapshot(snapshot);
+      return hash;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Belirli bir anlık görüntüye geri döner.
+   * Rollback öncesinde SHA-256 kontrolü yapar: dosya ajanın yazmasından sonra
+   * kullanıcı tarafından düzenlenmişse otomatik geri alma durdurulur ve diff sunulur.
+   */
+  public async revertSnapshot(
+    snapshotId: string,
+    optionsOrWorkspaceRoot?: string | RevertOptions
+  ): Promise<RevertResult> {
+    const options: RevertOptions =
+      typeof optionsOrWorkspaceRoot === 'string'
+        ? { workspaceRoot: optionsOrWorkspaceRoot }
+        : (optionsOrWorkspaceRoot ?? {});
+
+    const snapshot = this.snapshots.find((s) => s.id === snapshotId);
+    if (!snapshot) {
+      return { success: false, message: `Anlık görüntü bulunamadı: ${snapshotId}`, filePath: '' };
+    }
+
+    const fullPath = options.workspaceRoot
+      ? resolveWorkspacePath(snapshot.filePath, options.workspaceRoot)
+      : path.isAbsolute(snapshot.filePath)
+        ? snapshot.filePath
+        : snapshot.filePath;
+
+    // Diskteki mevcut durumu ve SHA-256 hash'ini oku
+    let currentContent: string | null = null;
+    let fileExistsOnDisk = false;
+    try {
+      currentContent = await fs.readFile(fullPath, 'utf-8');
+      fileExistsOnDisk = true;
+    } catch (err) {
+      if (errorCode(err) !== 'ENOENT') {
+        return {
+          success: false,
+          message: `Dosya kontrolü başarısız: ${errorMessage(err)}`,
+          filePath: snapshot.filePath
+        };
+      }
+    }
+
+    const currentSha = fileExistsOnDisk ? sha256(currentContent) : '';
+
+    // Eşzamanlı değişiklik kontrolü (Optimistic Concurrency / Conflict Check)
+    if (!options.force && snapshot.postExecutionSha256) {
+      if (currentSha !== snapshot.postExecutionSha256) {
+        // Dosya ajanın yazmasından sonra harici olarak (kullanıcı veya başka bir ajan) değiştirilmiş!
+        const diff = generateSimpleDiff(currentContent, snapshot.originalContent, snapshot.filePath);
+        return {
+          success: false,
+          conflict: true,
+          message: `Çakışma tespit edildi: "${snapshot.filePath}" ajanın yazmasından sonra dışarıdan değiştirilmiş. Kullanıcı değişikliklerinin kaybolmaması için otomatik geri alma durduruldu.`,
+          filePath: snapshot.filePath,
+          currentSha256: currentSha,
+          expectedSha256: snapshot.postExecutionSha256,
+          diff
+        };
+      }
+    }
 
     try {
       if (snapshot.existsBefore && snapshot.originalContent !== null) {
@@ -204,10 +322,12 @@ export class SnapshotManager {
         };
       } else {
         // Dosya önceden yoktu; yeni oluşturulmuş, bu yüzden sil.
-        try {
-          await fs.unlink(fullPath);
-        } catch (err) {
-          if (errorCode(err) !== 'ENOENT') throw err;
+        if (fileExistsOnDisk) {
+          try {
+            await fs.unlink(fullPath);
+          } catch (err) {
+            if (errorCode(err) !== 'ENOENT') throw err;
+          }
         }
         this.removeSnapshots([snapshot.id]);
         await this.removePersisted([snapshot.id]);
@@ -229,20 +349,22 @@ export class SnapshotManager {
   /**
    * En son dosya değişikliğini geri alır (Geri Al).
    */
-  public async revertLast(
-    workspaceRoot?: string
-  ): Promise<{ success: boolean; message: string; filePath?: string }> {
+  public async revertLast(optionsOrWorkspaceRoot?: string | RevertOptions): Promise<RevertResult> {
     if (this.snapshots.length === 0) {
-      return { success: false, message: 'Geri alınacak dosya değişikliği yok.' };
+      return { success: false, message: 'Geri alınacak dosya değişikliği yok.', filePath: '' };
     }
 
     const last = this.snapshots[this.snapshots.length - 1];
     if (!last) {
-      return { success: false, message: 'Geri alınacak dosya değişikliği bulunamadı.' };
+      return {
+        success: false,
+        message: 'Geri alınacak dosya değişikliği bulunamadı.',
+        filePath: ''
+      };
     }
-    const res = await this.revertSnapshot(last.id, workspaceRoot);
-    if (!res.success) {
-      // Geri alma başarısızsa anlık görüntüyü kaybetme.
+    const res = await this.revertSnapshot(last.id, optionsOrWorkspaceRoot);
+    if (!res.success && !res.conflict) {
+      // Geri alma başarısızsa ve çakışma değilse anlık görüntüyü kaybetme.
       if (!this.snapshots.some((s) => s.id === last.id)) {
         this.snapshots.push(last);
       }

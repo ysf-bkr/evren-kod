@@ -350,9 +350,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleWebviewMessage(message: WebviewToExtensionMessage) {
-    const handler = this.messageHandlers[message.type] as (
-      m: WebviewToExtensionMessage
-    ) => Promise<void> | void;
+    if (!message || typeof message !== 'object' || !message.type) {
+      return;
+    }
+    const handler = this.messageHandlers[message.type] as
+      | ((m: WebviewToExtensionMessage) => Promise<void> | void)
+      | undefined;
+    if (typeof handler !== 'function') {
+      logWarning(
+        `Unknown or unsupported webview message type: ${String((message as { type?: unknown }).type)}`
+      );
+      return;
+    }
     await handler(message);
   }
 

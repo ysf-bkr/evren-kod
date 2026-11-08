@@ -93,6 +93,7 @@ function buildSubagentPrompt(agent: AgentDefinition): string {
 
 export interface SubagentStatusDetails {
   tool?: string;
+  toolDetail?: string;
   step?: number;
   maxSteps?: number;
   worktreePath?: string;
@@ -528,8 +529,23 @@ Complete your task and provide a clear report of the results to the main agent w
       });
 
       for (const tc of response.toolCalls) {
+        const rawArgs = tc.arguments as Record<string, unknown> | undefined;
+        const shortDetail =
+          typeof rawArgs?.path === 'string'
+            ? rawArgs.path
+            : typeof rawArgs?.command === 'string'
+              ? rawArgs.command
+              : typeof rawArgs?.query === 'string'
+                ? rawArgs.query
+                : typeof rawArgs?.task === 'string'
+                  ? rawArgs.task
+                  : typeof rawArgs?.symbol === 'string'
+                    ? rawArgs.symbol
+                    : undefined;
+
         this.onSubagentStatus?.(params.role, `Running ${tc.name}...`, {
           tool: tc.name,
+          toolDetail: shortDetail,
           step: stepCount,
           state: 'running',
           isolate: isolated,

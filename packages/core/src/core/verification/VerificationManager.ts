@@ -146,9 +146,9 @@ export class VerificationManager {
     }
   }
 
-  public setBaseline(result: VerificationResult): void {
+  public async setBaseline(result: VerificationResult): Promise<void> {
     this.baseline = result;
-    void this.persistBaseline();
+    await this.persistBaseline();
   }
 
   private async persistBaseline(): Promise<void> {
@@ -222,6 +222,8 @@ export class VerificationManager {
         ? 'yarn'
         : 'npm';
 
+    const rootEntries = await fs.readdir(workspaceRoot).catch(() => [] as string[]);
+
     if (testScript && !/no test specified/i.test(String(testScript))) {
       commands.push({
         kind: 'test',
@@ -246,9 +248,12 @@ export class VerificationManager {
       (await exists('pyproject.toml')) ||
       (await exists('pytest.ini')) ||
       (await exists('tox.ini')) ||
-      (await exists('setup.cfg'))
+      (await exists('setup.cfg')) ||
+      (await exists('requirements.txt'))
     ) {
       commands.push({ kind: 'test', command: 'pytest -q' });
+    } else if (rootEntries.some((f) => f.endsWith('.sln') || f.endsWith('.csproj'))) {
+      commands.push({ kind: 'test', command: 'dotnet test' });
     }
 
     if (lintScript) {
@@ -269,6 +274,19 @@ export class VerificationManager {
     ) {
       const gradleLint = (await exists('gradlew')) ? './gradlew lint' : 'gradle lint';
       commands.push({ kind: 'lint', command: gradleLint });
+    } else if ((await exists('ruff.toml')) || (await exists('.ruff.toml'))) {
+      commands.push({ kind: 'lint', command: 'ruff check .' });
+    } else if (await exists('.flake8')) {
+      commands.push({ kind: 'lint', command: 'flake8 .' });
+    } else if (
+      (await exists('pyproject.toml')) ||
+      (await exists('setup.cfg')) ||
+      (await exists('requirements.txt')) ||
+      (await exists('setup.py'))
+    ) {
+      commands.push({ kind: 'lint', command: 'ruff check .' });
+    } else if (rootEntries.some((f) => f.endsWith('.sln') || f.endsWith('.csproj'))) {
+      commands.push({ kind: 'lint', command: 'dotnet format --verify-no-changes' });
     }
 
     if (typecheckScript) {
@@ -278,6 +296,8 @@ export class VerificationManager {
       });
     } else if (await exists('tsconfig.json')) {
       commands.push({ kind: 'typecheck', command: 'npx tsc --noEmit' });
+    } else if ((await exists('mypy.ini')) || (await exists('.mypy.ini'))) {
+      commands.push({ kind: 'typecheck', command: 'mypy .' });
     }
 
     if (buildScript && commands.length === 0) {

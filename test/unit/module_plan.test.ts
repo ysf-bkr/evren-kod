@@ -171,4 +171,33 @@ describe('ModulePlanner: katmanlı modül haritası', () => {
     assert.match(prompt, /2\. \[interface\] ui/);
     assert.match(prompt, /lower layers first/i);
   });
+
+  it('dokümantasyon (docs) modülü altyapı ve alan modüllerine bağımlı olabilir', () => {
+    const planner = new ModulePlanner();
+    assert.doesNotThrow(() => {
+      planner.update({
+        goal: 'Belgeleme',
+        modules: [
+          {
+            id: 'db-cli-logging',
+            name: 'Veritabanı Günlüğü',
+            layer: 'infrastructure',
+            paths: ['src/infra/db.ts'],
+            responsibility: 'Veritabanı ve CLI loglama'
+          },
+          {
+            id: 'roadmap-truth-sync',
+            name: 'Yol Haritası Belgeleri',
+            layer: 'docs',
+            paths: ['docs/roadmap.md'],
+            responsibility: 'Yol haritası ve sistem mimarisi senkronu',
+            dependsOn: ['db-cli-logging']
+          }
+        ]
+      });
+    });
+
+    const buildOrder = planner.getBuildOrder().map((m) => m.id);
+    assert.deepStrictEqual(buildOrder, ['db-cli-logging', 'roadmap-truth-sync']);
+  });
 });

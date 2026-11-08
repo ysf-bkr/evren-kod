@@ -63,7 +63,7 @@ export const updatePlanTool: ToolDefinition = {
       steps: {
         type: 'array',
         description:
-          'List of steps. Each step: { id?, title, description?, status?, dependsOn?, completionCriteria?, files? }',
+          'List of steps. Each step: { id?, title, moduleId, criteria, description?, status?, dependsOn?, completionCriteria?, files?, ownerRole? }',
         items: {
           type: 'object',
           properties: {

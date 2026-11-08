@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Search,
   RefreshCw,
@@ -7,6 +7,8 @@ import {
   CornerDownLeft,
   CornerUpRight,
   FileCode,
+  Folder,
+  FolderOpen,
   FolderTree,
   ChevronDown,
   ChevronRight,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react';
 import {
   CallGraphPanelDepRow,
+  CallGraphPanelFileRow,
   CallGraphPanelNode,
   CallGraphPanelResult,
   NavigationDestination
@@ -198,6 +201,236 @@ const FileDeps: React.FC<{ path: string; deps: CallGraphPanelDepRow[]; onOpen: (
   );
 };
 
+interface FileTreeNode {
+  id: string;
+  name: string;
+  path: string;
+  isFolder: boolean;
+  children: FileTreeNode[];
+  fileRow?: CallGraphPanelFileRow;
+  totalFiles: number;
+}
+
+const IGNORED_TREE_SEGMENTS = new Set([
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  '.git',
+  '.gemini',
+  '.vscode',
+  'coverage',
+  '.turbo'
+]);
+
+function buildFileTree(files: CallGraphPanelFileRow[]): FileTreeNode[] {
+  const root: FileTreeNode = {
+    id: 'root',
+    name: 'root',
+    path: '',
+    isFolder: true,
+    children: [],
+    totalFiles: 0
+  };
+
+  for (const file of files) {
+    const parts = file.path.split(/[/\\]/);
+    if (parts.some((p) => IGNORED_TREE_SEGMENTS.has(p))) continue;
+
+    let current = root;
+    let currentPath = '';
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      const isLast = i === parts.length - 1;
+
+      if (isLast) {
+        current.children.push({
+          id: file.path,
+          name: part,
+          path: file.path,
+          isFolder: false,
+          children: [],
+          fileRow: file,
+          totalFiles: 1
+        });
+      } else {
+        let folderNode = current.children.find((c) => c.isFolder && c.name === part);
+        if (!folderNode) {
+          folderNode = {
+            id: currentPath,
+            name: part,
+            path: currentPath,
+            isFolder: true,
+            children: [],
+            totalFiles: 0
+          };
+          current.children.push(folderNode);
+        }
+        current = folderNode;
+      }
+    }
+  }
+
+  function sortAndCount(node: FileTreeNode): number {
+    let count = node.isFolder ? 0 : 1;
+    if (node.children.length > 0) {
+      node.children.sort((a, b) => {
+        if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      for (const child of node.children) {
+        count += sortAndCount(child);
+      }
+    }
+    node.totalFiles = count;
+    return count;
+  }
+
+  sortAndCount(root);
+  return root.children;
+}
+
+const FileTreeNodeItem: React.FC<{
+  node: FileTreeNode;
+  depth: number;
+  collapsedFolders: Set<string>;
+  toggleFolder: (id: string) => void;
+  expandedFile: string | null;
+  toggleFile: (path: string) => void;
+  fileSymbols: Record<string, CallGraphPanelNode[]>;
+  fileDeps: Record<string, CallGraphPanelDepRow[]>;
+  selected: CallGraphPanelNode | null;
+  openAndSelect: (node: CallGraphPanelNode) => void;
+  selectNode: (node: CallGraphPanelNode) => void;
+}> = ({
+  node,
+  depth,
+  collapsedFolders,
+  toggleFolder,
+  expandedFile,
+  toggleFile,
+  fileSymbols,
+  fileDeps,
+  selected,
+  openAndSelect,
+  selectNode
+}) => {
+  if (node.isFolder) {
+    const isCollapsed = collapsedFolders.has(node.id);
+    return (
+      <div key={node.id} className="space-y-0.5">
+        <button
+          type="button"
+          onClick={() => toggleFolder(node.id)}
+          className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs transition hover:opacity-85 evren-kod-text-fg"
+          style={{ paddingLeft: `${depth * 12 + 6}px` }}
+          title={isCollapsed ? 'Klasörü aç' : 'Klasörü kapat'}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
+          ) : (
+            <ChevronDown className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
+          )}
+          {isCollapsed ? (
+            <Folder className="evren-kod-icon-xs shrink-0 evren-kod-text-brand" />
+          ) : (
+            <FolderOpen className="evren-kod-icon-xs shrink-0 evren-kod-text-brand" />
+          )}
+          <span className="min-w-0 flex-1 truncate font-medium text-xs">{node.name}</span>
+          <span className="shrink-0 font-mono text-2xs evren-kod-text-muted">{node.totalFiles} dosya</span>
+        </button>
+        {!isCollapsed && (
+          <div className="space-y-0.5">
+            {node.children.map((child) => (
+              <FileTreeNodeItem
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                collapsedFolders={collapsedFolders}
+                toggleFolder={toggleFolder}
+                expandedFile={expandedFile}
+                toggleFile={toggleFile}
+                fileSymbols={fileSymbols}
+                fileDeps={fileDeps}
+                selected={selected}
+                openAndSelect={openAndSelect}
+                selectNode={selectNode}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const row = node.fileRow!;
+  const expanded = expandedFile === row.path;
+  const symbols = fileSymbols[row.path];
+
+  return (
+    <div key={row.path}>
+      <button
+        type="button"
+        data-nav
+        data-nav-path={row.path}
+        onClick={() => toggleFile(row.path)}
+        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:opacity-85 evren-kod-text-fg"
+        style={{ paddingLeft: `${depth * 12 + 6}px` }}
+        title="Sembolleri görmek için aç"
+      >
+        {expanded ? (
+          <ChevronDown className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
+        ) : (
+          <ChevronRight className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
+        )}
+        <FileCode className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
+        <span className="min-w-0 flex-1 truncate font-mono text-2xs">{node.name}</span>
+        {row.isTest && <Badge tone="info">test</Badge>}
+        <span className="shrink-0 text-2xs evren-kod-text-muted">{row.nodeCount} sembol</span>
+        {row.externalCalls > 0 && <Badge tone="muted">{row.externalCalls} dış çağrı</Badge>}
+        {row.status !== 'complete' && (
+          <Badge tone="warning">{fileStatusLabel[row.status] ?? row.status}</Badge>
+        )}
+      </button>
+      {expanded && fileDeps[row.path] && (
+        <FileDeps path={row.path} deps={fileDeps[row.path]} onOpen={toggleFile} />
+      )}
+      {expanded &&
+        (symbols ? (
+          symbols.length > 0 ? (
+            <div
+              className="space-y-0.5 border-l evren-kod-border-surface pl-1"
+              style={{ marginLeft: `${depth * 12 + 18}px` }}
+            >
+              {symbols.map((symbolNode) => (
+                <NodeRow
+                  key={symbolNode.id}
+                  node={symbolNode}
+                  selected={selected?.id === symbolNode.id}
+                  onOpen={openAndSelect}
+                  onCenter={selectNode}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="py-1 text-2xs evren-kod-text-muted" style={{ paddingLeft: `${depth * 12 + 22}px` }}>
+              Bu dosyada haritalanmış sembol yok.
+            </p>
+          )
+        ) : (
+          <p
+            className="flex items-center gap-2 py-1 text-2xs evren-kod-text-muted"
+            style={{ paddingLeft: `${depth * 12 + 22}px` }}
+          >
+            <Loader2 className="evren-kod-icon-xs animate-spin" /> Semboller yükleniyor…
+          </p>
+        ))}
+    </div>
+  );
+};
+
 /**
  * Çağrı grafiği ekranı: motorun LSP'den ürettiği harita burada görülür —
  * durum/ilerleme, sembol arama, dosya→sembol gezgini ve seçili sembolün
@@ -224,6 +457,19 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
     rebuild
   } = useCallGraphView();
   const [fileFilter, setFileFilter] = useState<'all' | 'project' | 'test'>('all');
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+
+  const toggleFolder = (folderId: string) => {
+    setCollapsedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
 
   // Klavye gezintisi: ok tuşları satırlar arasında dolaşır; dosya listesinde
   // sağ/sol odaktaki dosyayı genişletir/daraltır.
@@ -246,6 +492,10 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
 
   const visibleFiles =
     files?.filter((row) => fileFilter === 'all' || (fileFilter === 'test') === row.isTest) ?? null;
+
+  const fileTree = useMemo(() => {
+    return visibleFiles ? buildFileTree(visibleFiles) : [];
+  }, [visibleFiles]);
 
   return (
     <div className="flex h-full flex-col">
@@ -375,64 +625,22 @@ export const CallGraphView: React.FC<CallGraphViewProps> = ({ onSelectMenu, chan
               <p className="mt-2 text-2xs evren-kod-text-muted">Bu filtreyle eşleşen dosya yok.</p>
             ) : (
               <div ref={filesNav.containerRef} onKeyDown={filesNav.onKeyDown} className="mt-2 space-y-0.5">
-                {visibleFiles.map((row) => {
-                  const expanded = expandedFile === row.path;
-                  const symbols = fileSymbols[row.path];
-                  return (
-                    <div key={row.path}>
-                      <button
-                        type="button"
-                        data-nav
-                        data-nav-path={row.path}
-                        onClick={() => toggleFile(row.path)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition hover:opacity-85 evren-kod-text-fg"
-                        title="Sembolleri görmek için aç"
-                      >
-                        {expanded ? (
-                          <ChevronDown className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
-                        ) : (
-                          <ChevronRight className="evren-kod-icon-xs shrink-0 evren-kod-text-muted" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate font-mono text-2xs">{row.path}</span>
-                        {row.isTest && <Badge tone="info">test</Badge>}
-                        <span className="shrink-0 text-2xs evren-kod-text-muted">
-                          {row.nodeCount} sembol · {row.edgeCount} kenar
-                        </span>
-                        {row.externalCalls > 0 && <Badge tone="muted">{row.externalCalls} dış çağrı</Badge>}
-                        {row.status !== 'complete' && (
-                          <Badge tone="warning">{fileStatusLabel[row.status] ?? row.status}</Badge>
-                        )}
-                      </button>
-                      {expanded && fileDeps[row.path] && (
-                        <FileDeps path={row.path} deps={fileDeps[row.path]} onOpen={toggleFile} />
-                      )}
-                      {expanded &&
-                        (symbols ? (
-                          symbols.length > 0 ? (
-                            <div className="ml-3 space-y-0.5 border-l evren-kod-border-surface pl-1">
-                              {symbols.map((node) => (
-                                <NodeRow
-                                  key={node.id}
-                                  node={node}
-                                  selected={selected?.id === node.id}
-                                  onOpen={openAndSelect}
-                                  onCenter={selectNode}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="ml-8 py-1 text-2xs evren-kod-text-muted">
-                              Bu dosyada haritalanmış sembol yok.
-                            </p>
-                          )
-                        ) : (
-                          <p className="ml-8 flex items-center gap-2 py-1 text-2xs evren-kod-text-muted">
-                            <Loader2 className="evren-kod-icon-xs animate-spin" /> Semboller yükleniyor…
-                          </p>
-                        ))}
-                    </div>
-                  );
-                })}
+                {fileTree.map((rootNode) => (
+                  <FileTreeNodeItem
+                    key={rootNode.id}
+                    node={rootNode}
+                    depth={0}
+                    collapsedFolders={collapsedFolders}
+                    toggleFolder={toggleFolder}
+                    expandedFile={expandedFile}
+                    toggleFile={toggleFile}
+                    fileSymbols={fileSymbols}
+                    fileDeps={fileDeps}
+                    selected={selected}
+                    openAndSelect={openAndSelect}
+                    selectNode={selectNode}
+                  />
+                ))}
               </div>
             )}
           </Section>

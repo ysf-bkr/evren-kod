@@ -216,6 +216,100 @@ describe('extractSymbols: sınıf metotları ve kontrol sözcükleri', () => {
     }
     assert.ok(names.includes('run'), 'fonksiyonun kendisi bulunamadı');
   });
+
+  it('tüm popüler programlama dillerinin fonksiyon ve sınıflarını tanır', () => {
+    // 1. Python
+    const pySource = [
+      'class Calculator:',
+      '    async def fetch_history(self):',
+      '        pass',
+      '    def add(self, a, b):',
+      '        return a + b',
+      'async def standalone_task():',
+      '    pass'
+    ].join('\n');
+    const pySymbols = extractSymbols('app.py', pySource);
+    const pyNames = pySymbols.map((s) => s.name);
+    assert.ok(pyNames.includes('Calculator'), 'Python class bulunamadı');
+    assert.ok(pyNames.includes('fetch_history'), 'Python async method bulunamadı');
+    assert.ok(pyNames.includes('add'), 'Python def method bulunamadı');
+    assert.ok(pyNames.includes('standalone_task'), 'Python async def function bulunamadı');
+
+    // 2. Go
+    const goSource = [
+      'package main',
+      'type Server struct {}',
+      'func (s *Server) Start() error { return nil }',
+      'func Process() {}'
+    ].join('\n');
+    const goSymbols = extractSymbols('main.go', goSource);
+    const goNames = goSymbols.map((s) => s.name);
+    assert.ok(goNames.includes('Server'), 'Go struct bulunamadı');
+    assert.ok(goNames.includes('Start'), 'Go receiver method bulunamadı');
+    assert.ok(goNames.includes('Process'), 'Go func bulunamadı');
+
+    // 3. Rust
+    const rsSource = [
+      'pub struct Point { x: f64 }',
+      'pub trait Drawable {}',
+      'pub(crate) async fn render() {}'
+    ].join('\n');
+    const rsSymbols = extractSymbols('lib.rs', rsSource);
+    const rsNames = rsSymbols.map((s) => s.name);
+    assert.ok(rsNames.includes('Point'), 'Rust struct bulunamadı');
+    assert.ok(rsNames.includes('Drawable'), 'Rust trait bulunamadı');
+    assert.ok(rsNames.includes('render'), 'Rust pub(crate) fn bulunamadı');
+
+    // 4. Java / C#
+    const csSource = [
+      'public class UserService {',
+      '    public static void Main(string[] args) {}',
+      '    public async Task<User> GetUserAsync(int id) { return null; }',
+      '}'
+    ].join('\n');
+    const csSymbols = extractSymbols('UserService.cs', csSource);
+    const csNames = csSymbols.map((s) => s.name);
+    assert.ok(csNames.includes('UserService'), 'C# class bulunamadı');
+    assert.ok(csNames.includes('Main'), 'C# Main method bulunamadı');
+    assert.ok(csNames.includes('GetUserAsync'), 'C# generic return method bulunamadı');
+
+    // 5. PHP
+    const phpSource = [
+      '<?php',
+      'class Controller {',
+      '    public function index() {}',
+      '    protected static function sanitize($val) {}',
+      '}'
+    ].join('\n');
+    const phpSymbols = extractSymbols('Controller.php', phpSource);
+    const phpNames = phpSymbols.map((s) => s.name);
+    assert.ok(phpNames.includes('Controller'), 'PHP class bulunamadı');
+    assert.ok(phpNames.includes('index'), 'PHP method bulunamadı');
+    assert.ok(phpNames.includes('sanitize'), 'PHP static method bulunamadı');
+
+    // 6. C++
+    const cppSource = [
+      'class Engine {',
+      'public:',
+      '    void start() {}',
+      '};',
+      'int main(int argc, char** argv) { return 0; }'
+    ].join('\n');
+    const cppSymbols = extractSymbols('main.cpp', cppSource);
+    const cppNames = cppSymbols.map((s) => s.name);
+    assert.ok(cppNames.includes('Engine'), 'C++ class bulunamadı');
+    assert.ok(cppNames.includes('start'), 'C++ method bulunamadı');
+    assert.ok(cppNames.includes('main'), 'C++ main function bulunamadı');
+
+    // 7. Kotlin / Swift
+    const ktSource = ['class AppService {', '    suspend fun loadData(): String { return "" }', '}'].join(
+      '\n'
+    );
+    const ktSymbols = extractSymbols('AppService.kt', ktSource);
+    const ktNames = ktSymbols.map((s) => s.name);
+    assert.ok(ktNames.includes('AppService'), 'Kotlin class bulunamadı');
+    assert.ok(ktNames.includes('loadData'), 'Kotlin suspend fun bulunamadı');
+  });
 });
 
 describe('KnowledgeStore: imza ve bağıntı sorguları', () => {
